@@ -1,0 +1,31 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# โมเดล AI / WASM runtime ที่ดาวน์โหลด/คัดลอกอัตโนมัติผ่าน postinstall (scripts/setup-assets.mjs)
+# ไม่ commit เพราะเป็นไฟล์ binary ขนาดใหญ่และสร้างใหม่ได้เสมอหลัง npm install
+public/wasm/
+public/models/*.task
+public/models/face-api/*.bin
+public/models/face-api/*-weights_manifest.json
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

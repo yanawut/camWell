@@ -1,0 +1,78 @@
+// โหลด MediaPipe Pose Landmarker (BlazePose) จากไฟล์ local ทั้งหมด (public/wasm + public/models)
+// ไม่มีการเรียก CDN ภายนอกตอนรันจริง — เข้าเงื่อนไข "AI แบบ local" ตามที่ต้องการ
+
+import { useEffect, useRef, useState } from 'react'
+import { FilesetResolver, PoseLandmarker } from '@mediapipe/tasks-vision'
+
+export type LandmarkerStatus = 'loading' | 'ready' | 'error'
+
+const WASM_BASE_PATH = `${import.meta.env.BASE_URL}wasm`
+const MODEL_PATH = `${import.meta.env.BASE_URL}models/pose_landmarker_lite.task`
+
+export function usePoseLandmarker() {
+  const landmarkerRef = useRef<PoseLandmarker | null>(null)
+  const [status, setStatus] = useState<LandmarkerStatus>('loading')
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function init() {
+      setStatus('loading')
+      setError(null)
+      try {
+        const vision = await FilesetResolver.forVisionTasks(WASM_BASE_PATH)
+
+        let landmarker: PoseLandmarker
+        try {
+          landmarker = await PoseLandmarker.createFromOptions(vision, {
+            baseOptions: {
+              modelAssetPath: MODEL_PATH,
+              delegate: 'GPU',
+            },
+            runningMode: 'VIDEO',
+            numPoses: 1,
+          })
+        } catch (gpuErr) {
+          // บาง GPU/เบราว์เซอร์ไม่รองรับ WebGL delegate — fallback ไป CPU
+          console.warn('[usePoseLandmarker] สร้างด้วย GPU delegate ไม่สำเร็จ ลองใหม่ด้วย CPU:', gpuErr)
+          landmarker = await PoseLandmarker.createFromOptions(vision, {
+            baseOptions: {
+              modelAssetPath: MODEL_PATH,
+              delegate: 'CPU',
+            },
+            runningMode: 'VIDEO',
+            numPoses: 1,
+          })
+        }
+
+        if (cancelled) {
+          landmarker.close()
+          return
+        }
+        landmarkerRef.current = landmarker
+        setStatus('ready')
+      } catch (err) {
+        console.error('[usePoseLandmarker] โหลดโมเดลไม่สำเร็จ:', err)
+        if (!cancelled) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : 'โหลดโมเดลไม่สำเร็จ - ตรวจสอบว่ารัน `npm run setup:assets` แล้ว และมีไฟล์ public/models/pose_landmarker_lite.task',
+          )
+          setStatus('error')
+        }
+      }
+    }
+
+    init()
+
+    return () => {
+      cancelled = true
+      landmarkerRef.current?.close()
+      landmarkerRef.current = null
+    }
+  }, [])
+
+  return { landmarkerRef, status, error }
+}

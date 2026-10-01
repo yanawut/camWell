@@ -1,0 +1,27 @@
+:root {
+  --bg: #f4f5f7;
+  --panel-bg: #ffffff;
+  --border: #e2e4e9;
+  --text: #1f2430;
+  --text-muted: #6b7280;
+  --accent: #2563eb;
+  --good: #16a34a;
+  --warn: #f97316;
+  --danger: #dc2626;
+  color-scheme: light;
+  font: 15px/1.5 system-ui, 'Segoe UI', Roboto, 'Noto Sans Thai', sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+#root {
+  min-height: 100vh;
+}
