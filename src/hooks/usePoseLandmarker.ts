@@ -3,6 +3,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { FilesetResolver, PoseLandmarker } from '@mediapipe/tasks-vision'
+import { MAX_TRACKED_PEOPLE } from '../lib/multiPerson'
 
 export type LandmarkerStatus = 'loading' | 'ready' | 'error'
 
@@ -31,7 +32,7 @@ export function usePoseLandmarker() {
               delegate: 'GPU',
             },
             runningMode: 'VIDEO',
-            numPoses: 1,
+            numPoses: MAX_TRACKED_PEOPLE,
           })
         } catch (gpuErr) {
           // บาง GPU/เบราว์เซอร์ไม่รองรับ WebGL delegate — fallback ไป CPU
@@ -42,7 +43,7 @@ export function usePoseLandmarker() {
               delegate: 'CPU',
             },
             runningMode: 'VIDEO',
-            numPoses: 1,
+            numPoses: MAX_TRACKED_PEOPLE,
           })
         }
 

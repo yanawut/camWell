@@ -233,6 +233,22 @@
   font-size: 13px;
 }
 
+/* --- People summary list (multi-person) --- */
+.people-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.people-list li {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
+}
+
 /* --- SettingsPanel extras --- */
 .settings-panel h3 {
   margin: 16px 0 8px;

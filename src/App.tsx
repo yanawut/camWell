@@ -13,7 +13,8 @@ import {
   type FatigueThresholds,
 } from './types/wellbeing'
 import type { AlertEvent } from './types/alerts'
-import type { EnrolledPerson, IdentityReading } from './types/identity'
+import type { EnrolledPerson } from './types/identity'
+import type { PersonSummary } from './types/person'
 import { consoleAlertReporter } from './services/alertReporter'
 import { listEnrolledPeople, removePerson } from './services/faceEnrollment'
 import './App.css'
@@ -37,8 +38,7 @@ export default function App() {
     return saved ? Number(saved) : null
   })
   const [breakMessage, setBreakMessage] = useState<string | null>(null)
-  const [identity, setIdentity] = useState<IdentityReading | null>(null)
-  const [yawnCount, setYawnCount] = useState(0)
+  const [people, setPeople] = useState<PersonSummary[]>([])
 
   const handleAlertStart = useCallback((event: AlertEvent) => {
     setEvents((prev) => [...prev, event])
@@ -55,8 +55,8 @@ export default function App() {
     localStorage.setItem(BASELINE_STORAGE_KEY, String(widthPx))
   }, [])
 
-  const handleBreakDue = useCallback((continuousMinutes: number) => {
-    setBreakMessage(`คุณนั่งต่อเนื่องมาแล้วประมาณ ${continuousMinutes} นาที ลองลุกไปยืดเส้นยืดสายสักครู่นะครับ`)
+  const handleBreakDue = useCallback((personLabel: string, continuousMinutes: number) => {
+    setBreakMessage(`${personLabel} นั่งต่อเนื่องมาแล้วประมาณ ${continuousMinutes} นาที ลองลุกไปยืดเส้นยืดสายสักครู่นะครับ`)
   }, [])
 
   const handlePersonEnrolled = useCallback((person: EnrolledPerson) => {
@@ -99,20 +99,22 @@ export default function App() {
             onAlertStart={handleAlertStart}
             onAlertEnd={handleAlertEnd}
             onBreakDue={handleBreakDue}
-            onIdentityChange={setIdentity}
-            onYawnCounted={setYawnCount}
+            onPeopleUpdate={setPeople}
             onPersonEnrolled={handlePersonEnrolled}
           />
-          {faceFeaturesEnabled && (
-            <p className="identity-line">
-              {identity?.matchedPersonName
-                ? `ระบุตัวตน: ${identity.matchedPersonName}`
-                : identity?.matchedPersonId === 'unknown'
-                  ? 'ระบุตัวตน: ไม่รู้จัก'
-                  : 'ระบุตัวตน: -'}
-              {' · '}หาวสะสม: {yawnCount} ครั้ง
-            </p>
+          {faceFeaturesEnabled && people.length > 0 && (
+            <ul className="people-list">
+              {people.map((person) => (
+                <li key={person.trackId}>
+                  <strong>{person.label}</strong> — {person.postureStatus}
+                  {person.fatigueActive && ' · ⚠ ความเหนื่อยล้า/หาว'}
+                  {person.distanceActive && ' · ⚠ นั่งใกล้จอเกินไป'}
+                  {person.yawnCount > 0 && ` · หาวสะสม ${person.yawnCount} ครั้ง`}
+                </li>
+              ))}
+            </ul>
           )}
+          {faceFeaturesEnabled && people.length === 0 && <p className="identity-line">ยังไม่พบคนในเฟรม</p>}
         </section>
 
         <section className="side-column">
