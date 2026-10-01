@@ -1,9 +1,11 @@
 import { useCallback, useState } from 'react'
 import CameraStage from './components/CameraStage'
+import CameraSourceSelector from './components/CameraSourceSelector'
 import SettingsPanel from './components/SettingsPanel'
 import EventLog from './components/EventLog'
 import EnrollmentPanel from './components/EnrollmentPanel'
 import { DEFAULT_THRESHOLDS, type PostureThresholds } from './types/posture'
+import { DEFAULT_CAMERA_SOURCE, type CameraSource } from './types/cameraSource'
 import {
   DEFAULT_BREAK_THRESHOLDS,
   DEFAULT_DISTANCE_THRESHOLDS,
@@ -20,6 +22,7 @@ import { listEnrolledPeople, removePerson } from './services/faceEnrollment'
 import './App.css'
 
 const BASELINE_STORAGE_KEY = 'camwell:distance-baseline-px:v1'
+const CAMERA_SOURCE_STORAGE_KEY = 'camwell:camera-source:v1'
 
 export default function App() {
   const [postureThresholds, setPostureThresholds] = useState<PostureThresholds>(DEFAULT_THRESHOLDS)
@@ -39,6 +42,19 @@ export default function App() {
   })
   const [breakMessage, setBreakMessage] = useState<string | null>(null)
   const [people, setPeople] = useState<PersonSummary[]>([])
+  const [cameraSource, setCameraSource] = useState<CameraSource>(() => {
+    try {
+      const saved = localStorage.getItem(CAMERA_SOURCE_STORAGE_KEY)
+      return saved ? (JSON.parse(saved) as CameraSource) : DEFAULT_CAMERA_SOURCE
+    } catch {
+      return DEFAULT_CAMERA_SOURCE
+    }
+  })
+
+  const handleCameraSourceChange = useCallback((source: CameraSource) => {
+    setCameraSource(source)
+    localStorage.setItem(CAMERA_SOURCE_STORAGE_KEY, JSON.stringify(source))
+  }, [])
 
   const handleAlertStart = useCallback((event: AlertEvent) => {
     setEvents((prev) => [...prev, event])
@@ -86,6 +102,7 @@ export default function App() {
 
       <main className="app-grid">
         <section className="camera-column">
+          <CameraSourceSelector value={cameraSource} onChange={handleCameraSourceChange} />
           <CameraStage
             postureThresholds={postureThresholds}
             fatigueThresholds={fatigueThresholds}
@@ -95,6 +112,7 @@ export default function App() {
             faceFeaturesEnabled={faceFeaturesEnabled}
             enrolledPeople={enrolledPeople}
             baselineFaceWidthPx={baselineFaceWidthPx}
+            cameraSource={cameraSource}
             onCalibrateDistance={handleCalibrateDistance}
             onAlertStart={handleAlertStart}
             onAlertEnd={handleAlertEnd}

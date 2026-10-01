@@ -249,6 +249,44 @@
   padding-bottom: 4px;
 }
 
+/* --- CameraSourceSelector --- */
+.camera-source-local,
+.camera-source-ip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 12px 22px;
+}
+
+.camera-source-local select {
+  flex: 1;
+  min-width: 180px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.camera-source-ip input[type='text'] {
+  flex: 1;
+  min-width: 180px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.camera-source-local .panel-note,
+.camera-source-ip .panel-note {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.panel-warning {
+  color: var(--warn);
+}
+
 /* --- SettingsPanel extras --- */
 .settings-panel h3 {
   margin: 16px 0 8px;

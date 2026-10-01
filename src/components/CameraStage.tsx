@@ -18,6 +18,7 @@ import type { BreakReminderState, BreakThresholds, DistanceThresholds, FatigueTh
 import type { EnrolledPerson } from '../types/identity'
 import type { AlertEvent } from '../types/alerts'
 import type { PersonSummary } from '../types/person'
+import type { CameraSource } from '../types/cameraSource'
 
 // คู่ landmark ของ Pose ที่จะลากเส้นเป็นโครงร่าง (เฉพาะช่วงบนของร่างกาย พอสำหรับดูท่านั่ง)
 const SKELETON_EDGES: [number, number][] = [
@@ -45,6 +46,13 @@ const POSE_TRACK_STALE_MS = 4000 // หายไปจากเฟรมนา�
 
 type FaceResult = faceapi.WithFaceDescriptor<faceapi.WithFaceLandmarks<{ detection: faceapi.FaceDetection }>>
 
+// กล้อง IP ที่อยู่คนละ origin กับเว็บแอป (คนละโดเมน/พอร์ต/IP) แล้วไม่ได้ส่ง CORS header มาด้วย จะทำให้
+// เบราว์เซอร์ถือว่า canvas/WebGL ที่วาดภาพนั้นไป "tainted" อ่านพิกเซลออกมาประมวลผล AI ต่อไม่ได้ (โยน SecurityError)
+// แม้ว่าภาพจะยังแสดงผลบนหน้าจอได้ตามปกติก็ตาม — ฟังก์ชันนี้ไว้เช็คว่า error ที่เจอเข้าข่ายนี้หรือเปล่า
+function isCorsLikeError(err: unknown): boolean {
+  return err instanceof DOMException && (err.name === 'SecurityError' || /tainted|cross-origin/i.test(err.message))
+}
+
 interface PersonState {
   trackId: string
   slotNumber: number
@@ -69,6 +77,7 @@ interface Props {
   faceFeaturesEnabled: boolean
   enrolledPeople: EnrolledPerson[]
   baselineFaceWidthPx: number | null
+  cameraSource: CameraSource
   onCalibrateDistance: (widthPx: number) => void
   onAlertStart: (event: AlertEvent) => void
   onAlertEnd: (event: AlertEvent) => void
@@ -86,6 +95,7 @@ export default function CameraStage({
   faceFeaturesEnabled,
   enrolledPeople,
   baselineFaceWidthPx,
+  cameraSource,
   onCalibrateDistance,
   onAlertStart,
   onAlertEnd,
@@ -94,6 +104,7 @@ export default function CameraStage({
   onPersonEnrolled,
 }: Props) {
   const webcamRef = useRef<Webcam>(null)
+  const imgRef = useRef<HTMLImageElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   const { landmarkerRef, status: poseStatus, error: poseError } = usePoseLandmarker()
@@ -104,6 +115,10 @@ export default function CameraStage({
   const lastPeopleUpdateAtRef = useRef(0)
   const faceBusyRef = useRef(false)
   const identityLastCheckRef = useRef<Map<string, number>>(new Map())
+  // กล้อง IP ต่างโดเมน/พอร์ตกับเว็บแอป (cross-origin) มักติดข้อจำกัด CORS ของเบราว์เซอร์ ทำให้อ่านพิกเซลภาพ
+  // ไปประมวลผล AI ไม่ได้ (ภาพยังแสดงผลได้ปกติ แต่ canvas/WebGL จะโยน SecurityError ตอนอ่านข้อมูล) — ถ้าเจอ
+  // ปัญหานี้ครั้งหนึ่งจะหยุดเรียก AI ซ้ำทุกเฟรม (กัน error สแปม) จนกว่าจะเปลี่ยนแหล่งกล้อง
+  const sourceErrorStickyRef = useRef(false)
 
   // แหล่งความจริงหลักของ "ใครอยู่ในเฟรมบ้าง" — key คือ trackId จาก poseTracker
   const personStatesRef = useRef<Map<string, PersonState>>(new Map())
@@ -137,6 +152,7 @@ export default function CameraStage({
     faceFeaturesEnabled,
     enrolledPeople,
     baselineFaceWidthPx,
+    cameraSource,
     onAlertStart,
     onAlertEnd,
     onBreakDue,
@@ -152,12 +168,17 @@ export default function CameraStage({
       faceFeaturesEnabled,
       enrolledPeople,
       baselineFaceWidthPx,
+      cameraSource,
       onAlertStart,
       onAlertEnd,
       onBreakDue,
       onPeopleUpdate,
     }
   })
+
+  // ติดตามว่า cameraSource เปลี่ยนไปจากที่ detectFrame เคยเห็นล่าสุดหรือยัง (เทียบใน detectFrame เอง
+  // แทนการใช้ useEffect+setState แยก กันเกิด cascading render และให้ล้าง error ทันทีตอนเฟรมถัดไปประมวลผล)
+  const lastCameraSourceKeyRef = useRef('')
 
   // รวมสถานะ "กำลังแจ้งเตือนอยู่ไหม" จากทุกคน x ทุกหมวด (ท่านั่ง/ความเหนื่อยล้า/ระยะห่างจอ) เป็นสถานะเดียว
   // สำหรับขอบกล้องสีแดง + ข้อความ banner — เรียกทุกครั้งที่ state machine ของใครคนใดคนหนึ่งเปลี่ยน
@@ -258,12 +279,13 @@ export default function CameraStage({
   )
 
   // ---- ตรวจจับใบหน้าทุกคนในเฟรม (fatigue / distance / identity) แบบ throttled + async ----
-  const runFaceDetection = useCallback(async (video: HTMLVideoElement, now: number) => {
+  // source เป็น video element (กล้องในเครื่อง) หรือ img element (กล้อง IP แบบ MJPEG) ก็ได้ — face-api รับทั้งสองแบบ
+  const runFaceDetection = useCallback(async (source: HTMLVideoElement | HTMLImageElement, now: number) => {
     if (faceBusyRef.current) return
     faceBusyRef.current = true
     try {
       const results = await faceapi
-        .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+        .detectAllFaces(source, new faceapi.TinyFaceDetectorOptions())
         .withFaceLandmarks()
         .withFaceDescriptors()
 
@@ -276,7 +298,7 @@ export default function CameraStage({
 
       const p = propsRef.current
       const canvas = canvasRef.current
-      const frameWidth = canvas?.width ?? video.videoWidth
+      const frameWidth = canvas?.width ?? 640
       const linkDistanceThreshold = frameWidth * 0.3
 
       // จับคู่แต่ละใบหน้ากับคนที่ตรวจท่านั่งไว้แล้ว (pose track) ที่ตำแหน่งใกล้ที่สุด — ถือว่าเป็นคนเดียวกัน
@@ -398,31 +420,75 @@ export default function CameraStage({
       maybeEmitPeopleSummary(now, false)
     } catch (err) {
       console.warn('[CameraStage] ตรวจจับใบหน้าล้มเหลว:', err)
+      if (isCorsLikeError(err)) {
+        sourceErrorStickyRef.current = true
+        setCameraError(
+          'ประมวลผล AI กับภาพจากกล้องนี้ไม่ได้ เพราะติดข้อจำกัด CORS ของเบราว์เซอร์ (กล้อง IP อยู่คนละ origin กับเว็บแอป) — ภาพจะยังแสดงผลได้ปกติ แต่ตรวจจับท่านั่ง/ใบหน้าไม่ได้ ต้องมี backend ตัวกลางช่วยแปลงสตรีม (Phase 2)',
+        )
+      }
     } finally {
       faceBusyRef.current = false
     }
   }, [recomputeAlertUi, maybeEmitPeopleSummary])
 
   const detectFrame = useCallback(() => {
-    const video = webcamRef.current?.video
     const canvas = canvasRef.current
     const landmarker = landmarkerRef.current
     const p = propsRef.current
     const now = Date.now()
 
-    if (!video || !canvas || video.readyState < 2) return
+    // สลับแหล่งภาพกล้อง (local <-> IP หรือเปลี่ยนอุปกรณ์/URL) — เคลียร์ error ค้างจากกล้องก่อนหน้าทิ้ง
+    const cameraSourceKey = `${p.cameraSource.kind}|${p.cameraSource.deviceId ?? ''}|${p.cameraSource.ipUrl ?? ''}`
+    if (cameraSourceKey !== lastCameraSourceKeyRef.current) {
+      lastCameraSourceKeyRef.current = cameraSourceKey
+      sourceErrorStickyRef.current = false
+      setCameraError(null)
+    }
 
-    if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
-      canvas.width = video.videoWidth
-      canvas.height = video.videoHeight
+    // แหล่งภาพปัจจุบัน: video element (กล้องในเครื่อง) หรือ img element (กล้อง IP แบบ MJPEG)
+    const source: HTMLVideoElement | HTMLImageElement | null =
+      p.cameraSource.kind === 'local' ? (webcamRef.current?.video ?? null) : imgRef.current
+    const isVideoSource = source instanceof HTMLVideoElement
+
+    if (!source || !canvas) return
+
+    const sourceReady = isVideoSource
+      ? source.readyState >= 2
+      : (source as HTMLImageElement).complete && (source as HTMLImageElement).naturalWidth > 0
+    if (!sourceReady) return
+
+    const frameWidth = isVideoSource ? source.videoWidth : (source as HTMLImageElement).naturalWidth
+    const frameHeight = isVideoSource ? source.videoHeight : (source as HTMLImageElement).naturalHeight
+    if (frameWidth === 0 || frameHeight === 0) return
+
+    if (canvas.width !== frameWidth || canvas.height !== frameHeight) {
+      canvas.width = frameWidth
+      canvas.height = frameHeight
     }
 
     let poseResult: PoseLandmarkerResult | null = null
     let peopleChanged = false
 
-    if (landmarker && video.currentTime !== lastVideoTimeRef.current) {
-      lastVideoTimeRef.current = video.currentTime
-      poseResult = landmarker.detectForVideo(video, performance.now())
+    // กล้องในเครื่อง (video): ประมวลผลเฉพาะตอนเฟรมเปลี่ยนจริง (เช็คจาก currentTime) กันประมวลผลซ้ำเฟรมเดิม
+    // กล้อง IP (MJPEG ผ่าน <img>): ไม่มีสัญญาณ "เฟรมใหม่" ที่เชื่อถือได้ เลยประมวลผลทุกรอบไปเลย
+    // ถ้าเคยเจอปัญหา CORS กับแหล่งภาพนี้มาแล้ว หยุดลองซ้ำทุกเฟรม (กัน error สแปม) จนกว่าจะเปลี่ยนแหล่งกล้อง
+    const shouldProcessPose =
+      !!landmarker && !sourceErrorStickyRef.current && (!isVideoSource || source.currentTime !== lastVideoTimeRef.current)
+
+    if (shouldProcessPose && landmarker) {
+      if (isVideoSource) lastVideoTimeRef.current = source.currentTime
+      try {
+        poseResult = landmarker.detectForVideo(source, performance.now())
+      } catch (err) {
+        console.error('[CameraStage] ตรวจจับท่านั่งล้มเหลว:', err)
+        if (isCorsLikeError(err)) {
+          sourceErrorStickyRef.current = true
+          setCameraError(
+            'ประมวลผล AI กับภาพจากกล้องนี้ไม่ได้ เพราะติดข้อจำกัด CORS ของเบราว์เซอร์ (กล้อง IP อยู่คนละ origin กับเว็บแอป) — ภาพจะยังแสดงผลได้ปกติ แต่ตรวจจับท่านั่ง/ใบหน้าไม่ได้ ต้องมี backend ตัวกลางช่วยแปลงสตรีม (Phase 2)',
+          )
+        }
+        return
+      }
 
       // คำนวณตำแหน่ง anchor (จุดกึ่งกลางไหล่ซ้าย-ขวา) ของแต่ละคนที่ตรวจพบ สำหรับส่งเข้า tracker
       const detections = (poseResult.landmarks ?? [])
@@ -521,9 +587,14 @@ export default function CameraStage({
     maybeEmitPeopleSummary(now, peopleChanged)
 
     // --- ตรวจใบหน้าแบบ throttled (fatigue / distance / identity) ---
-    if (p.faceFeaturesEnabled && faceStatus === 'ready' && now - lastFaceRunAtRef.current >= FACE_DETECT_INTERVAL_MS) {
+    if (
+      p.faceFeaturesEnabled &&
+      faceStatus === 'ready' &&
+      !sourceErrorStickyRef.current &&
+      now - lastFaceRunAtRef.current >= FACE_DETECT_INTERVAL_MS
+    ) {
       lastFaceRunAtRef.current = now
-      void runFaceDetection(video, now)
+      void runFaceDetection(source, now)
     }
   }, [drawOverlay, faceStatus, landmarkerRef, runFaceDetection, recomputeAlertUi, maybeEmitPeopleSummary])
 
@@ -562,16 +633,43 @@ export default function CameraStage({
   return (
     <div className="posture-monitor">
       <div className={`camera-frame ${isAlerting ? 'alerting' : ''}`}>
-        <Webcam
-          ref={webcamRef}
-          audio={false}
-          mirrored
-          onUserMediaError={() => setCameraError('เปิดกล้องไม่สำเร็จ - กรุณาอนุญาตการใช้กล้องในเบราว์เซอร์')}
-          videoConstraints={{ width: 640, height: 480, facingMode: 'user' }}
-          className="camera-video"
+        {cameraSource.kind === 'local' ? (
+          <Webcam
+            ref={webcamRef}
+            audio={false}
+            mirrored
+            onUserMediaError={() => setCameraError('เปิดกล้องไม่สำเร็จ - กรุณาอนุญาตการใช้กล้องในเบราว์เซอร์ หรือลองเลือกกล้องเครื่องอื่น')}
+            videoConstraints={{
+              width: 640,
+              height: 480,
+              facingMode: 'user',
+              ...(cameraSource.deviceId ? { deviceId: { exact: cameraSource.deviceId } } : {}),
+            }}
+            className="camera-video"
+          />
+        ) : (
+          // กล้อง IP แบบ MJPEG: เบราว์เซอร์แสดงสตรีมนี้ผ่าน <img> ได้ตรงๆ ไม่ต้องมี backend
+          // key={ipUrl} บังคับให้ element ถูกสร้างใหม่ตอนเปลี่ยน URL กันภาพเก่าค้าง
+          <img
+            key={cameraSource.ipUrl}
+            ref={imgRef}
+            src={cameraSource.ipUrl || undefined}
+            alt="ภาพจากกล้อง IP"
+            onError={() =>
+              setCameraError('เชื่อมต่อกล้อง IP ไม่สำเร็จ - ตรวจสอบว่า URL ถูกต้อง กล้องเปิดอยู่ และอยู่ในเครือข่ายเดียวกับเครื่องนี้')
+            }
+            className="camera-video"
+          />
+        )}
+        <canvas
+          ref={canvasRef}
+          className="camera-overlay"
+          style={{ transform: cameraSource.kind === 'local' ? 'scaleX(-1)' : undefined }}
         />
-        <canvas ref={canvasRef} className="camera-overlay" style={{ transform: 'scaleX(-1)' }} />
 
+        {cameraSource.kind === 'ip-mjpeg' && !cameraSource.ipUrl && (
+          <div className="camera-status-banner">กรอก URL กล้อง IP แล้วกด "เชื่อมต่อ" ในช่อง "แหล่งภาพกล้อง"</div>
+        )}
         {poseStatus === 'loading' && <div className="camera-status-banner">กำลังโหลดโมเดล Pose Landmarker...</div>}
         {poseStatus === 'error' && <div className="camera-status-banner banner-error">{poseError}</div>}
         {faceStatus === 'error' && <div className="camera-status-banner banner-error">{faceError}</div>}
