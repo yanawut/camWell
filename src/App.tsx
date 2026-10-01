@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import CameraStage from './components/CameraStage'
 import CameraSourceSelector from './components/CameraSourceSelector'
 import SettingsPanel from './components/SettingsPanel'
@@ -40,9 +40,27 @@ export default function App() {
   const [faceFeaturesEnabled, setFaceFeaturesEnabled] = useState(true)
 
   const [events, setEvents] = useState<AlertEvent[]>([])
-  // อ่านค่าเริ่มต้นจาก localStorage ตอน init state โดยตรง (lazy initializer) แทนการใช้ useEffect+setState
-  // ซึ่งจะทำให้เกิด render ซ้ำโดยไม่จำเป็น
-  const [enrolledPeople, setEnrolledPeople] = useState<EnrolledPerson[]>(() => listEnrolledPeople())
+  // (Phase 2) รายชื่อพนักงานที่ลงทะเบียนใบหน้าไว้ย้ายมาเก็บที่ camwell-backend แล้ว — ดึงมาตอน mount ด้วย
+  // useEffect แทน lazy initializer เดิม (ตอนยังเก็บ localStorage อยู่ ดึงแบบ sync ได้เลยไม่ต้องรอ)
+  const [enrolledPeople, setEnrolledPeople] = useState<EnrolledPerson[]>([])
+  const [enrolledPeopleError, setEnrolledPeopleError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    listEnrolledPeople()
+      .then((people) => {
+        if (!cancelled) setEnrolledPeople(people)
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return
+        setEnrolledPeopleError(
+          err instanceof Error ? err.message : 'โหลดรายชื่อพนักงานที่ลงทะเบียนไว้ไม่สำเร็จ',
+        )
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
   const [baselineFaceWidthPx, setBaselineFaceWidthPx] = useState<number | null>(() => {
     const saved = localStorage.getItem(BASELINE_STORAGE_KEY)
     return saved ? Number(saved) : null
@@ -150,7 +168,12 @@ export default function App() {
 
   const handleRemovePerson = useCallback((id: string) => {
     removePerson(id)
-    setEnrolledPeople((prev) => prev.filter((p) => p.id !== id))
+      .then(() => {
+        setEnrolledPeople((prev) => prev.filter((p) => p.id !== id))
+      })
+      .catch((err: unknown) => {
+        setEnrolledPeopleError(err instanceof Error ? err.message : 'ลบพนักงานไม่สำเร็จ')
+      })
   }, [])
 
   return (
@@ -260,6 +283,7 @@ export default function App() {
             faceFeaturesEnabled={faceFeaturesEnabled}
             onFaceFeaturesEnabledChange={setFaceFeaturesEnabled}
           />
+          {faceFeaturesEnabled && enrolledPeopleError && <p className="panel-note panel-warning">{enrolledPeopleError}</p>}
           {faceFeaturesEnabled && <EnrollmentPanel people={enrolledPeople} onRemove={handleRemovePerson} />}
           <EventLog events={events} />
         </section>
@@ -267,12 +291,16 @@ export default function App() {
 
       <footer className="app-footer">
         <p>
-          ขั้นต่อไป (Phase 2): เชื่อมกับ backend เพื่อรวม dashboard ของ HR/หัวหน้างาน เก็บ log ลงฐานข้อมูล
-          และแจ้งเตือนผ่าน LINE Messaging API — ดู <code>src/services/alertReporter.ts</code> สำหรับสัญญาที่เตรียมไว้ให้เชื่อมต่อ
+          ระบบจดจำใบหน้า/ระบุตัวตนพนักงาน เชื่อมกับ backend (camwell-backend) + ฐานข้อมูล SQLite แล้ว ทำให้พนักงาน
+          คนเดียวกันถูกจำได้ทุกเครื่อง/ทุกกล้องในออฟฟิศ — ส่วนการตรวจจับท่านั่ง/ความเหนื่อยล้า/ระยะห่างจอ/หกล้ม
+          ยังเป็น local AI ในเบราว์เซอร์ล้วนเหมือนเดิม ขั้นต่อไป: ส่ง log เหตุการณ์แจ้งเตือนไปที่ backend ด้วย เพื่อทำ
+          dashboard ของ HR/หัวหน้างาน และแจ้งเตือนผ่าน LINE Messaging API — ดู <code>src/services/alertReporter.ts</code>{' '}
+          สำหรับสัญญาที่เตรียมไว้ให้เชื่อมต่อ
         </p>
         <p className="pdpa-note">
-          ⚠️ ฟีเจอร์ face recognition เก็บข้อมูลชีวภาพ (biometric) ไว้ในเบราว์เซอร์เครื่องนี้เท่านั้น แต่การใช้งานจริงกับพนักงาน
-          ต้องขอความยินยอมตาม พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล (PDPA) ก่อนเสมอ — โปรดปรึกษาฝ่ายกฎหมาย/HR ก่อนนำไปใช้งานจริง
+          ⚠️ ฟีเจอร์ face recognition เก็บข้อมูลชีวภาพ (biometric) ไว้ที่ backend/ฐานข้อมูลของระบบนี้เท่านั้น (ดู
+          camwell-backend/README.md) การใช้งานจริงกับพนักงานต้องขอความยินยอมตาม พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล
+          (PDPA) ก่อนเสมอ — โปรดปรึกษาฝ่ายกฎหมาย/HR ก่อนนำไปใช้งานจริง
         </p>
       </footer>
     </div>

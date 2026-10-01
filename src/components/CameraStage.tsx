@@ -12,7 +12,7 @@ import { initialSustainedState, stepSustainedAlert, type SustainedAlertState } f
 import { PositionTracker, type Point2D } from '../lib/tracker'
 import { MAX_TRACKED_PEOPLE } from '../lib/multiPerson'
 import { pruneHistory, computeDropRatio, type TorsoReading } from '../lib/fallDetection'
-import { enrollPerson, findBestMatch, FACE_MATCH_DISTANCE_THRESHOLD } from '../services/faceEnrollment'
+import { enrollPerson, identifyFace } from '../services/faceEnrollment'
 import { playAlertBeep, playFallAlarm } from '../services/beep'
 import type { PostureThresholds } from '../types/posture'
 import type { BreakReminderState, BreakThresholds, DistanceThresholds, FatigueThresholds } from '../types/wellbeing'
@@ -166,6 +166,11 @@ export default function CameraStage({
   // เปิด/ปิดปุ่ม Calibrate/ลงทะเบียน ให้ตรงกับความเป็นจริง
   const [hasFaceSignal, setHasFaceSignal] = useState(false)
   const [enrollName, setEnrollName] = useState('')
+  // ต้องติ๊กยืนยันว่าขอความยินยอมจากพนักงานแล้ว (PDPA) ก่อนปุ่ม "ลงทะเบียนใบหน้า" จะกดได้ — backend เองก็ปฏิเสธ
+  // คำขอที่ไม่มี consentGiven: true อยู่ดี แต่เช็คฝั่ง UI ไว้ด้วยกันลืม/กดพลาด
+  const [enrollConsentChecked, setEnrollConsentChecked] = useState(false)
+  const [enrollStatus, setEnrollStatus] = useState<'idle' | 'saving' | 'error'>('idle')
+  const [enrollError, setEnrollError] = useState<string | null>(null)
 
   const propsRef = useRef({
     postureThresholds,
@@ -429,12 +434,22 @@ export default function CameraStage({
         }
         if (distStep.endedEvent) p.onAlertEnd(distStep.endedEvent)
 
-        // --- Identity (เช็คไม่ถี่เท่า fatigue/distance ต่อคน) ---
+        // --- Identity (เช็คไม่ถี่เท่า fatigue/distance ต่อคน) — ถาม camwell-backend ให้จับคู่ให้ (Phase 2)
+        // เป็น fire-and-forget ไม่ await ในลูปนี้ กันไม่ให้ network request ไปบล็อกการตรวจจับคนอื่นในเฟรมเดียวกัน
+        // เช็ค personStatesRef อีกครั้งตอนผลลัพธ์กลับมา เผื่อ track นี้หายไปจากเฟรมแล้วระหว่างรอ response
         const lastCheck = identityLastCheckRef.current.get(trackId) ?? 0
         if (p.enrolledPeople.length > 0 && now - lastCheck >= IDENTITY_RECHECK_INTERVAL_MS) {
           identityLastCheckRef.current.set(trackId, now)
-          const match = findBestMatch(face.descriptor, p.enrolledPeople)
-          person.identityName = match && match.distance <= FACE_MATCH_DISTANCE_THRESHOLD ? match.person.name : null
+          identifyFace(face.descriptor)
+            .then((match) => {
+              const current = personStatesRef.current.get(trackId)
+              if (!current) return
+              current.identityName = match ? match.name : null
+            })
+            .catch((err) => {
+              // เครือข่าย/เซิร์ฟเวอร์มีปัญหาชั่วคราว — คงชื่อเดิมที่เคยระบุไว้ ไม่ reset เป็น null ให้กระพริบ
+              console.warn('[CameraStage] ระบุตัวตนผ่าน backend ไม่สำเร็จ:', err)
+            })
         }
       }
 
@@ -716,11 +731,21 @@ export default function CameraStage({
   const handleEnroll = useCallback(() => {
     const face = primaryFaceRef.current
     const name = enrollName.trim()
-    if (!face || !name) return
-    const person = enrollPerson(name, face.descriptor)
-    onPersonEnrolled(person)
-    setEnrollName('')
-  }, [enrollName, onPersonEnrolled])
+    if (!face || !name || !enrollConsentChecked) return
+    setEnrollStatus('saving')
+    setEnrollError(null)
+    enrollPerson(name, face.descriptor, enrollConsentChecked)
+      .then((person) => {
+        onPersonEnrolled(person)
+        setEnrollName('')
+        setEnrollConsentChecked(false)
+        setEnrollStatus('idle')
+      })
+      .catch((err: unknown) => {
+        setEnrollStatus('error')
+        setEnrollError(err instanceof Error ? err.message : 'ลงทะเบียนใบหน้าไม่สำเร็จ')
+      })
+  }, [enrollName, enrollConsentChecked, onPersonEnrolled])
 
   return (
     <div className="posture-monitor">
@@ -783,10 +808,24 @@ export default function CameraStage({
               value={enrollName}
               onChange={(e) => setEnrollName(e.target.value)}
             />
-            <button type="button" className="secondary-button" onClick={handleEnroll} disabled={!hasFaceSignal || !enrollName.trim()}>
-              ลงทะเบียนใบหน้า
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={handleEnroll}
+              disabled={!hasFaceSignal || !enrollName.trim() || !enrollConsentChecked || enrollStatus === 'saving'}
+            >
+              {enrollStatus === 'saving' ? 'กำลังบันทึก...' : 'ลงทะเบียนใบหน้า'}
             </button>
           </div>
+          <label className="settings-row settings-checkbox consent-checkbox">
+            <span>ยืนยันว่าได้ขอความยินยอมจากพนักงานคนนี้แล้ว ก่อนเก็บข้อมูลใบหน้า (PDPA)</span>
+            <input
+              type="checkbox"
+              checked={enrollConsentChecked}
+              onChange={(e) => setEnrollConsentChecked(e.target.checked)}
+            />
+          </label>
+          {enrollStatus === 'error' && enrollError && <p className="panel-note panel-warning">{enrollError}</p>}
         </>
       )}
       <p className="privacy-note">วิดีโอทั้งหมดประมวลผลในเบราว์เซอร์นี้เท่านั้น ไม่มีการส่งภาพ/วิดีโอออกจากเครื่อง</p>

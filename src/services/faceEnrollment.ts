@@ -1,69 +1,43 @@
-// จัดการรายชื่อพนักงานที่ "ลงทะเบียนใบหน้า" ไว้ในเครื่องนี้ — เก็บใน localStorage เท่านั้น ไม่ส่งออกไปไหน
-// ดู src/types/identity.ts สำหรับข้อควรระวังเรื่อง PDPA ก่อนใช้งานจริง
+// คุยกับ camwell-backend (Phase 2) เพื่อลงทะเบียน/ลบ/จับคู่ใบหน้าพนักงาน — เดิม (Phase 1) ทำทุกอย่างในเบราว์เซอร์
+// เอง (เก็บลง localStorage + เทียบ descriptor เอง) ตอนนี้ย้ายไปให้ backend ทำแทนทั้งหมด เพื่อให้พนักงานคนเดียว
+// ถูกจำได้ทุกเครื่อง/ทุกกล้องในออฟฟิศ (ไม่ใช่แค่เครื่องที่ลงทะเบียนไว้) และไม่ต้องส่ง descriptor ดิบของทุกคน
+// ไปให้ทุกเบราว์เซอร์ถืออยู่ — ดู camwell-backend/README.md สำหรับรายละเอียด API และ src/types/identity.ts
+// สำหรับข้อควรระวังเรื่อง PDPA
 
 import type { EnrolledPerson } from '../types/identity'
-import { FACE_MATCH_DISTANCE_THRESHOLD } from '../types/identity'
+import { apiFetch } from './apiConfig'
 
-const STORAGE_KEY = 'camwell:enrolled-faces:v1'
-
-export function listEnrolledPeople(): EnrolledPerson[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw) as EnrolledPerson[]
-    return Array.isArray(parsed) ? parsed : []
-  } catch (err) {
-    console.warn('[faceEnrollment] อ่านรายชื่อที่ลงทะเบียนไม่สำเร็จ:', err)
-    return []
-  }
+export async function listEnrolledPeople(): Promise<EnrolledPerson[]> {
+  return apiFetch<EnrolledPerson[]>('/api/employees')
 }
 
-function saveAll(people: EnrolledPerson[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(people))
-  } catch (err) {
-    console.warn('[faceEnrollment] บันทึกรายชื่อไม่สำเร็จ:', err)
-  }
+/**
+ * ลงทะเบียนพนักงานใหม่ — ต้องส่ง consentGiven: true มาด้วยเสมอ (UI ต้องบังคับให้ติ๊กยืนยันว่าขอความยินยอม
+ * จากพนักงานแล้วก่อนเรียกฟังก์ชันนี้ ดู CameraStage.tsx) backend จะปฏิเสธคำขอถ้าไม่มีค่านี้
+ */
+export async function enrollPerson(name: string, descriptor: Float32Array, consentGiven: boolean): Promise<EnrolledPerson> {
+  return apiFetch<EnrolledPerson>('/api/employees', {
+    method: 'POST',
+    body: JSON.stringify({ name: name.trim(), descriptor: Array.from(descriptor), consentGiven }),
+  })
 }
 
-export function enrollPerson(name: string, descriptor: Float32Array): EnrolledPerson {
-  const people = listEnrolledPeople()
-  const person: EnrolledPerson = {
-    id: `person-${Date.now()}-${Math.round(Math.random() * 1e6)}`,
-    name: name.trim(),
-    descriptor: Array.from(descriptor),
-    enrolledAt: Date.now(),
-  }
-  saveAll([...people, person])
-  return person
+export async function removePerson(id: string): Promise<void> {
+  await apiFetch<void>(`/api/employees/${encodeURIComponent(id)}`, { method: 'DELETE' })
 }
 
-export function removePerson(id: string) {
-  saveAll(listEnrolledPeople().filter((p) => p.id !== id))
+export interface IdentifyMatch {
+  employeeId: string
+  name: string
+  distance: number
 }
 
-function euclideanDistance(a: number[], b: Float32Array): number {
-  let sum = 0
-  for (let i = 0; i < a.length; i++) {
-    const d = a[i] - b[i]
-    sum += d * d
-  }
-  return Math.sqrt(sum)
+/** ถามว่า descriptor ที่ตรวจพบตอนนี้ตรงกับใครที่ลงทะเบียนไว้ไหม — backend เป็นคนเทียบให้ทั้งหมด คืน null ถ้าไม่ตรงกับใคร */
+export async function identifyFace(descriptor: Float32Array): Promise<IdentifyMatch | null> {
+  const result = await apiFetch<{ matched: boolean; employeeId?: string; name?: string; distance?: number }>(
+    '/api/employees/identify',
+    { method: 'POST', body: JSON.stringify({ descriptor: Array.from(descriptor) }) },
+  )
+  if (!result.matched || !result.employeeId || !result.name || result.distance === undefined) return null
+  return { employeeId: result.employeeId, name: result.name, distance: result.distance }
 }
-
-/** หาคนที่ใกล้เคียงที่สุดจากรายชื่อที่ลงทะเบียนไว้ คืนค่า null ถ้าไม่มีใครลงทะเบียนไว้เลย */
-export function findBestMatch(
-  descriptor: Float32Array,
-  people: EnrolledPerson[],
-): { person: EnrolledPerson; distance: number } | null {
-  let best: { person: EnrolledPerson; distance: number } | null = null
-  for (const person of people) {
-    const distance = euclideanDistance(person.descriptor, descriptor)
-    if (!best || distance < best.distance) {
-      best = { person, distance }
-    }
-  }
-  return best
-}
-
-export { FACE_MATCH_DISTANCE_THRESHOLD }

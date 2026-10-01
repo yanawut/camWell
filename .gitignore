@@ -11,6 +11,7 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
 
 # โมเดล AI / WASM runtime ที่ดาวน์โหลด/คัดลอกอัตโนมัติผ่าน postinstall (scripts/setup-assets.mjs)
 # ไม่ commit เพราะเป็นไฟล์ binary ขนาดใหญ่และสร้างใหม่ได้เสมอหลัง npm install

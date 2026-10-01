@@ -1,0 +1,25 @@
+{
+  "name": "camwell-backend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Camwell Phase 2 backend — เก็บข้อมูลระบุตัวตนพนักงาน (face descriptor) ลง SQLite และทำหน้าที่จับคู่ใบหน้าแทนฝั่ง browser",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "lint": "oxlint"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.13.3",
+    "oxlint": "^1.79.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}
