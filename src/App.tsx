@@ -14,6 +14,7 @@ import {
   type DistanceThresholds,
   type FatigueThresholds,
 } from './types/wellbeing'
+import { DEFAULT_FALL_THRESHOLDS, type FallThresholds } from './types/fall'
 import type { AlertEvent } from './types/alerts'
 import type { EnrolledPerson } from './types/identity'
 import type { PersonSummary } from './types/person'
@@ -24,11 +25,17 @@ import './App.css'
 const BASELINE_STORAGE_KEY = 'camwell:distance-baseline-px:v1'
 const CAMERA_SOURCE_STORAGE_KEY = 'camwell:camera-source:v1'
 
+interface FallAlertItem {
+  id: string
+  message: string
+}
+
 export default function App() {
   const [postureThresholds, setPostureThresholds] = useState<PostureThresholds>(DEFAULT_THRESHOLDS)
   const [fatigueThresholds, setFatigueThresholds] = useState<FatigueThresholds>(DEFAULT_FATIGUE_THRESHOLDS)
   const [distanceThresholds, setDistanceThresholds] = useState<DistanceThresholds>(DEFAULT_DISTANCE_THRESHOLDS)
   const [breakThresholds, setBreakThresholds] = useState<BreakThresholds>(DEFAULT_BREAK_THRESHOLDS)
+  const [fallThresholds, setFallThresholds] = useState<FallThresholds>(DEFAULT_FALL_THRESHOLDS)
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [faceFeaturesEnabled, setFaceFeaturesEnabled] = useState(true)
 
@@ -41,6 +48,7 @@ export default function App() {
     return saved ? Number(saved) : null
   })
   const [breakMessage, setBreakMessage] = useState<string | null>(null)
+  const [fallAlerts, setFallAlerts] = useState<FallAlertItem[]>([])
   const [people, setPeople] = useState<PersonSummary[]>([])
   const [cameraSource, setCameraSource] = useState<CameraSource>(() => {
     try {
@@ -75,6 +83,19 @@ export default function App() {
     setBreakMessage(`${personLabel} นั่งต่อเนื่องมาแล้วประมาณ ${continuousMinutes} นาที ลองลุกไปยืดเส้นยืดสายสักครู่นะครับ`)
   }, [])
 
+  const handleFallDetected = useCallback((event: AlertEvent) => {
+    const personLabel = event.personName ?? 'พนักงาน'
+    const message =
+      event.type === 'fall_suspected_left_frame'
+        ? `สงสัยว่า ${personLabel} หกล้ม/ตกจากเก้าอี้ แล้วหายไปจากมุมกล้องกะทันหัน — กรุณาตรวจสอบด่วน!`
+        : `ตรวจพบว่า ${personLabel} อาจหกล้มหรือตกจากเก้าอี้ — กรุณาตรวจสอบด่วน!`
+    setFallAlerts((prev) => [...prev, { id: event.id, message }])
+  }, [])
+
+  const handleAcknowledgeFall = useCallback((id: string) => {
+    setFallAlerts((prev) => prev.filter((a) => a.id !== id))
+  }, [])
+
   const handlePersonEnrolled = useCallback((person: EnrolledPerson) => {
     setEnrolledPeople((prev) => [...prev, person])
   }, [])
@@ -90,6 +111,15 @@ export default function App() {
         <h1>Camwell — ระบบตรวจจับท่านั่งและความเหนื่อยล้าของพนักงาน</h1>
         <p>Phase 1 (MVP): ตรวจจับแบบ client-side ล้วน ด้วย MediaPipe Pose Landmarker + @vladmandic/face-api รันในเบราว์เซอร์</p>
       </header>
+
+      {fallAlerts.map((alert) => (
+        <div key={alert.id} className="fall-alert-banner">
+          <span>🚨 {alert.message}</span>
+          <button type="button" onClick={() => handleAcknowledgeFall(alert.id)}>
+            รับทราบ
+          </button>
+        </div>
+      ))}
 
       {breakMessage && (
         <div className="break-banner">
@@ -108,6 +138,7 @@ export default function App() {
             fatigueThresholds={fatigueThresholds}
             distanceThresholds={distanceThresholds}
             breakThresholds={breakThresholds}
+            fallThresholds={fallThresholds}
             soundEnabled={soundEnabled}
             faceFeaturesEnabled={faceFeaturesEnabled}
             enrolledPeople={enrolledPeople}
@@ -117,6 +148,7 @@ export default function App() {
             onAlertStart={handleAlertStart}
             onAlertEnd={handleAlertEnd}
             onBreakDue={handleBreakDue}
+            onFallDetected={handleFallDetected}
             onPeopleUpdate={setPeople}
             onPersonEnrolled={handlePersonEnrolled}
           />
@@ -145,6 +177,8 @@ export default function App() {
             onDistanceChange={setDistanceThresholds}
             breakThresholds={breakThresholds}
             onBreakChange={setBreakThresholds}
+            fallThresholds={fallThresholds}
+            onFallChange={setFallThresholds}
             soundEnabled={soundEnabled}
             onSoundEnabledChange={setSoundEnabled}
             faceFeaturesEnabled={faceFeaturesEnabled}

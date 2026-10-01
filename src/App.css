@@ -198,6 +198,44 @@
   font-size: 13px;
 }
 
+/* --- Fall alert banner (urgent — หกล้ม/ตกจากเก้าอี้) --- */
+.fall-alert-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #7f1d1d;
+  border: 2px solid #dc2626;
+  color: #fff;
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 15px;
+  font-weight: 600;
+  animation: fall-alert-pulse 1s ease-in-out infinite;
+}
+
+.fall-alert-banner button {
+  border: none;
+  background: #dc2626;
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+@keyframes fall-alert-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(220, 38, 38, 0);
+  }
+}
+
 /* --- CameraStage extras --- */
 .secondary-button {
   align-self: flex-start;

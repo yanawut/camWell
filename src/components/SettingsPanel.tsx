@@ -1,5 +1,6 @@
 import type { PostureThresholds } from '../types/posture'
 import type { BreakThresholds, DistanceThresholds, FatigueThresholds } from '../types/wellbeing'
+import type { FallThresholds } from '../types/fall'
 
 interface Props {
   postureThresholds: PostureThresholds
@@ -10,6 +11,8 @@ interface Props {
   onDistanceChange: (next: DistanceThresholds) => void
   breakThresholds: BreakThresholds
   onBreakChange: (next: BreakThresholds) => void
+  fallThresholds: FallThresholds
+  onFallChange: (next: FallThresholds) => void
   soundEnabled: boolean
   onSoundEnabledChange: (enabled: boolean) => void
   faceFeaturesEnabled: boolean
@@ -52,6 +55,8 @@ export default function SettingsPanel({
   onDistanceChange,
   breakThresholds,
   onBreakChange,
+  fallThresholds,
+  onFallChange,
   soundEnabled,
   onSoundEnabledChange,
   faceFeaturesEnabled,
@@ -68,6 +73,9 @@ export default function SettingsPanel({
   }
   const setBreak = <K extends keyof BreakThresholds>(key: K, value: BreakThresholds[K]) => {
     onBreakChange({ ...breakThresholds, [key]: value })
+  }
+  const setFall = <K extends keyof FallThresholds>(key: K, value: FallThresholds[K]) => {
+    onFallChange({ ...fallThresholds, [key]: value })
   }
 
   return (
@@ -119,6 +127,54 @@ export default function SettingsPanel({
         step={1}
         value={Math.round(postureThresholds.sustainedMs / 1000)}
         onChange={(v) => setPosture('sustainedMs', v * 1000)}
+      />
+
+      <h3>หกล้ม / ตกจากเก้าอี้</h3>
+      <p className="panel-note">ใช้ pose landmarks ที่มีอยู่แล้ว ไม่ต้องเปิดฟีเจอร์ใบหน้า — แจ้งเตือนทันทีที่ตรวจพบ ไม่ต้องรอสะสมเวลา</p>
+      <Slider
+        label="สัดส่วนร่วงตัวต่อหน้าต่างเวลาที่ถือว่าเร็วผิดปกติ"
+        unit=""
+        min={0.1}
+        max={0.4}
+        step={0.01}
+        value={fallThresholds.dropRatioThreshold}
+        onChange={(v) => setFall('dropRatioThreshold', v)}
+      />
+      <Slider
+        label="หน้าต่างเวลาที่ใช้ดูว่าร่วงตัวเร็วแค่ไหน"
+        unit=" ms"
+        min={300}
+        max={1500}
+        step={100}
+        value={fallThresholds.dropWindowMs}
+        onChange={(v) => setFall('dropWindowMs', v)}
+      />
+      <Slider
+        label="มุมลำตัวที่ถือว่าล้มราบ/ใกล้แนวนอน"
+        unit="°"
+        min={30}
+        max={80}
+        step={1}
+        value={fallThresholds.fallTorsoAngleDeg}
+        onChange={(v) => setFall('fallTorsoAngleDeg', v)}
+      />
+      <Slider
+        label="ห้ามแจ้งเตือนซ้ำสำหรับคนเดิมถี่กว่านี้ (cooldown)"
+        unit="s"
+        min={5}
+        max={60}
+        step={5}
+        value={Math.round(fallThresholds.cooldownMs / 1000)}
+        onChange={(v) => setFall('cooldownMs', v * 1000)}
+      />
+      <Slider
+        label="ทนรอหลังหายไปจากเฟรม ก่อนสรุปว่าตกจากเก้าอี้จนหลุดมุมกล้อง"
+        unit="s"
+        min={1}
+        max={10}
+        step={0.5}
+        value={fallThresholds.disappearGraceMs / 1000}
+        onChange={(v) => setFall('disappearGraceMs', v * 1000)}
       />
 
       {faceFeaturesEnabled && (

@@ -11,12 +11,14 @@ import { stepBreakReminder, initialBreakState } from '../lib/breakReminder'
 import { initialSustainedState, stepSustainedAlert, type SustainedAlertState } from '../lib/sustainedAlertMachine'
 import { PositionTracker, type Point2D } from '../lib/tracker'
 import { MAX_TRACKED_PEOPLE } from '../lib/multiPerson'
+import { pruneHistory, computeDropRatio, type TorsoReading } from '../lib/fallDetection'
 import { enrollPerson, findBestMatch, FACE_MATCH_DISTANCE_THRESHOLD } from '../services/faceEnrollment'
-import { playAlertBeep } from '../services/beep'
+import { playAlertBeep, playFallAlarm } from '../services/beep'
 import type { PostureThresholds } from '../types/posture'
 import type { BreakReminderState, BreakThresholds, DistanceThresholds, FatigueThresholds } from '../types/wellbeing'
 import type { EnrolledPerson } from '../types/identity'
 import type { AlertEvent } from '../types/alerts'
+import type { FallThresholds } from '../types/fall'
 import type { PersonSummary } from '../types/person'
 import type { CameraSource } from '../types/cameraSource'
 
@@ -66,6 +68,13 @@ interface PersonState {
   postureStatusLabel: string
   /** ตำแหน่งจุดกึ่งกลางไหล่ล่าสุด เป็นพิกเซลของเฟรม (ไม่ใช่ normalized) ใช้จับคู่กับใบหน้าที่ตรวจพบ */
   anchorPx: Point2D
+  /** ประวัติตำแหน่ง Y ของจุดกึ่งกลางไหล่ (normalized 0-1) ช่วงสั้นๆ ล่าสุด ใช้ตรวจจับ "ร่วงตัวเร็ว" สำหรับฟีเจอร์หกล้ม */
+  torsoYHistory: TorsoReading[]
+  /** เวลาที่แจ้งเตือนหกล้มครั้งล่าสุดของคนนี้ (ms, Date.now()) ใช้กันแจ้งซ้ำถี่เกิน (cooldown) */
+  lastFallAlertAt: number
+  /** เวลาที่ตรวจพบ "ร่วงตัวเร็ว" ครั้งล่าสุด (ms, Date.now()) ไม่ว่าจะลำตัวราบหรือไม่ — ใช้เชื่อมกับเหตุการณ์
+   * "หายไปจากเฟรมกะทันหัน" ตอน track หลุด (ดูใน removedIds cleanup) เพื่อตรวจกรณีตกจากเก้าอี้จนหลุดมุมกล้อง */
+  lastRapidDropAt: number
 }
 
 interface Props {
@@ -73,6 +82,7 @@ interface Props {
   fatigueThresholds: FatigueThresholds
   distanceThresholds: DistanceThresholds
   breakThresholds: BreakThresholds
+  fallThresholds: FallThresholds
   soundEnabled: boolean
   faceFeaturesEnabled: boolean
   enrolledPeople: EnrolledPerson[]
@@ -82,6 +92,7 @@ interface Props {
   onAlertStart: (event: AlertEvent) => void
   onAlertEnd: (event: AlertEvent) => void
   onBreakDue: (personLabel: string, continuousMinutes: number) => void
+  onFallDetected: (event: AlertEvent) => void
   onPeopleUpdate: (people: PersonSummary[]) => void
   onPersonEnrolled: (person: EnrolledPerson) => void
 }
@@ -91,6 +102,7 @@ export default function CameraStage({
   fatigueThresholds,
   distanceThresholds,
   breakThresholds,
+  fallThresholds,
   soundEnabled,
   faceFeaturesEnabled,
   enrolledPeople,
@@ -100,6 +112,7 @@ export default function CameraStage({
   onAlertStart,
   onAlertEnd,
   onBreakDue,
+  onFallDetected,
   onPeopleUpdate,
   onPersonEnrolled,
 }: Props) {
@@ -148,6 +161,7 @@ export default function CameraStage({
     fatigueThresholds,
     distanceThresholds,
     breakThresholds,
+    fallThresholds,
     soundEnabled,
     faceFeaturesEnabled,
     enrolledPeople,
@@ -156,6 +170,7 @@ export default function CameraStage({
     onAlertStart,
     onAlertEnd,
     onBreakDue,
+    onFallDetected,
     onPeopleUpdate,
   })
   useEffect(() => {
@@ -164,6 +179,7 @@ export default function CameraStage({
       fatigueThresholds,
       distanceThresholds,
       breakThresholds,
+      fallThresholds,
       soundEnabled,
       faceFeaturesEnabled,
       enrolledPeople,
@@ -172,6 +188,7 @@ export default function CameraStage({
       onAlertStart,
       onAlertEnd,
       onBreakDue,
+      onFallDetected,
       onPeopleUpdate,
     }
   })
@@ -518,6 +535,24 @@ export default function CameraStage({
         if (person.postureState.activeEvent) p.onAlertEnd({ ...person.postureState.activeEvent, endedAt: now })
         if (person.fatigueState.activeEvent) p.onAlertEnd({ ...person.fatigueState.activeEvent, endedAt: now })
         if (person.distanceState.activeEvent) p.onAlertEnd({ ...person.distanceState.activeEvent, endedAt: now })
+
+        // เพิ่งร่วงตัวเร็วแล้วหายไปจากเฟรมทันที (ไม่ทันเห็นลำตัวราบเพราะหลุดมุมกล้องไปก่อน) — เข้าข่าย
+        // "หกล้ม/ตกจากเก้าอี้จนหลุดจากเฟรม" เช่น ตกจากเก้าอี้ไปด้านหลัง/ด้านข้างจนกล้องมองไม่เห็นตัวแล้ว
+        if (person.lastRapidDropAt > 0 && now - person.lastRapidDropAt <= p.fallThresholds.disappearGraceMs) {
+          const fallEvent: AlertEvent = {
+            id: `fall-left-${id}-${now}`,
+            category: 'fall',
+            type: 'fall_suspected_left_frame',
+            startedAt: now,
+            endedAt: now,
+            personName: person.identityName ?? undefined,
+            metrics: {},
+          }
+          p.onAlertStart(fallEvent)
+          p.onFallDetected(fallEvent)
+          if (p.soundEnabled) playFallAlarm()
+        }
+
         personStatesRef.current.delete(id)
       }
 
@@ -539,17 +574,52 @@ export default function CameraStage({
             identityName: null,
             postureStatusLabel: POSTURE_LABELS_TH.no_person,
             anchorPx: { x: 0, y: 0 },
+            torsoYHistory: [],
+            lastFallAlertAt: 0,
+            lastRapidDropAt: 0,
           }
           personStatesRef.current.set(match.id, person)
         }
 
         const left = landmarks[11]
         const right = landmarks[12]
-        if (left && right) {
-          person.anchorPx = { x: ((left.x + right.x) / 2) * canvas.width, y: ((left.y + right.y) / 2) * canvas.height }
+        const normalizedTorsoY = left && right ? (left.y + right.y) / 2 : null
+        if (left && right && normalizedTorsoY !== null) {
+          person.anchorPx = { x: ((left.x + right.x) / 2) * canvas.width, y: normalizedTorsoY * canvas.height }
         }
 
         person.postureStatusLabel = POSTURE_LABELS_TH[analysis.issue]
+
+        // --- Fall detection: สัญญาณร่วม "ร่วงตัวเร็ว" (normalized Y ไหล่เปลี่ยนเร็วในหน้าต่างเวลาสั้นๆ)
+        // + "ลำตัวใกล้แนวนอน" (torsoAngleDeg จาก analyzePosture) — edge-triggered + cooldown ไม่ใช่ sustained
+        // state เหมือนท่านั่ง/ความเหนื่อยล้า/ระยะห่างจอ เพราะหกล้มต้องแจ้งทันทีที่เกิด ไม่ใช่รอให้ค้างอยู่นาน
+        if (normalizedTorsoY !== null) {
+          person.torsoYHistory = pruneHistory(
+            [...person.torsoYHistory, { t: now, y: normalizedTorsoY }],
+            now,
+            p.fallThresholds.dropWindowMs,
+          )
+          const dropRatio = computeDropRatio(person.torsoYHistory)
+          if (dropRatio !== null && dropRatio >= p.fallThresholds.dropRatioThreshold) {
+            person.lastRapidDropAt = now
+            const isNearHorizontal = analysis.torsoAngleDeg >= p.fallThresholds.fallTorsoAngleDeg
+            if (isNearHorizontal && now - person.lastFallAlertAt >= p.fallThresholds.cooldownMs) {
+              person.lastFallAlertAt = now
+              const fallEvent: AlertEvent = {
+                id: `fall-${match.id}-${now}`,
+                category: 'fall',
+                type: 'fall_detected',
+                startedAt: now,
+                endedAt: now,
+                personName: person.identityName ?? undefined,
+                metrics: { dropRatio, torsoAngleDeg: analysis.torsoAngleDeg },
+              }
+              p.onAlertStart(fallEvent)
+              p.onFallDetected(fallEvent)
+              if (p.soundEnabled) playFallAlarm()
+            }
+          }
+        }
 
         const postureIssue = analysis.issue === 'no_person' ? 'no_signal' : analysis.issue
         const label = person.identityName ?? `คนที่ ${person.slotNumber}`
