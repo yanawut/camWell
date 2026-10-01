@@ -287,17 +287,15 @@
   padding-bottom: 4px;
 }
 
-/* --- Multi-camera grid --- */
+/* --- Multi-camera grid ---
+   ใช้ auto-fit + minmax แทน @media (min-width: ...) เดิม — media query อิงความกว้างของ "ทั้งหน้าจอ" ไม่ใช่
+   ความกว้างจริงของ .camera-column (ซึ่งถูกจำกัดไว้แค่ minmax(360px, 640px) โดย .app-grid) ทำให้ตอนจอกว้าง
+   มันบังคับ 2 คอลัมน์ทั้งที่พื้นที่จริงแคบกว่านั้นมาก กล้องตัวที่ 2 เลยล้นไปทับแผงตั้งค่าด้านขวา
+   auto-fit จะคำนวณจากความกว้างของ container ตัวเองเสมอ เลยไม่ล้นแบบนี้อีก */
 .camera-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 20px;
-}
-
-@media (min-width: 900px) {
-  .camera-grid:has(.camera-cell:nth-child(2)) {
-    grid-template-columns: 1fr 1fr;
-  }
 }
 
 .camera-cell {
