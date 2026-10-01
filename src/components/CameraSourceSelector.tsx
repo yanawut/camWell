@@ -1,13 +1,17 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useCameraDevices } from '../hooks/useCameraDevices'
 import type { CameraSource } from '../types/cameraSource'
 
 interface Props {
   value: CameraSource
   onChange: (source: CameraSource) => void
+  /** หัวข้อการ์ดนี้ — ใช้แยกให้เห็นว่าเป็นการตั้งค่าของกล้องตัวไหนตอนมีหลายกล้องพร้อมกัน */
+  title?: string
+  /** ปุ่มเสริมทางขวาของหัวข้อ (เช่นปุ่ม "ลบกล้องนี้") — ส่งมาจาก parent ที่จัดการรายชื่อกล้องทั้งหมด */
+  headerExtra?: ReactNode
 }
 
-export default function CameraSourceSelector({ value, onChange }: Props) {
+export default function CameraSourceSelector({ value, onChange, title, headerExtra }: Props) {
   const { devices, loading, error, refresh } = useCameraDevices()
   // ช่องกรอก URL กล้อง IP แยกสถานะไว้ต่างหาก เพื่อให้พิมพ์ได้ลื่นๆ ก่อนกด "เชื่อมต่อ" จริง
   const [ipUrlDraft, setIpUrlDraft] = useState(value.ipUrl ?? '')
@@ -16,7 +20,10 @@ export default function CameraSourceSelector({ value, onChange }: Props) {
 
   return (
     <div className="camera-source-selector panel">
-      <h2>แหล่งภาพกล้อง</h2>
+      <div className="panel-header-row">
+        <h2>{title ?? 'แหล่งภาพกล้อง'}</h2>
+        {headerExtra}
+      </div>
 
       <div className="settings-row">
         <label>

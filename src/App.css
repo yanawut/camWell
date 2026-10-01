@@ -287,6 +287,36 @@
   padding-bottom: 4px;
 }
 
+/* --- Multi-camera grid --- */
+.camera-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+@media (min-width: 900px) {
+  .camera-grid:has(.camera-cell:nth-child(2)) {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.camera-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.panel-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.panel-header-row h2 {
+  margin: 0;
+}
+
 /* --- CameraSourceSelector --- */
 .camera-source-local,
 .camera-source-ip {

@@ -24,3 +24,19 @@ export interface LocalCameraDevice {
   deviceId: string
   label: string
 }
+
+// ต่อกล้องได้พร้อมกันหลายตัว (grid) — แต่ละกล้องมี CameraStage/โมเดล AI เป็นของตัวเอง (ตรวจจับแยกกันอิสระ)
+// จำกัดไว้ไม่เกิน MAX_CAMERA_SLOTS เพราะแต่ละกล้องรันโมเดล pose + face แยกชุด ยิ่งเพิ่มยิ่งกินทรัพยากรเครื่อง
+export const MAX_CAMERA_SLOTS = 2
+
+export interface CameraSlot {
+  /** รหัสภายในของกล้องตัวนี้ (ไม่ใช่ deviceId ของฮาร์ดแวร์) ใช้แยกสถานะ/ติดตามคนของกล้องแต่ละตัวให้ไม่ปนกัน */
+  id: string
+  /** ชื่อกล้อง/ตำแหน่งที่แสดงบนหน้าเว็บ เช่น "กล้อง 1" — ใช้กำกับว่าเหตุการณ์แจ้งเตือนมาจากกล้องไหนเมื่อมีมากกว่า 1 ตัว */
+  label: string
+  source: CameraSource
+}
+
+export function createCameraSlot(id: string, label: string): CameraSlot {
+  return { id, label, source: DEFAULT_CAMERA_SOURCE }
+}

@@ -5,7 +5,7 @@ import SettingsPanel from './components/SettingsPanel'
 import EventLog from './components/EventLog'
 import EnrollmentPanel from './components/EnrollmentPanel'
 import { DEFAULT_THRESHOLDS, type PostureThresholds } from './types/posture'
-import { DEFAULT_CAMERA_SOURCE, type CameraSource } from './types/cameraSource'
+import { MAX_CAMERA_SLOTS, createCameraSlot, type CameraSlot, type CameraSource } from './types/cameraSource'
 import {
   DEFAULT_BREAK_THRESHOLDS,
   DEFAULT_DISTANCE_THRESHOLDS,
@@ -23,7 +23,7 @@ import { listEnrolledPeople, removePerson } from './services/faceEnrollment'
 import './App.css'
 
 const BASELINE_STORAGE_KEY = 'camwell:distance-baseline-px:v1'
-const CAMERA_SOURCE_STORAGE_KEY = 'camwell:camera-source:v1'
+const CAMERA_SLOTS_STORAGE_KEY = 'camwell:camera-slots:v1'
 
 interface FallAlertItem {
   id: string
@@ -49,19 +49,67 @@ export default function App() {
   })
   const [breakMessage, setBreakMessage] = useState<string | null>(null)
   const [fallAlerts, setFallAlerts] = useState<FallAlertItem[]>([])
-  const [people, setPeople] = useState<PersonSummary[]>([])
-  const [cameraSource, setCameraSource] = useState<CameraSource>(() => {
+  // รายชื่อ "ใครอยู่บ้าง" แยกเก็บตามกล้อง (slotId) — แต่ละ CameraStage ตรวจจับคนอิสระจากกัน จึงรายงานแยกกัน
+  const [peopleBySlot, setPeopleBySlot] = useState<Record<string, PersonSummary[]>>({})
+  // ต่อกล้องได้พร้อมกันหลายตัว (grid) — อ่านค่าเริ่มต้นจาก localStorage ตอน init state โดยตรงเช่นเดียวกับ state อื่นๆ
+  const [cameraSlots, setCameraSlots] = useState<CameraSlot[]>(() => {
     try {
-      const saved = localStorage.getItem(CAMERA_SOURCE_STORAGE_KEY)
-      return saved ? (JSON.parse(saved) as CameraSource) : DEFAULT_CAMERA_SOURCE
+      const saved = localStorage.getItem(CAMERA_SLOTS_STORAGE_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved) as CameraSlot[]
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed.slice(0, MAX_CAMERA_SLOTS)
+      }
     } catch {
-      return DEFAULT_CAMERA_SOURCE
+      // ค่าที่เก็บไว้เสีย/อ่านไม่ออก — ใช้ค่าเริ่มต้นกล้องเดียวด้านล่างแทน
     }
+    return [createCameraSlot('cam-1', 'กล้อง 1')]
   })
+  const multiCameraMode = cameraSlots.length > 1
 
-  const handleCameraSourceChange = useCallback((source: CameraSource) => {
-    setCameraSource(source)
-    localStorage.setItem(CAMERA_SOURCE_STORAGE_KEY, JSON.stringify(source))
+  const persistCameraSlots = useCallback((slots: CameraSlot[]) => {
+    localStorage.setItem(CAMERA_SLOTS_STORAGE_KEY, JSON.stringify(slots))
+  }, [])
+
+  const handleCameraSlotSourceChange = useCallback(
+    (id: string, source: CameraSource) => {
+      setCameraSlots((prev) => {
+        const next = prev.map((slot) => (slot.id === id ? { ...slot, source } : slot))
+        persistCameraSlots(next)
+        return next
+      })
+    },
+    [persistCameraSlots],
+  )
+
+  const handleAddCameraSlot = useCallback(() => {
+    setCameraSlots((prev) => {
+      if (prev.length >= MAX_CAMERA_SLOTS) return prev
+      const nextIndex = prev.length + 1
+      const next = [...prev, createCameraSlot(`cam-${nextIndex}-${Date.now()}`, `กล้อง ${nextIndex}`)]
+      persistCameraSlots(next)
+      return next
+    })
+  }, [persistCameraSlots])
+
+  const handleRemoveCameraSlot = useCallback(
+    (id: string) => {
+      setCameraSlots((prev) => {
+        if (prev.length <= 1) return prev
+        const next = prev.filter((slot) => slot.id !== id)
+        persistCameraSlots(next)
+        return next
+      })
+      setPeopleBySlot((prev) => {
+        const next = { ...prev }
+        delete next[id]
+        return next
+      })
+    },
+    [persistCameraSlots],
+  )
+
+  const handlePeopleUpdate = useCallback((slotId: string, summaries: PersonSummary[]) => {
+    setPeopleBySlot((prev) => ({ ...prev, [slotId]: summaries }))
   }, [])
 
   const handleAlertStart = useCallback((event: AlertEvent) => {
@@ -132,39 +180,67 @@ export default function App() {
 
       <main className="app-grid">
         <section className="camera-column">
-          <CameraSourceSelector value={cameraSource} onChange={handleCameraSourceChange} />
-          <CameraStage
-            postureThresholds={postureThresholds}
-            fatigueThresholds={fatigueThresholds}
-            distanceThresholds={distanceThresholds}
-            breakThresholds={breakThresholds}
-            fallThresholds={fallThresholds}
-            soundEnabled={soundEnabled}
-            faceFeaturesEnabled={faceFeaturesEnabled}
-            enrolledPeople={enrolledPeople}
-            baselineFaceWidthPx={baselineFaceWidthPx}
-            cameraSource={cameraSource}
-            onCalibrateDistance={handleCalibrateDistance}
-            onAlertStart={handleAlertStart}
-            onAlertEnd={handleAlertEnd}
-            onBreakDue={handleBreakDue}
-            onFallDetected={handleFallDetected}
-            onPeopleUpdate={setPeople}
-            onPersonEnrolled={handlePersonEnrolled}
-          />
-          {faceFeaturesEnabled && people.length > 0 && (
-            <ul className="people-list">
-              {people.map((person) => (
-                <li key={person.trackId}>
-                  <strong>{person.label}</strong> — {person.postureStatus}
-                  {person.fatigueActive && ' · ⚠ ความเหนื่อยล้า/หาว'}
-                  {person.distanceActive && ' · ⚠ นั่งใกล้จอเกินไป'}
-                  {person.yawnCount > 0 && ` · หาวสะสม ${person.yawnCount} ครั้ง`}
-                </li>
-              ))}
-            </ul>
+          <div className="camera-grid">
+            {cameraSlots.map((slot) => {
+              const people = peopleBySlot[slot.id] ?? []
+              return (
+                <div key={slot.id} className="camera-cell">
+                  <CameraSourceSelector
+                    value={slot.source}
+                    onChange={(source) => handleCameraSlotSourceChange(slot.id, source)}
+                    title={multiCameraMode ? slot.label : 'แหล่งภาพกล้อง'}
+                    headerExtra={
+                      cameraSlots.length > 1 ? (
+                        <button type="button" className="link-button" onClick={() => handleRemoveCameraSlot(slot.id)}>
+                          ลบกล้องนี้
+                        </button>
+                      ) : undefined
+                    }
+                  />
+                  <CameraStage
+                    postureThresholds={postureThresholds}
+                    fatigueThresholds={fatigueThresholds}
+                    distanceThresholds={distanceThresholds}
+                    breakThresholds={breakThresholds}
+                    fallThresholds={fallThresholds}
+                    soundEnabled={soundEnabled}
+                    faceFeaturesEnabled={faceFeaturesEnabled}
+                    enrolledPeople={enrolledPeople}
+                    baselineFaceWidthPx={baselineFaceWidthPx}
+                    cameraSource={slot.source}
+                    cameraId={slot.id}
+                    cameraLabel={slot.label}
+                    multiCameraMode={multiCameraMode}
+                    onCalibrateDistance={handleCalibrateDistance}
+                    onAlertStart={handleAlertStart}
+                    onAlertEnd={handleAlertEnd}
+                    onBreakDue={handleBreakDue}
+                    onFallDetected={handleFallDetected}
+                    onPeopleUpdate={(summaries) => handlePeopleUpdate(slot.id, summaries)}
+                    onPersonEnrolled={handlePersonEnrolled}
+                  />
+                  {faceFeaturesEnabled && people.length > 0 && (
+                    <ul className="people-list">
+                      {people.map((person) => (
+                        <li key={person.trackId}>
+                          <strong>{person.label}</strong> — {person.postureStatus}
+                          {person.fatigueActive && ' · ⚠ ความเหนื่อยล้า/หาว'}
+                          {person.distanceActive && ' · ⚠ นั่งใกล้จอเกินไป'}
+                          {person.yawnCount > 0 && ` · หาวสะสม ${person.yawnCount} ครั้ง`}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {faceFeaturesEnabled && people.length === 0 && <p className="identity-line">ยังไม่พบคนในเฟรม</p>}
+                </div>
+              )
+            })}
+          </div>
+          {cameraSlots.length < MAX_CAMERA_SLOTS && (
+            <button type="button" className="secondary-button" onClick={handleAddCameraSlot}>
+              + เพิ่มกล้อง (สูงสุด {MAX_CAMERA_SLOTS} ตัวพร้อมกัน)
+            </button>
           )}
-          {faceFeaturesEnabled && people.length === 0 && <p className="identity-line">ยังไม่พบคนในเฟรม</p>}
         </section>
 
         <section className="side-column">

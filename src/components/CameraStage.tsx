@@ -88,6 +88,13 @@ interface Props {
   enrolledPeople: EnrolledPerson[]
   baselineFaceWidthPx: number | null
   cameraSource: CameraSource
+  /** รหัสภายในของกล้องตัวนี้ (ไม่ใช่ deviceId) ใช้เป็น prefix ของ trackId กันชนกับกล้องตัวอื่นตอนต่อหลายกล้อง */
+  cameraId: string
+  /** ชื่อกล้องที่แสดงผล เช่น "กล้อง 1" — แปะไว้ในชื่อคน/ข้อความแจ้งเตือนที่ไปโผล่รวมกันข้ามกล้อง (EventLog, banner หกล้ม/พัก) */
+  cameraLabel: string
+  /** true เมื่อมีมากกว่า 1 กล้องเชื่อมต่ออยู่ — ใช้ตัดสินใจว่าต้องแปะชื่อกล้องนำหน้าชื่อคนในข้อความข้ามกล้องหรือไม่
+   * (ถ้ามีกล้องเดียวไม่ต้องแปะ กันข้อความรก) */
+  multiCameraMode: boolean
   onCalibrateDistance: (widthPx: number) => void
   onAlertStart: (event: AlertEvent) => void
   onAlertEnd: (event: AlertEvent) => void
@@ -108,6 +115,9 @@ export default function CameraStage({
   enrolledPeople,
   baselineFaceWidthPx,
   cameraSource,
+  cameraId,
+  cameraLabel,
+  multiCameraMode,
   onCalibrateDistance,
   onAlertStart,
   onAlertEnd,
@@ -136,7 +146,8 @@ export default function CameraStage({
   // แหล่งความจริงหลักของ "ใครอยู่ในเฟรมบ้าง" — key คือ trackId จาก poseTracker
   const personStatesRef = useRef<Map<string, PersonState>>(new Map())
   const poseTrackerRef = useRef(
-    new PositionTracker<{ landmarks: NormalizedLandmark[]; analysis: PostureAnalysisResult }>('pose', {
+    // prefix ด้วย cameraId กัน trackId ชนกับกล้องตัวอื่นตอนต่อหลายกล้องพร้อมกัน (grid)
+    new PositionTracker<{ landmarks: NormalizedLandmark[]; analysis: PostureAnalysisResult }>(`pose-${cameraId}`, {
       maxDistance: POSE_TRACK_MAX_DISTANCE,
       staleAfterMs: POSE_TRACK_STALE_MS,
     }),
@@ -167,6 +178,8 @@ export default function CameraStage({
     enrolledPeople,
     baselineFaceWidthPx,
     cameraSource,
+    cameraLabel,
+    multiCameraMode,
     onAlertStart,
     onAlertEnd,
     onBreakDue,
@@ -185,6 +198,8 @@ export default function CameraStage({
       enrolledPeople,
       baselineFaceWidthPx,
       cameraSource,
+      cameraLabel,
+      multiCameraMode,
       onAlertStart,
       onAlertEnd,
       onBreakDue,
@@ -376,7 +391,9 @@ export default function CameraStage({
         person.yawnTimestamps = person.yawnTimestamps.filter((t) => now - t <= p.fatigueThresholds.yawnWindowMs)
         const frequentYawning = person.yawnTimestamps.length >= p.fatigueThresholds.yawnCountThreshold
 
-        const label = person.identityName ?? `คนที่ ${person.slotNumber}`
+        // ชื่อที่จะโผล่ใน EventLog (รวมข้ามกล้อง) — แปะชื่อกล้องนำหน้าด้วยถ้ามีมากกว่า 1 กล้องเชื่อมต่ออยู่
+        const plainLabel = person.identityName ?? `คนที่ ${person.slotNumber}`
+        const label = p.multiCameraMode ? `${p.cameraLabel} • ${plainLabel}` : plainLabel
 
         const fatigueIssue = frequentYawning ? 'frequent_yawning' : fatigue.issue === 'no_face' ? 'no_signal' : fatigue.issue
         const fatigueStep = stepSustainedAlert(
@@ -539,13 +556,14 @@ export default function CameraStage({
         // เพิ่งร่วงตัวเร็วแล้วหายไปจากเฟรมทันที (ไม่ทันเห็นลำตัวราบเพราะหลุดมุมกล้องไปก่อน) — เข้าข่าย
         // "หกล้ม/ตกจากเก้าอี้จนหลุดจากเฟรม" เช่น ตกจากเก้าอี้ไปด้านหลัง/ด้านข้างจนกล้องมองไม่เห็นตัวแล้ว
         if (person.lastRapidDropAt > 0 && now - person.lastRapidDropAt <= p.fallThresholds.disappearGraceMs) {
+          const plainLabel = person.identityName ?? `คนที่ ${person.slotNumber}`
           const fallEvent: AlertEvent = {
             id: `fall-left-${id}-${now}`,
             category: 'fall',
             type: 'fall_suspected_left_frame',
             startedAt: now,
             endedAt: now,
-            personName: person.identityName ?? undefined,
+            personName: p.multiCameraMode ? `${p.cameraLabel} • ${plainLabel}` : plainLabel,
             metrics: {},
           }
           p.onAlertStart(fallEvent)
@@ -590,6 +608,11 @@ export default function CameraStage({
 
         person.postureStatusLabel = POSTURE_LABELS_TH[analysis.issue]
 
+        // ชื่อที่จะโผล่ใน EventLog/banner หกล้ม/ข้อความเตือนพัก (รวมข้ามกล้อง) — แปะชื่อกล้องนำหน้าด้วยถ้ามี
+        // มากกว่า 1 กล้องเชื่อมต่ออยู่ (กันข้อความรกตอนมีกล้องเดียว)
+        const plainLabel = person.identityName ?? `คนที่ ${person.slotNumber}`
+        const label = p.multiCameraMode ? `${p.cameraLabel} • ${plainLabel}` : plainLabel
+
         // --- Fall detection: สัญญาณร่วม "ร่วงตัวเร็ว" (normalized Y ไหล่เปลี่ยนเร็วในหน้าต่างเวลาสั้นๆ)
         // + "ลำตัวใกล้แนวนอน" (torsoAngleDeg จาก analyzePosture) — edge-triggered + cooldown ไม่ใช่ sustained
         // state เหมือนท่านั่ง/ความเหนื่อยล้า/ระยะห่างจอ เพราะหกล้มต้องแจ้งทันทีที่เกิด ไม่ใช่รอให้ค้างอยู่นาน
@@ -611,7 +634,7 @@ export default function CameraStage({
                 type: 'fall_detected',
                 startedAt: now,
                 endedAt: now,
-                personName: person.identityName ?? undefined,
+                personName: label,
                 metrics: { dropRatio, torsoAngleDeg: analysis.torsoAngleDeg },
               }
               p.onAlertStart(fallEvent)
@@ -622,7 +645,6 @@ export default function CameraStage({
         }
 
         const postureIssue = analysis.issue === 'no_person' ? 'no_signal' : analysis.issue
-        const label = person.identityName ?? `คนที่ ${person.slotNumber}`
         const step = stepSustainedAlert(
           person.postureState,
           { issue: postureIssue, metrics: { neckAngleDeg: analysis.neckAngleDeg, torsoAngleDeg: analysis.torsoAngleDeg, shoulderTiltDeg: analysis.shoulderTiltDeg } },
