@@ -28,8 +28,7 @@ Notebook MCP เห็น Project camWell ID 0a36acca-b468-41f3-b55f-6694f1b6d7c
 
 ให้ใช้ Notebook MCP กับ workspace นี้โดยตรง ห้ามใช้ WSL
 
-ใช้ skill `/mattpocock-skills:tdd` ทำ performance Ticket <NN> ต่อได้เลย
-
+ใช้ skill `/mattpocock-skills:implement` ทำ performance Ticket <NN> ต่อได้เลย
 ก่อนแก้โค้ด:
 - อ่าน `docs/performance/README.md` (ลำดับ Ticket, Blocked by, Gate)
 - อ่าน `docs/performance/camwell-agent-implementation-plan.md` เฉพาะ step ที่ Ticket อ้างถึง
