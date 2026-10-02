@@ -1,6 +1,7 @@
 import type { PostureThresholds } from '../types/posture'
 import type { BreakThresholds, DistanceThresholds, FatigueThresholds } from '../types/wellbeing'
 import type { FallThresholds } from '../types/fall'
+import { breakResetMinutesToMs, getBreakResetSliderModel } from '../lib/breakReminderSettings'
 
 interface Props {
   postureThresholds: PostureThresholds
@@ -77,6 +78,7 @@ export default function SettingsPanel({
   const setFall = <K extends keyof FallThresholds>(key: K, value: FallThresholds[K]) => {
     onFallChange({ ...fallThresholds, [key]: value })
   }
+  const breakResetSlider = getBreakResetSliderModel(breakThresholds.breakResetMs)
 
   return (
     <div className="panel settings-panel">
@@ -209,19 +211,28 @@ export default function SettingsPanel({
             value={distanceThresholds.tooCloseRatio}
             onChange={(v) => setDistance('tooCloseRatio', v)}
           />
-
-          <h3>เตือนพัก</h3>
-          <Slider
-            label="นั่งต่อเนื่องกี่นาทีถึงเตือนให้พัก"
-            unit=" นาที"
-            min={15}
-            max={90}
-            step={5}
-            value={breakThresholds.continuousSittingMs / 60000}
-            onChange={(v) => setBreak('continuousSittingMs', v * 60000)}
-          />
         </>
       )}
+
+      <h3>เตือนพัก</h3>
+      <Slider
+        label="นั่งต่อเนื่องกี่นาทีถึงเตือนให้พัก"
+        unit=" นาที"
+        min={15}
+        max={90}
+        step={5}
+        value={breakThresholds.continuousSittingMs / 60000}
+        onChange={(v) => setBreak('continuousSittingMs', v * 60000)}
+      />
+      <Slider
+        label="ลุกไปนานกี่นาทีถึงถือว่าพักแล้ว"
+        unit=" นาที"
+        min={breakResetSlider.min}
+        max={breakResetSlider.max}
+        step={breakResetSlider.step}
+        value={breakResetSlider.value}
+        onChange={(v) => setBreak('breakResetMs', breakResetMinutesToMs(v))}
+      />
     </div>
   )
 }

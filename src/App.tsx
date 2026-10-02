@@ -20,6 +20,7 @@ import type { EnrolledPerson } from './types/identity'
 import type { PersonSummary } from './types/person'
 import { consoleAlertReporter } from './services/alertReporter'
 import { listEnrolledPeople, removePerson } from './services/faceEnrollment'
+import { DEFAULT_FACE_FEATURES_ENABLED, getCameraPeopleVisibility } from './lib/featureVisibility'
 import './App.css'
 
 const BASELINE_STORAGE_KEY = 'camwell:distance-baseline-px:v1'
@@ -37,7 +38,7 @@ export default function App() {
   const [breakThresholds, setBreakThresholds] = useState<BreakThresholds>(DEFAULT_BREAK_THRESHOLDS)
   const [fallThresholds, setFallThresholds] = useState<FallThresholds>(DEFAULT_FALL_THRESHOLDS)
   const [soundEnabled, setSoundEnabled] = useState(true)
-  const [faceFeaturesEnabled, setFaceFeaturesEnabled] = useState(true)
+  const [faceFeaturesEnabled, setFaceFeaturesEnabled] = useState(DEFAULT_FACE_FEATURES_ENABLED)
 
   const [events, setEvents] = useState<AlertEvent[]>([])
   // (Phase 2) รายชื่อพนักงานที่ลงทะเบียนใบหน้าไว้ย้ายมาเก็บที่ camwell-backend แล้ว — ดึงมาตอน mount ด้วย
@@ -206,6 +207,7 @@ export default function App() {
           <div className="camera-grid">
             {cameraSlots.map((slot) => {
               const people = peopleBySlot[slot.id] ?? []
+              const peopleVisibility = getCameraPeopleVisibility(people.length)
               return (
                 <div key={slot.id} className="camera-cell">
                   <CameraSourceSelector
@@ -242,7 +244,7 @@ export default function App() {
                     onPeopleUpdate={(summaries) => handlePeopleUpdate(slot.id, summaries)}
                     onPersonEnrolled={handlePersonEnrolled}
                   />
-                  {faceFeaturesEnabled && people.length > 0 && (
+                  {peopleVisibility.showPeopleList && (
                     <ul className="people-list">
                       {people.map((person) => (
                         <li key={person.trackId}>
@@ -254,7 +256,7 @@ export default function App() {
                       ))}
                     </ul>
                   )}
-                  {faceFeaturesEnabled && people.length === 0 && <p className="identity-line">ยังไม่พบคนในเฟรม</p>}
+                  {peopleVisibility.showEmptyState && <p className="identity-line">ยังไม่พบคนในเฟรม</p>}
                 </div>
               )
             })}

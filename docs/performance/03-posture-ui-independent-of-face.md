@@ -4,13 +4,14 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
 อ้างอิง: guide ขั้น 1.2 · plan Step 1.2
 
-- [ ] `faceFeaturesEnabled` มีค่าเริ่มต้นเป็น `false`
-- [ ] รายชื่อคนต่อกล้องใน `App` แสดงผลไม่ว่าสวิตช์ใบหน้าจะเปิดหรือปิด
-- [ ] สไลเดอร์เตือนพักทั้งหมดอยู่นอกบล็อกที่ขึ้นกับ `faceFeaturesEnabled`
-- [ ] มีสไลเดอร์ `breakResetMs` (1–15 นาที) ใน SettingsPanel
-- [ ] ไม่มี UI ด้านท่านั่ง/เตือนพักชิ้นไหนผูกกับ `faceFeaturesEnabled`
-- [ ] Gate เขียว
+- [x] `faceFeaturesEnabled` มีค่าเริ่มต้นเป็น `false`
+- [x] รายชื่อคนต่อกล้องใน `App` แสดงผลไม่ว่าสวิตช์ใบหน้าจะเปิดหรือปิด
+- [x] สไลเดอร์เตือนพักทั้งหมดอยู่นอกบล็อกที่ขึ้นกับ `faceFeaturesEnabled`
+- [x] มีสไลเดอร์ `breakResetMs` (1–15 นาที) ใน SettingsPanel
+- [x] ไม่มี UI ด้านท่านั่ง/เตือนพักชิ้นไหนผูกกับ `faceFeaturesEnabled`
+- [x] Gate เขียว
+- [ ] Manual browser smoke test ผ่าน (ดู 03-browser-smoke.md) — เลื่อนไปทดสอบซ้ำภายหลังตามการตัดสินใจของผู้ใช้
