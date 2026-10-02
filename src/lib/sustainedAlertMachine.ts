@@ -63,7 +63,7 @@ export function stepSustainedAlert(
   const state: SustainedAlertState = { ...prev }
 
   if (reading.issue === 'no_signal') {
-    if (state.lastSignalAt && now - state.lastSignalAt < NO_SIGNAL_GRACE_MS) {
+    if (state.lastSignalAt !== null && now - state.lastSignalAt < NO_SIGNAL_GRACE_MS) {
       return { state }
     }
     const ended = state.activeEvent ? { ...state.activeEvent, endedAt: now } : undefined
@@ -75,7 +75,7 @@ export function stepSustainedAlert(
   if (reading.issue === 'good') {
     state.candidateIssue = null
     state.candidateSince = null
-    if (!state.goodSince) state.goodSince = now
+    if (state.goodSince === null) state.goodSince = now
 
     if (state.activeEvent && now - state.goodSince >= HYSTERESIS_MS) {
       const ended = { ...state.activeEvent, endedAt: now }
@@ -101,7 +101,7 @@ export function stepSustainedAlert(
     return { state }
   }
 
-  const sustainedFor = state.candidateSince ? now - state.candidateSince : 0
+  const sustainedFor = state.candidateSince !== null ? now - state.candidateSince : 0
   if (sustainedFor >= sustainedMs) {
     const started: AlertEvent = {
       id: nextId(category),

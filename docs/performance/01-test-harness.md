@@ -4,13 +4,14 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
 อ้างอิงโค้ดที่ตรวจแล้ว: guide §5.1, §5.2, §5.5 · plan "Step 0"
 
-- [ ] ติดตั้ง `vitest` เป็น devDependency ที่ root repo (ไม่ใช่ `backend/`) และเพิ่ม script `"test": "vitest"`
-- [ ] เทสต์ของ sustained alert state machine (3 ข้อ): 2 ข้อแดงบนโค้ดเดิม และเขียวหลังเปลี่ยนเป็นเช็ค `!== null` ทั้ง 3 จุด
-- [ ] เทสต์ของ fall detection (guide §5.5) เขียวบนโค้ดปัจจุบันโดยไม่ต้องแก้โค้ด
-- [ ] เทสต์ผ่านทั้งหมด 7 ข้อ
-- [ ] การแก้ null-check อยู่ใน commit เดียวกับเทสต์ของมัน
-- [ ] Gate เขียว: `npm run build`, `npm run lint`, `npx vitest run`
+- [x] ติดตั้ง `vitest` เป็น devDependency ที่ root repo (ไม่ใช่ `backend/`) และเพิ่ม script `"test": "vitest"`
+- [x] เทสต์ของ sustained alert state machine (3 ข้อ): 2 ข้อแดงบนโค้ดเดิม และเขียวหลังเปลี่ยนเป็นเช็ค `!== null` ทั้ง 3 จุด
+- [x] เทสต์ของ fall detection (guide §5.5) เขียวบนโค้ดปัจจุบันโดยไม่ต้องแก้โค้ด
+- [x] เทสต์ผ่านทั้งหมด 7 ข้อ
+- [x] การแก้ null-check อยู่ใน commit เดียวกับเทสต์ของมัน
+- [x] Gate เขียว: `npm run build`, `npm run lint`, `npx vitest run`
+- [ ] Manual browser smoke test ผ่าน (ดู 01-browser-smoke.md) — เลื่อนไปทดสอบซ้ำภายหลังตามการตัดสินใจของผู้ใช้
