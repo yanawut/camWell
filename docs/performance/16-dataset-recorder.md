@@ -1,0 +1,16 @@
+# 16: เครื่องมือบันทึก dataset (เฉพาะโหมด dev)
+
+**What to build:** นักพัฒนาเลือก label (`GOOD FORWARD_HEAD SLOUCH LEAN_LEFT LEAN_RIGHT`) กดเริ่มบันทึก นั่งท่านั้น แล้ว export เป็น JSON ไว้ train โมเดลในอนาคตได้ บันทึกเฉพาะตัวเลขไม่มีภาพ ทุกกล้องบันทึกเข้าที่เดียวกันโดยแต่ละตัวอย่างระบุ `cameraId` และ panel นี้ไม่มีใน production build
+
+**Blocked by:** 15 (find-block ของ guide ขั้น 6.2 อ้างโค้ดหลัง 6.1)
+
+**Status:** ready-for-agent
+
+อ้างอิง: guide ขั้น 6.2 · plan Step 6.2
+
+- [ ] service `datasetRecorder` เป็น module singleton: start/stop/isRecording/add/count/clear/exportJson และแต่ละตัวอย่างมี `cameraId`
+- [ ] คอมโพเนนต์ `DatasetRecorderPanel` แสดงใน `App` เฉพาะเมื่อ `import.meta.env.DEV`
+- [ ] ส่ง `worldLandmarks[i]` ผ่านข้อมูลของ tracker; บันทึก 1 ตัวอย่างต่อเฟรมขณะกำลังบันทึกและตรวจพบคนเดียวพอดี
+- [ ] ตัวอย่างมีแต่ตัวเลข ไม่มีภาพ
+- [ ] production build (`vite build`) ไม่มี recorder panel อยู่ใน bundle
+- [ ] Gate เขียว
