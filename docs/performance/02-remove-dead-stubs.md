@@ -4,12 +4,13 @@
 
 **Blocked by:** 01 (ต้องมี test gate ก่อน)
 
-**Status:** ready-for-agent
+**Status:** done
 
 อ้างอิง: guide ขั้น 1.1 · plan Step 1.1 · branch `phase-1-bugfix`
 
-- [ ] grep ยืนยันว่า `alertStateMachine` และ `PostureMonitor` ไม่มีผู้ import ก่อนลบ
-- [ ] ลบโมดูล `alertStateMachine` และคอมโพเนนต์ `PostureMonitor`
-- [ ] เปลี่ยนชื่อคอมเมนต์ `/* --- PostureMonitor --- */` ใน `App.css` แต่ **คง** rule CSS ใต้คอมเมนต์ไว้ (ยังถูกใช้อยู่)
-- [ ] grep ทั้งสองชื่อใน `src/` ไม่เจออะไรเลย
-- [ ] Gate เขียว
+- [x] grep ยืนยันว่า `alertStateMachine` และ `PostureMonitor` ไม่มีผู้ import ก่อนลบ
+- [x] ลบโมดูล `alertStateMachine` และคอมโพเนนต์ `PostureMonitor`
+- [x] เปลี่ยนชื่อคอมเมนต์ `/* --- PostureMonitor --- */` ใน `App.css` แต่ **คง** rule CSS ใต้คอมเมนต์ไว้ (ยังถูกใช้อยู่)
+- [x] grep ทั้งสองชื่อใน `src/` ไม่เจออะไรเลย
+- [x] Gate เขียว
+- [ ] Manual browser smoke test ผ่าน (ดู 02-browser-smoke.md) — เลื่อนไปทดสอบซ้ำภายหลังตามการตัดสินใจของผู้ใช้

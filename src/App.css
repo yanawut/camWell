@@ -54,7 +54,7 @@
   margin: -6px 0 12px;
 }
 
-/* --- PostureMonitor --- */
+/* --- CameraStage (กล้อง + overlay) --- */
 .posture-monitor {
   display: flex;
   flex-direction: column;
