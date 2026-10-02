@@ -77,7 +77,7 @@ Notebook MCP เห็น Project camWell ID 0a36acca-b468-41f3-b55f-6694f1b6d7c
 ## Prompt 2 — Code Review
 
 ```
-ใช้ skill `/mattpocock-skills:code-review` review performance Ticket <NN> จริง ๆ
+ใช้ skill `/mattpocock-skills:code-review` review performance Ticket นี้จริง ๆ
 fixed point = commit ที่ HEAD ตอนเริ่ม Ticket นี้ ให้ review working tree ปัจจุบันทั้งหมดของ Ticket นี้ รวมไฟล์ untracked ด้วย
 
 ถ้า gen/sub-agent ใช้ไม่ได้ ให้ทำ fallback เองทีละขั้นตาม skill โดยแยก review อย่างน้อย:
@@ -111,7 +111,7 @@ fixed point = commit ที่ HEAD ตอนเริ่ม Ticket นี้ �
 ```
 ตอนนี้ code review และ automated verification ผ่านหมดแล้ว
 
-ให้เขียน manual smoke test สำหรับ performance Ticket <NN> แบบละเอียด
+ให้เขียน manual smoke test สำหรับ performance Ticket นี้แบบละเอียด
 โดยอิง requirement จริงของ Ticket และ regression findings ที่เคยเจอ
 
 ต้องระบุ:
@@ -140,7 +140,7 @@ fixed point = commit ที่ HEAD ตอนเริ่ม Ticket นี้ �
 ## Prompt 4 — หลังทดสอบ Smoke ผ่าน
 
 ```
-manual browser smoke test ของ performance Ticket <NN> ผ่านทั้งหมดแล้ว
+manual browser smoke test ของ performance Ticket นี้ผ่านทั้งหมดแล้ว
 
 ให้อัปเดต `docs/performance/<NN>-browser-smoke.md`:
 - ทุก scenario ที่ผ่านให้เป็น `[x] PASS`
@@ -160,7 +160,7 @@ manual browser smoke test ของ performance Ticket <NN> ผ่านทั�
 ## Prompt 5 — Commit ปิด Ticket
 
 ```
-**commit** ปิด performance Ticket <NN> ได้
+**commit** ปิด performance Ticket นี้ได้
 
 ก่อน commit:
 - ตรวจ `git status` และ branch ปัจจุบัน (ต้องเป็น `improve-app-performance` ไม่ใช่ `main`)
