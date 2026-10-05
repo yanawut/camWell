@@ -1,11 +1,21 @@
 // ตัวจับเวลา "นั่งต่อเนื่องนานแค่ไหน" ไม่เกี่ยวกับท่านั่งถูก/ผิด — แค่เตือนให้ลุกพักเป็นระยะ
-// ทำงานอิสระจากโมดูลอื่น ใช้แค่สัญญาณ "ตอนนี้มีคนอยู่หน้าจอไหม" (reuse จาก pose/face detection ที่มีอยู่แล้ว)
+// ทำงานอิสระจากโมดูลอื่น ใช้แค่สัญญาณ "ตอนนี้มีคนอยู่หน้ากล้องไหม"
+//
+// กติกา:
+//   - มีคนอยู่หน้ากล้อง → นับเวลานั่งต่อเนื่อง
+//   - หายไปน้อยกว่า breakResetMs → ยังถือว่าเป็นรอบนั่งเดิม
+//   - หายไปตั้งแต่ breakResetMs ขึ้นไป → ถือว่าพักแล้วและรีเซ็ตตัวนับ
 
 import type { BreakReminderState, BreakThresholds } from '../types/wellbeing'
 
 export const initialBreakState: BreakReminderState = {
   continuousSinceMs: null,
+  lastPresentAtMs: null,
   reminderFiredForCurrentSession: false,
+}
+
+export function getBreakReminderLabel(multiCameraMode: boolean, cameraLabel: string): string {
+  return multiCameraMode ? `คนที่นั่งหน้า${cameraLabel}` : 'คุณ'
 }
 
 export interface BreakStepResult {
@@ -25,11 +35,18 @@ export function stepBreakReminder(
   const state: BreakReminderState = { ...prev }
 
   if (!isPresent) {
-    // ไม่มีคนอยู่หน้าจอ — ถ้ายังไม่เคยบันทึกเวลาที่หายไป ให้ถือว่า "เริ่มพัก" จาก lastSeen เดิม
-    // เพื่อความง่าย: ใช้ continuousSinceMs ค้างไว้ก่อน แล้วให้ตัวเรียกเป็นคนตัดสินใจรีเซ็ตเมื่อหายไปนานพอ
-    // (ดูการ implement เต็มใน useBreakTracking.ts ที่ track lastPresentAt แยกต่างหาก)
-    return { state, shouldRemind: false, continuousMinutes: 0 }
+    if (state.lastPresentAtMs !== null && now - state.lastPresentAtMs >= thresholds.breakResetMs) {
+      return { state: resetBreakTimer(), shouldRemind: false, continuousMinutes: 0 }
+    }
+
+    return {
+      state,
+      shouldRemind: false,
+      continuousMinutes: minutesSince(state.continuousSinceMs, now),
+    }
   }
+
+  state.lastPresentAtMs = now
 
   if (state.continuousSinceMs === null) {
     state.continuousSinceMs = now
@@ -37,7 +54,6 @@ export function stepBreakReminder(
   }
 
   const elapsedMs = now - state.continuousSinceMs
-  const continuousMinutes = Math.floor(elapsedMs / 60000)
 
   let shouldRemind = false
   if (elapsedMs >= thresholds.continuousSittingMs && !state.reminderFiredForCurrentSession) {
@@ -45,10 +61,18 @@ export function stepBreakReminder(
     shouldRemind = true
   }
 
-  return { state, shouldRemind, continuousMinutes }
+  return {
+    state,
+    shouldRemind,
+    continuousMinutes: minutesSince(state.continuousSinceMs, now),
+  }
 }
 
-/** รีเซ็ตตัวนับ เรียกเมื่อผู้ใช้หายไปจากกล้องนานเกิน breakResetMs (ถือว่าลุกไปพักแล้ว) หรือกดปุ่ม "พักแล้ว" เอง */
+function minutesSince(sinceMs: number | null, now: number): number {
+  return sinceMs === null ? 0 : Math.floor((now - sinceMs) / 60000)
+}
+
+/** รีเซ็ตตัวนับเมื่อไม่มีคนอยู่หน้ากล้องนานถึง breakResetMs */
 export function resetBreakTimer(): BreakReminderState {
   return { ...initialBreakState }
 }

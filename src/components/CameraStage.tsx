@@ -7,7 +7,7 @@ import { useFaceApiModels } from '../hooks/useFaceApiModels'
 import { analyzePosture, POSTURE_LABELS_TH, type PostureAnalysisResult } from '../lib/postureAnalysis'
 import { analyzeFatigueFrame, FATIGUE_LABELS_TH } from '../lib/fatigueAnalysis'
 import { analyzeDistanceFrame, DISTANCE_LABELS_TH } from '../lib/distanceAnalysis'
-import { stepBreakReminder, initialBreakState } from '../lib/breakReminder'
+import { getBreakReminderLabel, initialBreakState, stepBreakReminder } from '../lib/breakReminder'
 import { initialSustainedState, stepSustainedAlert, type SustainedAlertState } from '../lib/sustainedAlertMachine'
 import { PositionTracker, type Point2D } from '../lib/tracker'
 import { MAX_TRACKED_PEOPLE } from '../lib/multiPerson'
@@ -62,7 +62,6 @@ interface PersonState {
   postureState: SustainedAlertState
   fatigueState: SustainedAlertState
   distanceState: SustainedAlertState
-  breakState: BreakReminderState
   yawnOpenSince: number | null
   yawnTimestamps: number[]
   identityName: string | null
@@ -136,6 +135,8 @@ export default function CameraStage({
 
   const lastVideoTimeRef = useRef(-1)
   const latestPoseResultRef = useRef<PoseLandmarkerResult | null>(null)
+  // ตัวจับเวลาเตือนพักระดับกล้อง ไม่ผูกกับ lifetime ของ person track
+  const deskBreakStateRef = useRef<BreakReminderState>(initialBreakState)
   const lastFaceRunAtRef = useRef(0)
   const lastPeopleUpdateAtRef = useRef(0)
   const faceBusyRef = useRef(false)
@@ -566,8 +567,8 @@ export default function CameraStage({
         now,
       )
 
-      // คนที่หายไปจากเฟรมนานเกิน POSE_TRACK_STALE_MS — ปิด event ค้างของเขา แล้วลบ state ทิ้ง
-      // (ถ้ากลับมาใหม่ทีหลังจะเริ่มนับใหม่หมดด้วย trackId ใหม่ — เทียบเท่า "รีเซ็ต" การเตือนพักของคนนั้น)
+      // คนที่หายไปจากเฟรมนานเกิน POSE_TRACK_STALE_MS — ปิด event ค้างของเขา แล้วลบ state ต่อคนทิ้ง
+      // ตัวจับเวลาเตือนพักอยู่ระดับกล้องแยกต่างหาก จึงไม่หายตาม person track
       if (removedIds.length > 0) peopleChanged = true
       for (const id of removedIds) {
         const person = personStatesRef.current.get(id)
@@ -609,7 +610,6 @@ export default function CameraStage({
             postureState: initialSustainedState,
             fatigueState: initialSustainedState,
             distanceState: initialSustainedState,
-            breakState: initialBreakState,
             yawnOpenSince: null,
             yawnTimestamps: [],
             identityName: null,
@@ -683,14 +683,14 @@ export default function CameraStage({
         }
         if (step.endedEvent) p.onAlertEnd(step.endedEvent)
 
-        // เตือนพัก: ถือว่า "อยู่หน้าจอ" ตราบเท่าที่ track นี้ยังถูกตรวจพบอยู่ในเฟรม — ถ้าหายไปนานพอ
-        // track จะถูกลบไปเองข้างบนแล้ว รอบหน้าที่กลับมาจะเริ่มนับเวลานั่งต่อเนื่องใหม่ (เทียบเท่า "พักแล้ว")
-        const breakStep = stepBreakReminder(person.breakState, true, now, p.breakThresholds)
-        person.breakState = breakStep.state
-        if (breakStep.shouldRemind) {
-          p.onBreakDue(label, breakStep.continuousMinutes)
-          if (p.soundEnabled) playAlertBeep()
-        }
+      }
+
+      // เตือนพักระดับกล้อง: เดินหนึ่งครั้งต่อ pose frame ไม่ใช่หนึ่งครั้งต่อ person track
+      const breakStep = stepBreakReminder(deskBreakStateRef.current, matches.length > 0, now, p.breakThresholds)
+      deskBreakStateRef.current = breakStep.state
+      if (breakStep.shouldRemind) {
+        p.onBreakDue(getBreakReminderLabel(p.multiCameraMode, p.cameraLabel), breakStep.continuousMinutes)
+        if (p.soundEnabled) playAlertBeep()
       }
 
       recomputeAlertUi()
