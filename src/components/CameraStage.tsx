@@ -19,6 +19,7 @@ import {
   type TorsoReading,
 } from '../lib/fallDetection'
 import { nextCachedPoseResult } from '../lib/poseResultCache'
+import { shouldProcessPose } from '../lib/poseThrottle'
 import { enrollPerson, identifyFace } from '../services/faceEnrollment'
 import { playAlertBeep, playFallAlarm } from '../services/beep'
 import type { PostureThresholds } from '../types/posture'
@@ -144,6 +145,7 @@ export default function CameraStage({
   const { status: faceStatus, error: faceError } = useFaceApiModels()
 
   const lastVideoTimeRef = useRef(-1)
+  const lastPoseRunAtRef = useRef(0)
   const latestPoseResultRef = useRef<PoseLandmarkerResult | null>(null)
   // ตัวจับเวลาเตือนพักระดับกล้อง ไม่ผูกกับ lifetime ของ person track
   const deskBreakStateRef = useRef<BreakReminderState>(initialBreakState)
@@ -539,15 +541,24 @@ export default function CameraStage({
     let peopleChanged = false
 
     // กล้องในเครื่อง (video): ประมวลผลเฉพาะตอนเฟรมเปลี่ยนจริง (เช็คจาก currentTime) กันประมวลผลซ้ำเฟรมเดิม
-    // กล้อง IP (MJPEG ผ่าน <img>): ไม่มีสัญญาณ "เฟรมใหม่" ที่เชื่อถือได้ เลยประมวลผลทุกรอบไปเลย
+    // กล้อง IP (MJPEG ผ่าน <img>): ไม่มีสัญญาณ "เฟรมใหม่" ที่เชื่อถือได้ จึงใช้ time throttle ด้านล่างเป็นตัวจำกัดหลัก
     // ถ้าเคยเจอปัญหา CORS กับแหล่งภาพนี้มาแล้ว หยุดลองซ้ำทุกเฟรม (กัน error สแปม) จนกว่าจะเปลี่ยนแหล่งกล้อง
-    const shouldProcessPose =
-      !!landmarker && !sourceErrorStickyRef.current && (!isVideoSource || source.currentTime !== lastVideoTimeRef.current)
+    const perfNow = performance.now()
+    const shouldRunPose = shouldProcessPose({
+      hasLandmarker: !!landmarker,
+      sourceErrorSticky: sourceErrorStickyRef.current,
+      perfNow,
+      lastPoseRunAt: lastPoseRunAtRef.current,
+      isVideoSource,
+      videoCurrentTime: isVideoSource ? source.currentTime : null,
+      lastVideoTime: lastVideoTimeRef.current,
+    })
 
-    if (shouldProcessPose && landmarker) {
+    if (shouldRunPose && landmarker) {
       if (isVideoSource) lastVideoTimeRef.current = source.currentTime
+      lastPoseRunAtRef.current = perfNow
       try {
-        poseResult = landmarker.detectForVideo(source, performance.now())
+        poseResult = landmarker.detectForVideo(source, perfNow)
         latestPoseResultRef.current = nextCachedPoseResult(latestPoseResultRef.current, poseResult)
       } catch (err) {
         console.error('[CameraStage] ตรวจจับท่านั่งล้มเหลว:', err)

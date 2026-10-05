@@ -4,11 +4,12 @@
 
 **Blocked by:** 04 (tick ที่ข้ามต้องใช้ `latestPoseResultRef` ไม่อย่างนั้นโครงร่างจะกลับมากระพริบ)
 
-**Status:** ready-for-agent
+**Status:** done
 
 อ้างอิง: guide ขั้น 3.2 · plan Step 3.2
 
-- [ ] `shouldProcessPose` มีเงื่อนไข `perfNow - lastPoseRunAtRef.current >= POSE_INTERVAL_MS` (`1000 / 12`) ใช้กับแหล่งภาพทั้งสองแบบ
-- [ ] ยังคงเช็คเฟรมใหม่ด้วย `currentTime` สำหรับ `<video>` ไว้เหมือนเดิม
-- [ ] ส่ง `perfNow` ตัวเดียวกันเข้า `detectForVideo`
-- [ ] Gate เขียว
+- [x] `shouldProcessPose` มีเงื่อนไข `perfNow - lastPoseRunAtRef.current >= POSE_INTERVAL_MS` (`1000 / 12`) ใช้กับแหล่งภาพทั้งสองแบบ
+- [x] ยังคงเช็คเฟรมใหม่ด้วย `currentTime` สำหรับ `<video>` ไว้เหมือนเดิม
+- [x] ส่ง `perfNow` ตัวเดียวกันเข้า `detectForVideo`
+- [x] Gate เขียว
+- [ ] Manual browser smoke test ผ่าน (ดู 10-browser-smoke.md) — เลื่อนไปทดสอบซ้ำภายหลังตามการตัดสินใจของผู้ใช้
