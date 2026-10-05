@@ -4,16 +4,17 @@
 
 **Blocked by:** 07
 
-**Status:** ready-for-agent
+**Status:** done
 
 อ้างอิง: guide ขั้น 2.3 · plan Step 2.2
 
 > ทางเลือก: ถ้าจะทำ ticket 12 ต่อในรอบเดียวกัน ทำ ticket นี้ในรูปแบบ Phase 4 ไปเลยได้ (`extractPostureFeatures` คืน `null` เมื่อไม่พบคน) จะได้ไม่ต้องเขียน `analyzePosture` ใหม่ระหว่างทาง
 
-- [ ] ต้องเห็นศีรษะและไหล่ ไม่อย่างนั้นถือว่าไม่พบคน ส่วนสะโพกไม่บังคับ
-- [ ] ผลลัพธ์มี `quality: 'full_body' | 'upper_body'` และ `torsoAngleDeg: number | null`; ข้ามการเช็ค slouch เมื่อเป็น `null`
-- [ ] ป้ายใน UI ต่อท้าย `(เห็นแค่ช่วงบน)` เมื่อ `upper_body`
-- [ ] บล็อก fall detection: `isNearHorizontal` เป็น false เมื่อ torso angle เป็น `null`; metrics ใช้ `?? 0`
-- [ ] เทสต์: pose ที่มีแค่หู + ไหล่ ได้ `quality === 'upper_body'` และ `torsoAngleDeg === null`
-- [ ] เทสต์ของ fall detection ยังเขียว
-- [ ] Gate เขียว
+- [x] ต้องเห็นศีรษะและไหล่ ไม่อย่างนั้นถือว่าไม่พบคน ส่วนสะโพกไม่บังคับ
+- [x] ผลลัพธ์มี `quality: 'full_body' | 'upper_body'` และ `torsoAngleDeg: number | null`; ข้ามการเช็ค slouch เมื่อเป็น `null`
+- [x] ป้ายใน UI ต่อท้าย `(เห็นแค่ช่วงบน)` เมื่อ `upper_body`
+- [x] บล็อก fall detection: `isNearHorizontal` เป็น false เมื่อ torso angle เป็น `null`; metrics ใช้ `?? 0`
+- [x] เทสต์: pose ที่มีแค่หู + ไหล่ ได้ `quality === 'upper_body'` และ `torsoAngleDeg === null`
+- [x] เทสต์ของ fall detection ยังเขียว
+- [x] Gate เขียว
+- [ ] Manual browser smoke test ผ่าน (ดู 08-browser-smoke.md) — เลื่อนไปทดสอบซ้ำภายหลังตามการตัดสินใจของผู้ใช้

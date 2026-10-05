@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computeDropRatio, pruneHistory, shouldAlertLeftFrame } from './fallDetection'
+import { computeDropRatio, isNearHorizontal, pruneHistory, shouldAlertLeftFrame } from './fallDetection'
 
 describe('computeDropRatio', () => {
   it('returns null when there is only one torso reading', () => {
@@ -38,6 +38,16 @@ describe('pruneHistory', () => {
       { t: 500, y: 0.45 },
       { t: 900, y: 0.5 },
     ])
+  })
+})
+
+describe('isNearHorizontal', () => {
+  it('returns false when the torso angle is unavailable', () => {
+    expect(isNearHorizontal(null, 55)).toBe(false)
+  })
+
+  it('returns true when the torso angle reaches the fall threshold', () => {
+    expect(isNearHorizontal(55, 55)).toBe(true)
   })
 })
 

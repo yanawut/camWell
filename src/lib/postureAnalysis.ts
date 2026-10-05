@@ -45,27 +45,38 @@ function midOrVisible(left: Point | undefined, right: Point | undefined, min: nu
   return undefined
 }
 
+/** คุณภาพของสัญญาณ pose: เห็นทั้งตัว (มีสะโพก) / เห็นแค่ช่วงบน (หัว+ไหล่) */
+export type PoseQuality = 'full_body' | 'upper_body'
+
 export interface PostureAngles {
   neckAngleDeg: number
-  torsoAngleDeg: number
+  /** null = มองไม่เห็นสะโพก วัดมุมลำตัวไม่ได้ */
+  torsoAngleDeg: number | null
   shoulderTiltDeg: number
 }
 
 export interface PostureAnalysisResult extends PostureAngles {
   issue: PostureIssueType
+  quality: PoseQuality
+}
+
+const NO_PERSON: PostureAnalysisResult = {
+  issue: 'no_person',
+  quality: 'upper_body',
+  neckAngleDeg: 0,
+  torsoAngleDeg: null,
+  shoulderTiltDeg: 0,
 }
 
 /**
  * วิเคราะห์ landmarks 1 เฟรม -> มุมคอ/มุมลำตัว/มุมเอียงไหล่ + สรุปเป็นสถานะท่านั่ง
- * คืนค่า issue = 'no_person' ถ้ามองไม่เห็น landmark หลักที่จำเป็นชัดเจนพอ
+ * คืนค่า issue = 'no_person' ถ้ามองไม่เห็นหัวหรือไหล่ชัดเจนพอ
  */
 export function analyzePosture(
   landmarks: Point[] | undefined,
   thresholds: PostureThresholds,
 ): PostureAnalysisResult {
-  if (!landmarks || landmarks.length < 25) {
-    return { issue: 'no_person', neckAngleDeg: 0, torsoAngleDeg: 0, shoulderTiltDeg: 0 }
-  }
+  if (!landmarks || landmarks.length < 25) return NO_PERSON
 
   const nose = landmarks[LM.NOSE]
   const leftEar = landmarks[LM.LEFT_EAR]
@@ -80,19 +91,19 @@ export function analyzePosture(
   // หัว: ใช้หูถ้าเห็น (แม่นกว่าเวลานั่งหันข้าง) ไม่งั้น fallback ไปจมูก
   const headPoint = midOrVisible(leftEar, rightEar, thresholds.minVisibility) ?? (isVisible(nose, thresholds.minVisibility) ? nose : undefined)
 
-  if (!shoulderMid || !hipMid || !headPoint) {
-    return { issue: 'no_person', neckAngleDeg: 0, torsoAngleDeg: 0, shoulderTiltDeg: 0 }
-  }
+  // Quality Gate: ต้องเห็นอย่างน้อย "หัว + ไหล่" ส่วนสะโพกไม่บังคับ
+  if (!shoulderMid || !headPoint) return NO_PERSON
+  const quality: PoseQuality = hipMid ? 'full_body' : 'upper_body'
 
   const neckAngleDeg = angleFromVertical(shoulderMid, headPoint)
-  const torsoAngleDeg = angleFromVertical(hipMid, shoulderMid)
+  const torsoAngleDeg = hipMid ? angleFromVertical(hipMid, shoulderMid) : null
   const shoulderTiltDeg =
     isVisible(leftShoulder, thresholds.minVisibility) && isVisible(rightShoulder, thresholds.minVisibility)
       ? shoulderTilt(leftShoulder, rightShoulder)
       : 0
 
   let issue: PostureIssueType = 'good'
-  if (torsoAngleDeg >= thresholds.torsoAngleThresholdDeg) {
+  if (torsoAngleDeg !== null && torsoAngleDeg >= thresholds.torsoAngleThresholdDeg) {
     issue = 'slouching'
   } else if (neckAngleDeg >= thresholds.neckAngleThresholdDeg) {
     issue = 'forward_head'
@@ -100,7 +111,7 @@ export function analyzePosture(
     issue = 'leaning'
   }
 
-  return { issue, neckAngleDeg, torsoAngleDeg, shoulderTiltDeg }
+  return { issue, quality, neckAngleDeg, torsoAngleDeg, shoulderTiltDeg }
 }
 
 export const POSTURE_LABELS_TH: Record<PostureIssueType, string> = {

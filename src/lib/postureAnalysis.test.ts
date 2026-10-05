@@ -22,6 +22,17 @@ function makeLandmarks(
   return landmarks
 }
 
+function makeUpperBodyLandmarks(): Point[] {
+  const landmarks = makeLandmarks(
+    { x: 0.62, y: 0.4 },
+    { x: 0.38, y: 0.4 },
+  )
+
+  landmarks[23] = { x: 0.5, y: 0.7, visibility: 0 }
+  landmarks[24] = { x: 0.5, y: 0.7, visibility: 0 }
+  return landmarks
+}
+
 describe('analyzePosture shoulder tilt', () => {
   it('reports level shoulders as about 0 degrees when the left shoulder has the larger x coordinate', () => {
     const result = analyzePosture(
@@ -33,6 +44,7 @@ describe('analyzePosture shoulder tilt', () => {
     )
 
     expect(result.shoulderTiltDeg).toBeCloseTo(0, 6)
+    expect(result.quality).toBe('full_body')
     expect(result.issue).toBe('good')
   })
 
@@ -46,5 +58,24 @@ describe('analyzePosture shoulder tilt', () => {
     )
 
     expect(result.shoulderTiltDeg).toBeCloseTo(22.62, 1)
+  })
+
+  it('analyzes an ears-and-shoulders-only pose as upper body without a torso angle', () => {
+    const result = analyzePosture(makeUpperBodyLandmarks(), DEFAULT_THRESHOLDS)
+
+    expect(result.quality).toBe('upper_body')
+    expect(result.torsoAngleDeg).toBeNull()
+    expect(result.issue).toBe('good')
+  })
+
+  it('returns no_person when the head signal is missing even if shoulders and hips are visible', () => {
+    const landmarks = makeLandmarks(
+      { x: 0.62, y: 0.4 },
+      { x: 0.38, y: 0.4 },
+    )
+    landmarks[7] = { x: 0.5, y: 0.2, visibility: 0 }
+    landmarks[8] = { x: 0.5, y: 0.2, visibility: 0 }
+
+    expect(analyzePosture(landmarks, DEFAULT_THRESHOLDS).issue).toBe('no_person')
   })
 })

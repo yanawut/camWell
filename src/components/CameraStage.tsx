@@ -11,7 +11,13 @@ import { getBreakReminderLabel, initialBreakState, stepBreakReminder } from '../
 import { initialSustainedState, stepSustainedAlert, type SustainedAlertState } from '../lib/sustainedAlertMachine'
 import { PositionTracker, type Point2D } from '../lib/tracker'
 import { MAX_TRACKED_PEOPLE } from '../lib/multiPerson'
-import { pruneHistory, computeDropRatio, shouldAlertLeftFrame, type TorsoReading } from '../lib/fallDetection'
+import {
+  pruneHistory,
+  computeDropRatio,
+  isNearHorizontal as isFallTorsoNearHorizontal,
+  shouldAlertLeftFrame,
+  type TorsoReading,
+} from '../lib/fallDetection'
 import { nextCachedPoseResult } from '../lib/poseResultCache'
 import { enrollPerson, identifyFace } from '../services/faceEnrollment'
 import { playAlertBeep, playFallAlarm } from '../services/beep'
@@ -633,7 +639,8 @@ export default function CameraStage({
           person.anchorPx = { x: ((left.x + right.x) / 2) * canvas.width, y: normalizedTorsoY * canvas.height }
         }
 
-        person.postureStatusLabel = POSTURE_LABELS_TH[analysis.issue]
+        person.postureStatusLabel =
+          POSTURE_LABELS_TH[analysis.issue] + (analysis.quality === 'upper_body' ? ' (เห็นแค่ช่วงบน)' : '')
 
         // ชื่อที่จะโผล่ใน EventLog/banner หกล้ม/ข้อความเตือนพัก (รวมข้ามกล้อง) — แปะชื่อกล้องนำหน้าด้วยถ้ามี
         // มากกว่า 1 กล้องเชื่อมต่ออยู่ (กันข้อความรกตอนมีกล้องเดียว)
@@ -652,7 +659,8 @@ export default function CameraStage({
           const dropRatio = computeDropRatio(person.torsoYHistory)
           if (dropRatio !== null && dropRatio >= p.fallThresholds.dropRatioThreshold) {
             person.lastRapidDropAt = now
-            const isNearHorizontal = analysis.torsoAngleDeg >= p.fallThresholds.fallTorsoAngleDeg
+            const torsoAngleDeg = analysis.torsoAngleDeg
+            const isNearHorizontal = isFallTorsoNearHorizontal(torsoAngleDeg, p.fallThresholds.fallTorsoAngleDeg)
             if (isNearHorizontal && now - person.lastFallAlertAt >= p.fallThresholds.cooldownMs) {
               person.lastFallAlertAt = now
               const fallEvent: AlertEvent = {
@@ -662,7 +670,7 @@ export default function CameraStage({
                 startedAt: now,
                 endedAt: now,
                 personName: label,
-                metrics: { dropRatio, torsoAngleDeg: analysis.torsoAngleDeg },
+                metrics: { dropRatio, torsoAngleDeg: torsoAngleDeg ?? 0 },
               }
               p.onAlertStart(fallEvent)
               p.onFallDetected(fallEvent)
@@ -674,7 +682,7 @@ export default function CameraStage({
         const postureIssue = analysis.issue === 'no_person' ? 'no_signal' : analysis.issue
         const step = stepSustainedAlert(
           person.postureState,
-          { issue: postureIssue, metrics: { neckAngleDeg: analysis.neckAngleDeg, torsoAngleDeg: analysis.torsoAngleDeg, shoulderTiltDeg: analysis.shoulderTiltDeg } },
+          { issue: postureIssue, metrics: { neckAngleDeg: analysis.neckAngleDeg, torsoAngleDeg: analysis.torsoAngleDeg ?? 0, shoulderTiltDeg: analysis.shoulderTiltDeg } },
           now,
           'posture',
           p.postureThresholds.sustainedMs,
