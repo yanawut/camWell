@@ -4,11 +4,12 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
 อ้างอิง: guide ขั้น 1.3 · plan Step 1.3
 
-- [ ] เก็บผล pose ทุกครั้งที่รันสำเร็จลง `latestPoseResultRef` (ภายใน `try` เดิม)
-- [ ] `drawOverlay` วาดจาก ref เสมอ ไม่รับค่า `null` รายเฟรมอีกต่อไป
-- [ ] รีเซ็ต ref เป็น `null` ในบล็อกที่จัดการเมื่อแหล่งภาพกล้องเปลี่ยน
-- [ ] Gate เขียว
+- [x] เก็บผล pose ทุกครั้งที่รันสำเร็จลง `latestPoseResultRef` (ภายใน `try` เดิม)
+- [x] `drawOverlay` วาดจาก ref เสมอ ไม่รับค่า `null` รายเฟรมอีกต่อไป
+- [x] รีเซ็ต ref เป็น `null` ในบล็อกที่จัดการเมื่อแหล่งภาพกล้องเปลี่ยน
+- [x] Gate เขียว
+- [ ] Manual browser smoke test ผ่าน (ดู 04-browser-smoke.md) — เลื่อนไปทดสอบซ้ำภายหลังตามการตัดสินใจของผู้ใช้

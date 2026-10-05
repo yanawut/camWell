@@ -12,6 +12,7 @@ import { initialSustainedState, stepSustainedAlert, type SustainedAlertState } f
 import { PositionTracker, type Point2D } from '../lib/tracker'
 import { MAX_TRACKED_PEOPLE } from '../lib/multiPerson'
 import { pruneHistory, computeDropRatio, type TorsoReading } from '../lib/fallDetection'
+import { nextCachedPoseResult } from '../lib/poseResultCache'
 import { enrollPerson, identifyFace } from '../services/faceEnrollment'
 import { playAlertBeep, playFallAlarm } from '../services/beep'
 import type { PostureThresholds } from '../types/posture'
@@ -134,6 +135,7 @@ export default function CameraStage({
   const { status: faceStatus, error: faceError } = useFaceApiModels()
 
   const lastVideoTimeRef = useRef(-1)
+  const latestPoseResultRef = useRef<PoseLandmarkerResult | null>(null)
   const lastFaceRunAtRef = useRef(0)
   const lastPeopleUpdateAtRef = useRef(0)
   const faceBusyRef = useRef(false)
@@ -491,6 +493,11 @@ export default function CameraStage({
     if (cameraSourceKey !== lastCameraSourceKeyRef.current) {
       lastCameraSourceKeyRef.current = cameraSourceKey
       sourceErrorStickyRef.current = false
+      latestPoseResultRef.current = nextCachedPoseResult(latestPoseResultRef.current, null, true)
+      if (canvas) {
+        const ctx = canvas.getContext('2d')
+        if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height)
+      }
       setCameraError(null)
     }
 
@@ -528,6 +535,7 @@ export default function CameraStage({
       if (isVideoSource) lastVideoTimeRef.current = source.currentTime
       try {
         poseResult = landmarker.detectForVideo(source, performance.now())
+        latestPoseResultRef.current = nextCachedPoseResult(latestPoseResultRef.current, poseResult)
       } catch (err) {
         console.error('[CameraStage] ตรวจจับท่านั่งล้มเหลว:', err)
         if (isCorsLikeError(err)) {
@@ -689,7 +697,7 @@ export default function CameraStage({
     }
 
     const ctx = canvas.getContext('2d')
-    if (ctx) drawOverlay(ctx, poseResult, canvas.width, canvas.height)
+    if (ctx) drawOverlay(ctx, latestPoseResultRef.current, canvas.width, canvas.height)
 
     maybeEmitPeopleSummary(now, peopleChanged)
 
