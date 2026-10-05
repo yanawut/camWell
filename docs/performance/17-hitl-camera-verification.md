@@ -2,7 +2,7 @@
 
 **What to build:** คนทดสอบกับกล้องจริงในสิ่งที่เทสต์อัตโนมัติตรวจไม่ได้ และรวมรายงานต่อ phase: commit ที่ทำ, ผล gate (แปะบรรทัดสรุปของ vitest), และขั้นที่ข้ามหรือยังแดง (ระบุตามจริง)
 
-**Blocked by:** 01–13, 15, 16 (และ 14 ถ้าทำ)
+**Blocked by:** 01–14, 16
 
 **Status:** needs-human (ต้องใช้กล้องจริง)
 
@@ -12,4 +12,4 @@
 - [ ] (07–08) นั่งหน้า webcam โน้ตบุ๊ก (ไม่เห็นสะโพก) ขึ้น `(เห็นแค่ช่วงบน)` และไม่ถูกรายงาน `leaning` ขณะนั่งตรง
 - [ ] (09–11) จดค่า inference ms ในโหมด workstation กับ multi และกล้อง 1 ตัวกับ 2 ตัว; การใช้ CPU ของกล้อง IP ลดลง
 - [ ] (13) calibrate สำเร็จ, ค่ายังอยู่หลัง reload ใต้ key `camwell:posture-baseline:v1:<cameraId>`, กล้องที่สองเริ่มแบบยังไม่ calibrate, ก้มดูโทรศัพท์ 8 วิแล้วแจ้ง `forward_head`
-- [ ] (15–16) เอนตัวพร้อมศีรษะตกได้ 2 การแจ้งเตือน; ไฟล์ JSON ที่ export เปิดได้และมี `cameraId`
+- [ ] (16) ไฟล์ JSON ที่ export เปิดได้ และทุกตัวอย่างมี `cameraId` กับมุมดิบครบ (`neckAngleDeg`, `torsoAngleDeg`, `shoulderTiltDeg`, `headHeightRatio`, `quality`)
