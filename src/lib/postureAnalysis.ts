@@ -23,12 +23,12 @@ function angleFromVertical(p1: Point, p2: Point): number {
   return Math.abs((rad * 180) / Math.PI)
 }
 
-/** มุมเอียงของเส้นไหล่ซ้าย-ขวา เทียบแนวนอน */
+/** มุมเอียงของเส้นไหล่ซ้าย-ขวา เทียบแนวนอน (0 = ไหล่ตรง) */
 function shoulderTilt(left: Point, right: Point): number {
-  const dx = right.x - left.x
-  const dy = right.y - left.y
+  const dx = Math.abs(right.x - left.x)
+  const dy = Math.abs(right.y - left.y)
   const rad = Math.atan2(dy, dx)
-  return Math.abs((rad * 180) / Math.PI)
+  return (rad * 180) / Math.PI
 }
 
 function isVisible(p: Point | undefined, min: number): p is Point {

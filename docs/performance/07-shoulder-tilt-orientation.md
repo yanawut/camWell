@@ -4,10 +4,11 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
 อ้างอิง: guide ขั้น 2.2 (ขั้น 2.1 ใน guide เป็นการทดลองด้วยกล้องจริง แทนด้วยเทสต์) · plan Step 2.1 · branch `phase-2-quality-gate`
 
-- [ ] `shoulderTilt` ใช้ `Math.abs` กับทั้ง dx และ dy
-- [ ] เทสต์: ไหล่ระดับเดียวกันโดยไหล่ซ้ายมี x มากกว่า ได้ `shoulderTiltDeg ≈ 0`
-- [ ] Gate เขียว
+- [x] `shoulderTilt` ใช้ `Math.abs` กับทั้ง dx และ dy
+- [x] เทสต์: ไหล่ระดับเดียวกันโดยไหล่ซ้ายมี x มากกว่า ได้ `shoulderTiltDeg ≈ 0`
+- [x] Gate เขียว
+- [ ] Manual browser smoke test ผ่าน (ดู 07-browser-smoke.md) — เลื่อนไปทดสอบซ้ำภายหลังตามการตัดสินใจของผู้ใช้
