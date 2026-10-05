@@ -4,11 +4,12 @@
 
 **Blocked by:** 10 (วัดเฉพาะรอบที่รันจริงหลังมี throttle)
 
-**Status:** ready-for-agent
+**Status:** done
 
 อ้างอิง: guide ขั้น 3.3 · plan Step 3.3
 
-- [ ] วัดเวลารอบ `detectForVideo` แล้วเก็บแบบ EMA (0.9 ค่าเก่า / 0.1 ค่าใหม่) ใน `poseInferenceMsRef`
-- [ ] ส่งค่าออกไปใน summary tick เดิมทุก 500 ms (ไม่เพิ่ม `setState` รายเฟรม)
-- [ ] ค่าแสดงในบรรทัดสถานะข้างจำนวนคน
-- [ ] Gate เขียว
+- [x] วัดเวลารอบ `detectForVideo` แล้วเก็บแบบ EMA (0.9 ค่าเก่า / 0.1 ค่าใหม่) ใน `poseInferenceMsRef`
+- [x] ส่งค่าออกไปใน summary tick เดิมทุก 500 ms (ไม่เพิ่ม `setState` รายเฟรม)
+- [x] ค่าแสดงในบรรทัดสถานะข้างจำนวนคน
+- [x] Gate เขียว
+- [ ] Manual browser smoke test ผ่าน (ดู 11-browser-smoke.md) — เลื่อนไปทดสอบซ้ำภายหลังตามการตัดสินใจของผู้ใช้

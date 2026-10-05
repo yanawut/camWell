@@ -20,6 +20,7 @@ import {
 } from '../lib/fallDetection'
 import { nextCachedPoseResult } from '../lib/poseResultCache'
 import { shouldProcessPose } from '../lib/poseThrottle'
+import { updateInferenceEma } from '../lib/inferenceTiming'
 import { enrollPerson, identifyFace } from '../services/faceEnrollment'
 import { playAlertBeep, playFallAlarm } from '../services/beep'
 import type { PostureThresholds } from '../types/posture'
@@ -146,6 +147,7 @@ export default function CameraStage({
 
   const lastVideoTimeRef = useRef(-1)
   const lastPoseRunAtRef = useRef(0)
+  const poseInferenceMsRef = useRef(0)
   const latestPoseResultRef = useRef<PoseLandmarkerResult | null>(null)
   // ตัวจับเวลาเตือนพักระดับกล้อง ไม่ผูกกับ lifetime ของ person track
   const deskBreakStateRef = useRef<BreakReminderState>(initialBreakState)
@@ -177,6 +179,7 @@ export default function CameraStage({
   const [alertBannerText, setAlertBannerText] = useState('')
   const [cameraError, setCameraError] = useState<string | null>(null)
   const [peopleCount, setPeopleCount] = useState(0)
+  const [poseInferenceMs, setPoseInferenceMs] = useState(0)
   // primaryFaceRef อัปเดตทุก throttle tick แต่ ref ไม่ทำให้ re-render — ใช้ state คู่กันแค่สำหรับ
   // เปิด/ปิดปุ่ม Calibrate/ลงทะเบียน ให้ตรงกับความเป็นจริง
   const [hasFaceSignal, setHasFaceSignal] = useState(false)
@@ -269,6 +272,7 @@ export default function CameraStage({
         yawnCount: person.yawnTimestamps.length,
       }))
     setPeopleCount(summaries.length)
+    setPoseInferenceMs(Math.round(poseInferenceMsRef.current))
     propsRef.current.onPeopleUpdate(summaries)
   }, [])
 
@@ -558,7 +562,12 @@ export default function CameraStage({
       if (isVideoSource) lastVideoTimeRef.current = source.currentTime
       lastPoseRunAtRef.current = perfNow
       try {
+        const inferenceStartedAt = performance.now()
         poseResult = landmarker.detectForVideo(source, perfNow)
+        poseInferenceMsRef.current = updateInferenceEma(
+          poseInferenceMsRef.current,
+          performance.now() - inferenceStartedAt,
+        )
         latestPoseResultRef.current = nextCachedPoseResult(latestPoseResultRef.current, poseResult)
       } catch (err) {
         console.error('[CameraStage] ตรวจจับท่านั่งล้มเหลว:', err)
@@ -829,7 +838,7 @@ export default function CameraStage({
         {isAlerting && <div className="camera-status-banner banner-alert">⚠ {alertBannerText}</div>}
       </div>
       <p className="current-issue">
-        ตรวจพบในเฟรม: {peopleCount} คน (รองรับสูงสุด {maxPeopleFor(detectionMode)} คน)
+        ตรวจพบในเฟรม: {peopleCount} คน (รองรับสูงสุด {maxPeopleFor(detectionMode)} คน) · Pose ใช้เวลา ~{poseInferenceMs} ms/ครั้ง
       </p>
       {faceFeaturesEnabled && (
         <>
