@@ -10,9 +10,13 @@ import { maxPeopleFor } from '../lib/multiPerson'
 import { MAX_CAMERA_SLOTS, type CameraSlot } from '../types/cameraSource'
 import { ALERT_LABELS_TH } from '../types/alerts'
 import type { PostureFeatures } from '../types/posture'
+import type { PoseModelVariant } from '../hooks/usePoseLandmarker'
+import type { SkeletonMode } from '../lib/skeletonOverlay'
 
 interface Props extends DevConsoleProps {
   hidden: boolean
+  poseModel: PoseModelVariant
+  skeletonMode: SkeletonMode
   statsBySlot: Record<string, CameraStats>
   onStats: (slotId: string, stats: CameraStats) => void
   recorder: RecorderState
@@ -165,6 +169,8 @@ export default function MonitorTab(props: Props) {
                     {props.renderCameraStage(slot, {
                       onStats: (s) => props.onStats(slot.id, s),
                       overlay,
+                      poseModel: props.poseModel,
+                      skeletonMode: props.skeletonMode,
                     })}
                     <div className="dc-cam-info">
                       <span className="dc-muted">Posture baseline</span>
@@ -212,6 +218,7 @@ export default function MonitorTab(props: Props) {
               peopleBySlot={peopleBySlot}
               recorder={recorder}
               recCameraId={recCameraId}
+              poseModel={props.poseModel}
               setRecorder={props.setRecorder}
               postureThresholds={props.postureThresholds}
             />

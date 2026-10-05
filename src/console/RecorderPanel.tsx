@@ -5,6 +5,7 @@ import { DATASET_LABELS, datasetRecorder } from '../services/datasetRecorder'
 import type { CameraSlot } from '../types/cameraSource'
 import type { PersonSummary } from '../types/person'
 import type { PostureThresholds } from '../types/posture'
+import type { PoseModelVariant } from '../hooks/usePoseLandmarker'
 
 interface Props {
   cameraSlots: CameraSlot[]
@@ -14,6 +15,7 @@ interface Props {
   recCameraId: string
   setRecorder: Dispatch<SetStateAction<RecorderState>>
   postureThresholds: PostureThresholds
+  poseModel: PoseModelVariant
 }
 
 export default function RecorderPanel({
@@ -24,9 +26,12 @@ export default function RecorderPanel({
   recCameraId,
   setRecorder,
   postureThresholds,
+  poseModel,
 }: Props) {
   const [showSchema, setShowSchema] = useState(false)
-  const { recording, label, sampleCount } = recorder
+  const { recording, label, sampleCount, datasetPoseModel } = recorder
+  // datasetRecorder ทิ้ง sample ข้ามรุ่นอยู่แล้ว — UI กันไว้ก่อนเพื่อไม่ให้กดบันทึกแล้วได้ 0 sample แบบงงๆ
+  const modelMismatch = sampleCount > 0 && datasetPoseModel !== null && datasetPoseModel !== poseModel
   const recSlot = cameraSlots.find((s) => s.id === recCameraId)
   const peopleInFrame = peopleBySlot[recCameraId]?.length ?? 0
   const recCameraBroken = !!statsBySlot[recCameraId]?.cameraError
@@ -43,7 +48,7 @@ export default function RecorderPanel({
 
   const clearDataset = () => {
     datasetRecorder.clear()
-    setRecorder((prev) => ({ ...prev, sampleCount: 0 }))
+    setRecorder((prev) => ({ ...prev, sampleCount: 0, datasetPoseModel: null }))
   }
 
   const readyText =
@@ -92,6 +97,22 @@ export default function RecorderPanel({
       </span>
       {!import.meta.env.DEV && (
         <span className="dc-warn-note">build นี้ไม่ใช่ dev — CameraStage จะไม่เก็บ sample (ผูก import.meta.env.DEV ไว้)</span>
+      )}
+
+      <span className="dc-muted-12">
+        โมเดล: <span className="dc-mono dc-text">{poseModel}</span>
+        {datasetPoseModel && (
+          <>
+            {' '}
+            · dataset ปัจจุบัน: <span className="dc-mono dc-text">{datasetPoseModel}</span>
+          </>
+        )}
+      </span>
+      {modelMismatch && (
+        <span className="dc-warn-note">
+          sample ที่เก็บอยู่มาจากโมเดล {datasetPoseModel} — Export แล้วล้างข้อมูลก่อน จึงจะเริ่มบันทึกด้วย {poseModel} ได้
+          (ไม่ปน dataset ข้ามรุ่น)
+        </span>
       )}
 
       <div className="dc-col" style={{ gap: 6 }}>
@@ -147,7 +168,7 @@ export default function RecorderPanel({
           type="button"
           className="dc-rec-btn"
           style={{ background: recording ? 'var(--text)' : 'var(--danger)' }}
-          disabled={!recording && recCameraBroken}
+          disabled={!recording && (recCameraBroken || modelMismatch)}
           onClick={toggleRecording}
         >
           {recording ? '■ หยุดบันทึก' : '● เริ่มบันทึก'}
@@ -179,7 +200,7 @@ export default function RecorderPanel({
         <>
           <pre className="dc-pre">{schema}</pre>
           <span className="dc-muted" style={{ fontSize: 11 }}>
-            meta: schemaVersion, exportedAt, thresholdsAtExport · landmarks ต้องมี visibility ทุกจุด
+            meta: schemaVersion, exportedAt, poseModel, thresholdsAtExport · landmarks ต้องมี visibility ทุกจุด
           </span>
         </>
       )}

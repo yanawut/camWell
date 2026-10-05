@@ -54,12 +54,12 @@ function shoulderTilt(left: Point, right: Point): number {
   return (rad * 180) / Math.PI
 }
 
-function isVisible(point: Point | undefined, min: number): point is Point {
+export function isVisible(point: Point | undefined, min: number): point is Point {
   return !!point && (point.visibility === undefined || point.visibility >= min)
 }
 
 /** เลือกจุดกึ่งกลางระหว่างซ้าย-ขวา ถ้าเห็นทั้งคู่ ไม่งั้นใช้ข้างที่เห็น */
-function midOrVisible(left: Point | undefined, right: Point | undefined, min: number): Point | undefined {
+export function midOrVisible(left: Point | undefined, right: Point | undefined, min: number): Point | undefined {
   const leftVisible = isVisible(left, min)
   const rightVisible = isVisible(right, min)
 

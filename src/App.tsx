@@ -211,6 +211,8 @@ export default function App() {
         onPersonEnrolled={handlePersonEnrolled}
         onStats={extras.onStats}
         overlay={extras.overlay}
+        poseModel={extras.poseModel}
+        skeletonMode={extras.skeletonMode}
       />
     )
     return (

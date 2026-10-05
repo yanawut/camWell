@@ -7,6 +7,8 @@ import PeopleTab from './PeopleTab'
 import { useBackendHealth } from './useBackendHealth'
 import { datasetRecorder, type DatasetLabel } from '../services/datasetRecorder'
 import { API_BASE_URL } from '../services/apiConfig'
+import { DEFAULT_POSE_MODEL, POSE_MODELS, poseModelFileName, type PoseModelVariant } from '../hooks/usePoseLandmarker'
+import { DEFAULT_SKELETON_MODE, SKELETON_MODES, type SkeletonMode } from '../lib/skeletonOverlay'
 import { MAX_TRACKED_PEOPLE, maxPeopleFor, type DetectionMode } from '../lib/multiPerson'
 import type { CameraSlot, CameraSource } from '../types/cameraSource'
 import type { PersonSummary } from '../types/person'
@@ -20,6 +22,8 @@ import './console.css'
 export interface CameraStageExtras {
   onStats: (stats: CameraStats) => void
   overlay: ReactNode
+  poseModel: PoseModelVariant
+  skeletonMode: SkeletonMode
 }
 
 export interface DevConsoleProps {
@@ -61,6 +65,8 @@ export interface RecorderState {
   label: DatasetLabel
   cameraId: string
   sampleCount: number
+  /** รุ่นโมเดลของ sample ที่เก็บอยู่ (null = ยังว่าง) — ใช้กันบันทึกปนข้ามรุ่น */
+  datasetPoseModel: string | null
 }
 
 type Tab = 'monitor' | 'thresholds' | 'events' | 'people'
@@ -99,6 +105,8 @@ export default function DevConsole(props: DevConsoleProps) {
   } = props
 
   const [tab, setTab] = useState<Tab>('monitor')
+  const [poseModel, setPoseModel] = useState<PoseModelVariant>(DEFAULT_POSE_MODEL)
+  const [skeletonMode, setSkeletonMode] = useState<SkeletonMode>(DEFAULT_SKELETON_MODE)
   const [statsBySlot, setStatsBySlot] = useState<Record<string, CameraStats>>({})
   const [recorder, setRecorder] = useState<RecorderState>({
     showRecorder: false,
@@ -106,6 +114,7 @@ export default function DevConsole(props: DevConsoleProps) {
     label: 'GOOD',
     cameraId: cameraSlots[0]?.id ?? '',
     sampleCount: datasetRecorder.count(),
+    datasetPoseModel: datasetRecorder.poseModel(),
   })
   const health = useBackendHealth()
 
@@ -116,7 +125,12 @@ export default function DevConsole(props: DevConsoleProps) {
   useEffect(() => {
     const id = window.setInterval(() => {
       const count = datasetRecorder.count()
-      setRecorder((prev) => (prev.sampleCount === count ? prev : { ...prev, sampleCount: count }))
+      const model = datasetRecorder.poseModel()
+      setRecorder((prev) =>
+        prev.sampleCount === count && prev.datasetPoseModel === model
+          ? prev
+          : { ...prev, sampleCount: count, datasetPoseModel: model },
+      )
     }, 500)
     return () => window.clearInterval(id)
   }, [])
@@ -129,7 +143,7 @@ export default function DevConsole(props: DevConsoleProps) {
   const services: { name: string; detail: string; status: string; color: string }[] = [
     {
       name: 'Pose Landmarker',
-      detail: `pose_landmarker_lite.task · numPoses ${maxPeopleFor(detectionMode)} · ${delegates}`,
+      detail: `${poseModelFileName(poseModel)} · numPoses ${maxPeopleFor(detectionMode)} · ${delegates}`,
       status: poseStatus,
       color: statusColor(poseStatus),
     },
@@ -202,7 +216,7 @@ export default function DevConsole(props: DevConsoleProps) {
         <div className="dc-aside-footer">
           <div className="dc-kv">
             <span>Pose model</span>
-            <span className="dc-mono dc-text">pose_landmarker_lite.task</span>
+            <span className="dc-mono dc-text">{poseModelFileName(poseModel)}</span>
           </div>
           <div className="dc-kv">
             <span>API_BASE_URL</span>
@@ -235,6 +249,49 @@ export default function DevConsole(props: DevConsoleProps) {
                 >
                   Multi · สูงสุด {MAX_TRACKED_PEOPLE}
                 </button>
+              </div>
+            </div>
+            <div
+              className="dc-row dc-muted-12"
+              style={{ gap: 6 }}
+              title={
+                recorder.recording
+                  ? 'หยุดบันทึก dataset ก่อนจึงจะเปลี่ยนรุ่นได้'
+                  : 'เปลี่ยนรุ่นแล้วโมเดลโหลดใหม่ทุกกล้อง — ควร Calibrate ท่านั่งใหม่เพราะมุมที่วัดได้ต่างกันเล็กน้อย'
+              }
+            >
+              <span>Pose</span>
+              <div className="dc-segment">
+                {POSE_MODELS.map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    className={poseModel === m ? 'active' : ''}
+                    disabled={recorder.recording}
+                    onClick={() => setPoseModel(m)}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div
+              className="dc-row dc-muted-12"
+              style={{ gap: 6 }}
+              title="basic = โครงร่างเดิม · full = ครบทั้งตัว + เส้นคอ/กระดูกสันหลัง (สีเหลือง) ที่ใช้วัดมุมจริง"
+            >
+              <span>Skeleton</span>
+              <div className="dc-segment">
+                {SKELETON_MODES.map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    className={skeletonMode === m ? 'active' : ''}
+                    onClick={() => setSkeletonMode(m)}
+                  >
+                    {m}
+                  </button>
+                ))}
               </div>
             </div>
             <label className="dc-check">
@@ -299,6 +356,8 @@ export default function DevConsole(props: DevConsoleProps) {
           <MonitorTab
             {...props}
             hidden={tab !== 'monitor'}
+            poseModel={poseModel}
+            skeletonMode={skeletonMode}
             statsBySlot={statsBySlot}
             onStats={handleStats}
             recorder={recorder}

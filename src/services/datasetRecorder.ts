@@ -25,15 +25,19 @@ export interface DatasetSampleInput {
   frameWidth: number
   frameHeight: number
   minVisibility: number
+  /** รุ่น Pose Landmarker ที่ให้ landmark ชุดนี้ — ใช้กัน dataset ปนข้ามรุ่น (ไม่ถูกเก็บลงแต่ละ sample แต่ไปอยู่ใน meta) */
+  poseModel: string
 }
 
 const samples: DatasetSample[] = []
 let activeLabel: DatasetLabel | null = null
 // null = รับ sample จากทุกกล้อง (พฤติกรรมเดิมของหน้าหลัก) — Dev Console ระบุกล้องเพื่อเก็บจากกล้องเดียว
 let activeCameraId: string | null = null
+// รุ่นโมเดลของ sample ชุดปัจจุบัน — ล็อกตาม sample แรก ปลดเมื่อ clear()
+let datasetPoseModel: string | null = null
 
-export function buildDatasetJson(opts: DatasetExportOptions): string {
-  return serializeDataset(samples, opts)
+export function buildDatasetJson(opts: Omit<DatasetExportOptions, 'poseModel'>): string {
+  return serializeDataset(samples, { ...opts, poseModel: datasetPoseModel })
 }
 
 export const datasetRecorder = {
@@ -54,15 +58,25 @@ export const datasetRecorder = {
   add(sample: DatasetSampleInput) {
     if (activeLabel === null) return
     if (activeCameraId !== null && sample.cameraId !== activeCameraId) return
-    samples.push({ ...sample, label: activeLabel })
+    // ไม่ปน dataset ข้ามรุ่นโมเดล — landmark จากคนละรุ่นมีความคลาดเคลื่อนต่างกัน
+    if (datasetPoseModel !== null && sample.poseModel !== datasetPoseModel) return
+    datasetPoseModel = sample.poseModel
+    const { poseModel: _poseModel, ...rest } = sample
+    samples.push({ ...rest, label: activeLabel })
   },
 
   count(): number {
     return samples.length
   },
 
+  /** รุ่นโมเดลของ sample ที่เก็บอยู่ (null = ยังว่าง) */
+  poseModel(): string | null {
+    return datasetPoseModel
+  },
+
   clear() {
     samples.length = 0
+    datasetPoseModel = null
   },
 
   exportJson(thresholds: PostureThresholds) {

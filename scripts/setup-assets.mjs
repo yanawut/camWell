@@ -4,7 +4,7 @@
 // เตรียมไฟล์ที่ทำให้ AI ทั้งหมดในแอปรันแบบ "local" ล้วนๆ (ไม่พึ่ง CDN ภายนอกตอนรันจริง):
 //
 //   1. คัดลอกไฟล์ WASM runtime จาก node_modules/@mediapipe/tasks-vision/wasm -> public/wasm
-//   2. ดาวน์โหลดไฟล์โมเดล pose_landmarker_lite.task (~5-6MB) มาเก็บไว้ที่ public/models
+//   2. ดาวน์โหลดไฟล์โมเดล pose_landmarker_{lite,full,heavy}.task (~44MB รวม) มาเก็บไว้ที่ public/models
 //      (ตรวจจับท่านั่ง — จาก storage.googleapis.com)
 //   3. ดาวน์โหลดไฟล์โมเดลของ @vladmandic/face-api (~6.8MB รวม) มาเก็บที่ public/models/face-api
 //      (ตรวจจับความเหนื่อยล้า/ระยะห่างจากจอ/face recognition — จาก raw.githubusercontent.com)
@@ -23,13 +23,13 @@ const root = join(__dirname, '..')
 const wasmSrcDir = join(root, 'node_modules', '@mediapipe', 'tasks-vision', 'wasm')
 const wasmDestDir = join(root, 'public', 'wasm')
 const modelsDir = join(root, 'public', 'models')
-const poseModelPath = join(modelsDir, 'pose_landmarker_lite.task')
 const faceApiDir = join(modelsDir, 'face-api')
 
-// URL ทางการของ Google สำหรับโมเดล Pose Landmarker (lite = เร็ว/เบาที่สุด เหมาะ real-time)
-// รุ่นอื่น: pose_landmarker_full, pose_landmarker_heavy (แม่นยำขึ้นแต่ช้าลง) - แก้ URL ด้านล่างได้ตามต้องการ
-const POSE_MODEL_URL =
-  'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task'
+// URL ทางการของ Google สำหรับโมเดล Pose Landmarker — โหลดครบ 3 รุ่นให้ Dev Console สลับเทียบได้
+// (lite ~5.5MB = ค่าเริ่มต้น เร็วสุด, full ~9MB, heavy ~29MB = แม่นสุดแต่ช้าสุด) — ต้องตรงกับ POSE_MODELS ใน usePoseLandmarker.ts
+const POSE_MODELS = ['lite', 'full', 'heavy']
+const poseModelUrl = (m) =>
+  `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_${m}/float16/latest/pose_landmarker_${m}.task`
 
 // ไฟล์โมเดลของ @vladmandic/face-api (MIT License) - ใช้สำหรับ fatigue / distance / face recognition
 const FACE_API_BASE = 'https://raw.githubusercontent.com/vladmandic/face-api/master/model'
@@ -77,7 +77,10 @@ async function downloadFile(url, destPath, label) {
 
 async function downloadPoseModel() {
   mkdirSync(modelsDir, { recursive: true })
-  await downloadFile(POSE_MODEL_URL, poseModelPath, 'pose_landmarker_lite.task (ตรวจจับท่านั่ง)')
+  for (const m of POSE_MODELS) {
+    const file = `pose_landmarker_${m}.task`
+    await downloadFile(poseModelUrl(m), join(modelsDir, file), `${file} (ตรวจจับท่านั่ง)`)
+  }
 }
 
 async function downloadFaceApiModels() {

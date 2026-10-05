@@ -22,6 +22,8 @@ export interface DatasetSample {
 export interface DatasetExportOptions {
   thresholdsAtExport: PostureThresholds
   exportedAt: number
+  /** รุ่น Pose Landmarker ที่ใช้เก็บทุก sample ในไฟล์นี้ (เช่น 'lite') — null เมื่อยังไม่มี sample */
+  poseModel?: string | null
 }
 
 export function serializeDataset(
@@ -32,6 +34,8 @@ export function serializeDataset(
     meta: {
       schemaVersion: DATASET_SCHEMA_VERSION,
       exportedAt: opts.exportedAt,
+      // ทั้งไฟล์มาจากโมเดลรุ่นเดียวเสมอ (datasetRecorder ไม่รับ sample ข้ามรุ่น)
+      poseModel: opts.poseModel ?? null,
       // Context only. The visibility threshold that actually affected each
       // sample's feature calculation is stored on sample.minVisibility.
       thresholdsAtExport: opts.thresholdsAtExport,

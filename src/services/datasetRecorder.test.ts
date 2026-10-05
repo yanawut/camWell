@@ -34,6 +34,7 @@ const SAMPLE: DatasetSampleInput = {
   frameWidth: 1280,
   frameHeight: 720,
   minVisibility: 0.65,
+  poseModel: 'lite',
 }
 
 describe('datasetRecorder', () => {
@@ -64,6 +65,7 @@ describe('datasetRecorder', () => {
     expect(Array.isArray(parsed.meta)).toBe(false)
     expect(parsed.meta.schemaVersion).toBeDefined()
     expect(parsed.meta.exportedAt).toBe(exportedAt)
+    expect((parsed.meta as Record<string, unknown>).poseModel).toBe('lite')
     expect(parsed.meta.thresholdsAtExport).toEqual(DEFAULT_THRESHOLDS)
     expect(parsed.samples).toHaveLength(1)
 
@@ -88,6 +90,7 @@ describe('datasetRecorder', () => {
     expect(worldLandmarks).toHaveLength(33)
     expect(landmarks.every((point) => point.visibility !== undefined)).toBe(true)
     expect(worldLandmarks.every((point) => point.visibility !== undefined)).toBe(true)
+    expect(sample).not.toHaveProperty('poseModel')
     expect(sample).not.toHaveProperty('image')
     expect(sample).not.toHaveProperty('video')
   })
@@ -127,5 +130,20 @@ describe('datasetRecorder', () => {
     datasetRecorder.start('GOOD')
     datasetRecorder.add(SAMPLE)
     expect(datasetRecorder.count()).toBe(2)
+  })
+
+  it('locks the dataset to the first sample pose model and rejects other models until clear()', () => {
+    expect(datasetRecorder.poseModel()).toBeNull()
+    datasetRecorder.start('GOOD')
+    datasetRecorder.add(SAMPLE)
+    datasetRecorder.add({ ...SAMPLE, poseModel: 'full' })
+    expect(datasetRecorder.count()).toBe(1)
+    expect(datasetRecorder.poseModel()).toBe('lite')
+
+    datasetRecorder.clear()
+    expect(datasetRecorder.poseModel()).toBeNull()
+    datasetRecorder.add({ ...SAMPLE, poseModel: 'full' })
+    expect(datasetRecorder.poseModel()).toBe('full')
+    expect(JSON.parse(buildDatasetJson({ thresholdsAtExport: DEFAULT_THRESHOLDS, exportedAt: 1 })).meta.poseModel).toBe('full')
   })
 })

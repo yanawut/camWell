@@ -2,10 +2,17 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import Webcam from 'react-webcam'
 import * as faceapi from '@vladmandic/face-api'
 import type { PoseLandmarkerResult } from '@mediapipe/tasks-vision'
-import { usePoseLandmarker, type LandmarkerStatus, type PoseDelegate } from '../hooks/usePoseLandmarker'
+import {
+  DEFAULT_POSE_MODEL,
+  usePoseLandmarker,
+  type LandmarkerStatus,
+  type PoseDelegate,
+  type PoseModelVariant,
+} from '../hooks/usePoseLandmarker'
 import { useFaceApiModels, type FaceApiStatus } from '../hooks/useFaceApiModels'
 import { computeBaseline } from '../lib/postureCalibration'
 import { POSTURE_LABELS_TH } from '../lib/postureAnalysis'
+import { BASIC_SKELETON_EDGES, buildSkeletonSegments, DEFAULT_SKELETON_MODE, type SkeletonMode } from '../lib/skeletonOverlay'
 import { PostureEngine } from '../lib/postureEngine'
 import { analyzeFatigueFrame, FATIGUE_LABELS_TH } from '../lib/fatigueAnalysis'
 import { analyzeDistanceFrame, DISTANCE_LABELS_TH } from '../lib/distanceAnalysis'
@@ -20,7 +27,7 @@ import { enrollPerson, identifyFace } from '../services/faceEnrollment'
 import { loadPostureBaseline, savePostureBaseline } from '../services/postureBaselineStore'
 import { datasetRecorder } from '../services/datasetRecorder'
 import { playAlertBeep, playFallAlarm } from '../services/beep'
-import type { PostureBaseline, PostureFeatures, PostureThresholds } from '../types/posture'
+import type { Point, PostureBaseline, PostureFeatures, PostureThresholds } from '../types/posture'
 import type { BreakThresholds, DistanceThresholds, FatigueThresholds } from '../types/wellbeing'
 import type { EnrolledPerson } from '../types/identity'
 import type { AlertEvent } from '../types/alerts'
@@ -28,19 +35,6 @@ import type { FallThresholds } from '../types/fall'
 import type { PersonSummary } from '../types/person'
 import type { CameraSource } from '../types/cameraSource'
 
-// คู่ landmark ของ Pose ที่จะลากเส้นเป็นโครงร่าง (เฉพาะช่วงบนของร่างกาย พอสำหรับดูท่านั่ง)
-const SKELETON_EDGES: [number, number][] = [
-  [11, 12],
-  [23, 24],
-  [11, 23],
-  [12, 24],
-  [11, 13],
-  [13, 15],
-  [12, 14],
-  [14, 16],
-  [7, 11],
-  [8, 12],
-]
 
 const FACE_DETECT_INTERVAL_MS = 400 // ตรวจใบหน้า (fatigue/distance/identity) ไม่ทุกเฟรม กันหน่วง
 const POSTURE_CALIBRATION_MS = 3000
@@ -83,6 +77,7 @@ export interface CameraStats {
   cameraError: string | null
   /** raw features ก่อน smoothing เมื่อมีคนเดียวในเฟรม (ค่าเดียวกับที่ Dataset Recorder บันทึก) */
   rawFeatures: PostureFeatures | null
+  poseModel: PoseModelVariant
 }
 
 const STATS_INTERVAL_MS = 500
@@ -117,6 +112,10 @@ interface Props {
   onStats?: (stats: CameraStats) => void
   /** (Dev Console) element ที่จะวางซ้อนในกรอบวิดีโอ */
   overlay?: ReactNode
+  /** (Dev Console) รุ่น Pose Landmarker — ไม่ส่ง = lite เหมือนเดิม */
+  poseModel?: PoseModelVariant
+  /** (Dev Console) รูปแบบโครงร่างที่วาด — ไม่ส่ง = basic เหมือนเดิม */
+  skeletonMode?: SkeletonMode
 }
 
 export default function CameraStage({
@@ -142,13 +141,18 @@ export default function CameraStage({
   onPeopleUpdate,
   onPersonEnrolled,
   onStats,
+  poseModel = DEFAULT_POSE_MODEL,
+  skeletonMode = DEFAULT_SKELETON_MODE,
   overlay,
 }: Props) {
   const webcamRef = useRef<Webcam>(null)
   const imgRef = useRef<HTMLImageElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  const { landmarkerRef, status: poseStatus, error: poseError, delegate: poseDelegate } = usePoseLandmarker(maxPeopleFor(detectionMode))
+  const { landmarkerRef, status: poseStatus, error: poseError, delegate: poseDelegate } = usePoseLandmarker(
+    maxPeopleFor(detectionMode),
+    poseModel,
+  )
   const { status: faceStatus, error: faceError } = useFaceApiModels()
 
   const lastVideoTimeRef = useRef(-1)
@@ -213,6 +217,8 @@ export default function CameraStage({
     cameraLabel,
     multiCameraMode,
     postureBaseline,
+    poseModel,
+    skeletonMode,
     onAlertStart,
     onAlertEnd,
     onBreakDue,
@@ -236,6 +242,8 @@ export default function CameraStage({
       cameraLabel,
       multiCameraMode,
       postureBaseline,
+      poseModel,
+      skeletonMode,
       onAlertStart,
       onAlertEnd,
       onBreakDue,
@@ -291,18 +299,33 @@ export default function CameraStage({
     (ctx: CanvasRenderingContext2D, poseResult: PoseLandmarkerResult | null, width: number, height: number) => {
       ctx.clearRect(0, 0, width, height)
 
+      const line = (p1: Point, p2: Point) => {
+        ctx.beginPath()
+        ctx.moveTo(p1.x * width, p1.y * height)
+        ctx.lineTo(p2.x * width, p2.y * height)
+        ctx.stroke()
+      }
+
       const allLandmarks = poseResult?.landmarks ?? []
+      const { skeletonMode, postureThresholds: thresholds } = propsRef.current
       for (const landmarks of allLandmarks) {
         ctx.lineWidth = 3
         ctx.strokeStyle = '#22d3ee'
-        for (const [a, b] of SKELETON_EDGES) {
-          const p1 = landmarks[a]
-          const p2 = landmarks[b]
-          if (!p1 || !p2) continue
-          ctx.beginPath()
-          ctx.moveTo(p1.x * width, p1.y * height)
-          ctx.lineTo(p2.x * width, p2.y * height)
-          ctx.stroke()
+        if (skeletonMode === 'full') {
+          const { bones, neck, spine } = buildSkeletonSegments(landmarks, thresholds.minVisibility)
+          for (const [p1, p2] of bones) line(p1, p2)
+          // เส้นคอ/กระดูกสันหลัง = เส้นเดียวกับที่ใช้วัด neckAngleDeg / torsoAngleDeg
+          ctx.lineWidth = 4
+          ctx.strokeStyle = '#facc15'
+          if (neck) line(neck[0], neck[1])
+          if (spine) line(spine[0], spine[1])
+        } else {
+          for (const [a, b] of BASIC_SKELETON_EDGES) {
+            const p1 = landmarks[a]
+            const p2 = landmarks[b]
+            if (!p1 || !p2) continue
+            line(p1, p2)
+          }
         }
         ctx.fillStyle = '#f97316'
         for (const idx of [0, 7, 8, 11, 12, 23, 24]) {
@@ -656,6 +679,7 @@ export default function CameraStage({
             frameWidth: canvas.width,
             frameHeight: canvas.height,
             minVisibility: p.postureThresholds.minVisibility,
+            poseModel: p.poseModel,
           })
         }
       }
@@ -790,11 +814,12 @@ export default function CameraStage({
         delegate: poseDelegate,
         cameraError,
         rawFeatures: latestRawFeaturesRef.current,
+        poseModel,
       })
     emit()
     const id = window.setInterval(emit, STATS_INTERVAL_MS)
     return () => window.clearInterval(id)
-  }, [hasStatsListener, poseStatus, faceStatus, poseDelegate, cameraError])
+  }, [hasStatsListener, poseStatus, faceStatus, poseDelegate, cameraError, poseModel])
 
   // ปุ่ม Calibrate/ลงทะเบียน ทำงานกับ "ใบหน้าที่ใหญ่สุดในเฟรม ณ ขณะนี้" (คนที่นั่งใกล้กล้องที่สุด) —
   // ยังไม่มี UI ให้เลือกว่าจะ calibrate/ลงทะเบียนให้คนไหนเจาะจงเมื่อมีหลายคนพร้อมกัน
