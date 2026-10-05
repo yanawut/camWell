@@ -4,11 +4,12 @@
 
 **Blocked by:** 05, 06, 13
 
-**Status:** ready-for-agent (**ทำเมื่อผู้ใช้สั่งเท่านั้น**)
+**Status:** done
 
 อ้างอิง: guide ขั้น 5.6 · plan Phase 5.6 · branch `phase-5-engine`
 
-- [ ] เทสต์ระดับ engine (a): ท่าผิดจำลอง 10 วิ ได้ posture start event 1 ครั้งพอดี
-- [ ] เทสต์ระดับ engine (b): ไหล่ร่วงเร็ว แล้วหายไป 5 วิ ได้ `fall_suspected_left_frame` 1 ครั้งพอดี
-- [ ] `CameraStage` ไม่เรียก `stepSustainedAlert` สำหรับท่านั่งโดยตรงอีก
-- [ ] Gate เขียว
+- [x] เทสต์ระดับ engine (a): ท่าผิดจำลอง 10 วิ ได้ posture start event 1 ครั้งพอดี
+- [x] เทสต์ระดับ engine (b): ไหล่ร่วงเร็ว แล้วหายไป 5 วิ ได้ `fall_suspected_left_frame` 1 ครั้งพอดี
+- [x] `CameraStage` ไม่เรียก `stepSustainedAlert` สำหรับท่านั่งโดยตรงอีก
+- [x] Gate เขียว
+- [ ] Manual browser smoke test ผ่าน (ดู 14-browser-smoke.md) — ผู้ใช้เลือก skip และปิด Ticket นี้โดยอิง code review + automated verification ที่ผ่านแล้ว
