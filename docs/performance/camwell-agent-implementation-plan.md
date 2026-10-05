@@ -29,11 +29,11 @@ Plus the step's own completion criterion below. Commit only on green.
 - `erasableSyntaxOnly` → no `enum`, no constructor parameter properties. Declare class fields explicitly (pattern: `src/lib/tracker.ts`).
 - `noUnusedLocals` / `noUnusedParameters` are errors: remove every import a change orphans.
 - `CameraStage.detectFrame` runs inside a rAF loop and reads props/state through `propsRef.current` to avoid stale closures. **Every new prop or state value the loop reads must be added to `propsRef` in both places** (the `useRef({...})` initialiser and the `useEffect` that reassigns it).
-- **One `CameraStage` per camera.** `App` renders one per `cameraSlots` entry (max 2); each owns its own pose model, tracker, refs and state. Anything per-camera (break timer, posture baseline) belongs inside `CameraStage`, keyed by its `cameraId` prop when persisted.
+- **One `CameraStage` per camera.** `App` renders one per `cameraSlots` entry (max 2); each owns its own pose model, tracker, refs and state. *(After ticket 14: the tracker lives inside the camera's own `PostureEngine` instance (`postureEngineRef`), still one per camera.)* Anything per-camera (break timer, posture baseline) belongs inside `CameraStage`, keyed by its `cameraId` prop when persisted.
 - **Two frame sources.** `source` is a `<video>` (local camera; new-frame check via `currentTime`) or an `<img>` (IP MJPEG; no new-frame signal, so before Phase 3 it runs pose on every rAF tick). Use `canvas.width/height` as the frame size; it is synced to the source each tick.
 - MediaPipe landmarks come from the **unmirrored** frame (mirroring is CSS only): for a front camera the person's LEFT shoulder (index 11) has the LARGER x. Any left/right geometry must be orientation-independent.
 - Time values can legitimately be `0` (tests start at `t=0`; `performance.now()` starts near 0). Check presence with `!== null`, never truthiness.
-- **Fall detection** (`lib/fallDetection.ts` + the `// --- Fall detection` block) is edge-triggered and reads `torsoAngleDeg`. It must keep working through every refactor: feed it **raw** (unsmoothed) features, and treat a `null` torso angle as "cannot confirm horizontal".
+- **Fall detection** (`lib/fallDetection.ts` + ~~the `// --- Fall detection` block~~ *(After ticket 14: the per-frame fall logic is in `PostureEngine.processPoseFrame`; there is no such block in `CameraStage` anymore)*) is edge-triggered and reads `torsoAngleDeg`. It must keep working through every refactor: feed it **raw** (unsmoothed) features, and treat a `null` torso angle as "cannot confirm horizontal".
 - Mutable per-frame data lives in refs; `useState` only for what renders. Keep that split.
 - `node_modules` already exists; `npm install -D vitest` (in the repo root, not `backend/`) is the only install needed.
 
@@ -47,7 +47,7 @@ Write `src/lib/sustainedAlertMachine.test.ts` (guide §5.2). Two of its three te
 
 **Done when:** gate green; 7 tests pass; the null-check fix is in the same commit as its test.
 
-From here on, each step lands its tests with its code (guide §5.3, §5.4, §6.1 hold the verified test files; write each test when its subject exists).
+From here on, each step lands its tests with its code (guide §5.3, §5.4 hold the verified test files; §6.1 is unused since Step 6.1 was skipped; write each test when its subject exists).
 
 ---
 
@@ -58,8 +58,8 @@ From here on, each step lands its tests with its code (guide §5.3, §5.4, §6.1
 | 1.1 | Delete `src/lib/alertStateMachine.ts`, `src/components/PostureMonitor.tsx` (stubs, zero importers; grep to confirm). Rename the `/* --- PostureMonitor --- */` comment in `App.css`; keep its rules (still used). | gate green; grep for both names returns nothing in `src/` |
 | 1.2 | `faceFeaturesEnabled` defaults `false` (face features now also require the backend running). Per-camera people list in `App.tsx` renders regardless of face toggle. Move the break-reminder sliders out of the face-only block in `SettingsPanel.tsx` and add a `breakResetMs` slider (minutes, 1–15). | gate green; no posture/break UI is gated on `faceFeaturesEnabled` |
 | 1.3 | Skeleton flicker: store each pose result in `latestPoseResultRef` (inside the existing `try`); `drawOverlay` always draws the ref; reset the ref to `null` in the camera-source-changed block. | gate green; `drawOverlay` never receives a per-tick `null` |
-| 1.4 | Break timer. Add `lastPresentAtMs` to `BreakReminderState`. `stepBreakReminder(prev, isPresent, now, thresholds)` resets only after absence ≥ `breakResetMs`. Remove `breakState` from `PersonState`; keep one per-camera `deskBreakStateRef` stepped once per pose frame with `isPresent = matches.length > 0`; label `'คุณ'`, or `` `คนที่นั่งหน้า${p.cameraLabel}` `` in multi-camera mode. | gate green; `src/lib/breakReminder.test.ts` (guide §5.3) passes: 10 s absence keeps session, 4 min absence resets, reminder fires once |
-| 1.5 | `fall_suspected_left_frame` can never fire with defaults: the check runs at track removal (≥ `POSE_TRACK_STALE_MS` = 4 s after last sighting) against `now`, but `disappearGraceMs` defaults to 2.5 s. Add `lastSeenAt` to `PersonState` (set on every match and at creation) and compare `person.lastSeenAt - person.lastRapidDropAt <= disappearGraceMs`. | gate green; the condition no longer references `now` |
+| 1.4 | Break timer. Add `lastPresentAtMs` to `BreakReminderState`. `stepBreakReminder(prev, isPresent, now, thresholds)` resets only after absence ≥ `breakResetMs`. Remove `breakState` from `PersonState`; keep one per-camera `deskBreakStateRef` stepped once per pose frame with `isPresent = matches.length > 0`; label `'คุณ'`, or `` `คนที่นั่งหน้า${p.cameraLabel}` `` in multi-camera mode. *(After ticket 14: `deskBreakStateRef` and the `matches.length > 0` loop are gone from `CameraStage`; the break state is `PostureEngine.breakState`, stepped with `matches.length > 0` inside the engine, which returns `breakDue`. Labelling stays in `CameraStage`.)* | gate green; `src/lib/breakReminder.test.ts` (guide §5.3) passes: 10 s absence keeps session, 4 min absence resets, reminder fires once |
+| 1.5 | `fall_suspected_left_frame` can never fire with defaults: the check runs at track removal (≥ `POSE_TRACK_STALE_MS` = 4 s after last sighting) against `now`, but `disappearGraceMs` defaults to 2.5 s. Add `lastSeenAt` to `PersonState` (set on every match and at creation) *(After ticket 14: `lastSeenAt` / `lastRapidDropAt` now live on the engine's internal `EnginePersonState`, not `CameraStage`'s `PersonState`.)* and compare `person.lastSeenAt - person.lastRapidDropAt <= disappearGraceMs`. | gate green; the condition no longer references `now` |
 
 ---
 
@@ -99,7 +99,7 @@ interface PostureBaseline { neckAngleDeg; torsoAngleDeg: number | null; shoulder
 
 // lib/postureAnalysis.ts — replaces analyzePosture
 extractPostureFeatures(landmarks, frame: { width; height }, minVisibility): PostureFeatures | null
-classifyPosture(features, thresholds, baseline: PostureBaseline | null)  // Phase 4: single issue; Phase 6: PostureProblem[]
+classifyPosture(features, thresholds, baseline: PostureBaseline | null)  // single issue (PostureIssueType); Phase 6.1 PostureProblem[] was SKIPPED, see 15-multi-issue-posture.md
 
 // lib/smoothing.ts
 ema(prev: number | null, cur, alpha); smoothFeatures(prev | null, cur, alpha)
@@ -116,7 +116,7 @@ Rules the code must satisfy:
 - All geometry in **pixel space** (`x * width`, `y * height`) before any `atan2`.
 - `headHeightRatio = (shoulderMid.y − head.y) / shoulderWidthPx`; only when both shoulders are visible.
 - With a baseline, compare deviations (`current − baseline`); `headDrop = 1 − current.headHeightRatio / baseline.headHeightRatio` triggers `forward_head` at ≥ `headDropThreshold`.
-- Per-frame order in `CameraStage`: extract → (collect raw sample if calibrating and exactly one person) → `smoothFeatures` (alpha 0.3, stored on `PersonState.smoothedFeatures`) → classify → posture state machine. Fall detection reads the **raw** `features.torsoAngleDeg`.
+- Per-frame order in `CameraStage`: extract → (collect raw sample if calibrating and exactly one person) → `smoothFeatures` (alpha 0.3, stored on `PersonState.smoothedFeatures`) → classify → posture state machine. *(After ticket 14: extract → smooth → classify → state machine run inside `PostureEngine.processPoseFrame`, with smoothed features on `EnginePersonState`. `CameraStage` only collects calibration samples afterwards from `engineResult.people[0].rawFeatures` when `engineResult.people.length === 1`.)* Fall detection reads the **raw** `features.torsoAngleDeg`.
 - Baseline is **per camera and owned by `CameraStage`**: `useState(() => loadPostureBaseline(cameraId))`; add `cameraId` and `postureBaseline` to `propsRef`. `App.tsx` is not touched in this phase.
 - Calibration: button sets `calibrationRef = { endsAt: now + 3000, samples: [] }`; on expiry compute the baseline, `savePostureBaseline(p.cameraId, …)`, set state, show a success or failure message.
 - Add a `headDropThreshold` slider (5–40 %).
@@ -125,20 +125,24 @@ Rules the code must satisfy:
 
 ---
 
-## Phase 5.6 — Optional refactor (branch `phase-5-engine`)
+## Phase 5.6 — ~~Optional~~ refactor (branch `phase-5-engine`)
+
+> **Done** (ticket 14, `src/lib/postureEngine.ts`, class `PostureEngine`). No longer optional: later steps build on the engine structure. Where this file describes per-frame logic inside `CameraStage`, the real code is authoritative.
 
 Extract the per-frame logic from `CameraStage.detectFrame` (tracker → features → smoothing → classify → state machines → fall detection → break timer) into a React-free module in `src/lib/` that takes landmarks, frame size, `now` and settings, and returns started/ended events, fall events, and break-due. `CameraStage` keeps camera/source handling, drawing, sound and callbacks.
 
-**Done when:** gate green; engine-level tests drive (a) 10 s of synthetic bad posture → exactly one posture start event, (b) a rapid shoulder drop then 5 s of absence → exactly one `fall_suspected_left_frame`; `CameraStage` has no direct `stepSustainedAlert` calls for posture. Do this phase only when the user asks for it.
+**Done when:** gate green; engine-level tests drive (a) 10 s of synthetic bad posture → exactly one posture start event, (b) a rapid shoulder drop then 5 s of absence → exactly one `fall_suspected_left_frame`; `CameraStage` has no direct `stepSustainedAlert` calls for posture. ~~Do this phase only when the user asks for it.~~
 
 ---
 
 ## Phase 6 — Multi-issue + dataset (branch `phase-6-issues-dataset`)
 
+> Step 6.1 (multi-issue) is SKIPPED; only Step 6.2 (dataset) remains. See [15-multi-issue-posture.md](15-multi-issue-posture.md).
+
 | Step | Change | Done when |
 |---|---|---|
-| 6.1 | `PostureProblem = 'forward_head' \| 'slouching' \| 'leaning'`, `POSTURE_PROBLEMS`. `classifyPosture` returns `PostureProblem[]` (empty = good). `PersonState.postureStates: Record<PostureProblem, SustainedAlertState>`; step each machine with `issues.includes(p) ? p : 'good'`. Update `recomputeAlertUi` and track-removal cleanup to iterate all three. The state machine itself and fall detection stay unchanged. | gate green; 17 tests: updated ones use `toEqual([])` / `toEqual(['leaning'])`, and a new test gets both `forward_head` and `leaning` from one pose |
-| 6.2 | `src/services/datasetRecorder.ts` (module singleton: start/stop/isRecording/add/count/clear/exportJson, labels `GOOD FORWARD_HEAD SLOUCH LEAN_LEFT LEAN_RIGHT`; each sample carries `cameraId`, since every camera records into the one singleton) and `src/components/DatasetRecorderPanel.tsx`, rendered in `App` only when `import.meta.env.DEV`. Carry `worldLandmarks[i]` through the tracker data; record a sample per frame while recording and exactly one person is matched. Numbers only, no images. | gate green; production build contains no recorder panel |
+| 6.1 | **SKIPPED** ([15-multi-issue-posture.md](15-multi-issue-posture.md)): RULA Group B scores neck/trunk/legs into one score, so per-problem alert machines would be torn out. Original scope kept below for history: `PostureProblem = 'forward_head' \| 'slouching' \| 'leaning'`, `POSTURE_PROBLEMS`. `classifyPosture` returns `PostureProblem[]` (empty = good). `PersonState.postureStates: Record<PostureProblem, SustainedAlertState>`; step each machine with `issues.includes(p) ? p : 'good'`. Update `recomputeAlertUi` and track-removal cleanup to iterate all three. The state machine itself and fall detection stay unchanged. | gate green; 17 tests: updated ones use `toEqual([])` / `toEqual(['leaning'])`, and a new test gets both `forward_head` and `leaning` from one pose |
+| 6.2 | `src/services/datasetRecorder.ts` (module singleton: start/stop/isRecording/add/count/clear/exportJson, labels `GOOD FORWARD_HEAD SLOUCH LEAN_LEFT LEAN_RIGHT`; each sample carries `cameraId`, since every camera records into the one singleton) and `src/components/DatasetRecorderPanel.tsx`, rendered in `App` only when `import.meta.env.DEV`. ~~Carry `worldLandmarks[i]` through the tracker data; record a sample per frame while recording and exactly one person is matched.~~ *(After ticket 14: thread `landmarks[i]` and `worldLandmarks[i]` through `PostureEngine.processPoseFrame` → `TrackedPoseData` → `EnginePersonFrame`; `CameraStage` calls `datasetRecorder.add` over `engineResult.people` when `engineResult.people.length === 1`. Each sample also stores raw features and `frameWidth`/`frameHeight`. See [16-dataset-recorder.md](16-dataset-recorder.md).)* Numbers only, no images. | gate green; production build contains no recorder panel |
 
 ---
 
@@ -152,6 +156,6 @@ Finish with a report to the user listing, per phase: commits made, gate result (
 - 2.x a laptop-webcam seat (no hips) shows `(เห็นแค่ช่วงบน)` and is not reported as `leaning` while sitting straight
 - 3.x inference ms in workstation vs multi mode, and with 1 vs 2 cameras; IP camera CPU use drops
 - 4.x calibration succeeds, persists across reload under `camwell:posture-baseline:v1:<cameraId>`; a second camera starts uncalibrated; looking down at a phone for 8 s alerts `forward_head`
-- 6.x simultaneous lean + head drop yields two alerts; exported JSON opens and carries `cameraId`
+- 6.x ~~simultaneous lean + head drop yields two alerts;~~ *(6.1 SKIPPED)* exported JSON opens and carries `cameraId` and raw angles (see [17-hitl-camera-verification.md](17-hitl-camera-verification.md))
 
 Report any step that was skipped or left red as exactly that.

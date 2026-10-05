@@ -4,7 +4,7 @@
 
 Gate ของทุก ticket: `npm run build` · `npm run lint` · `npx vitest run` ต้องเขียวทั้งหมด
 
-> หมายเหตุ: find-block ใน guide เขียนไว้ให้ทำตามลำดับเลข ticket ถ้าทำ ticket ที่ไม่ได้ติดกันแบบขนานกัน (เช่น 06 ก่อน 05) อาจต้องปรับ find-block เอง ลำดับที่แนะนำคือเรียงตามเลข ยกเว้น ticket 15 (guide ขั้น 6.1) ถูกข้าม ดังนั้น find-block ของขั้น 6.2 (ticket 16) ต้องปรับตามโค้ดจริงใน `CameraStage`
+> หมายเหตุ: find-block ใน guide เขียนไว้ให้ทำตามลำดับเลข ticket ถ้าทำ ticket ที่ไม่ได้ติดกันแบบขนานกัน (เช่น 06 ก่อน 05) อาจต้องปรับ find-block เอง ลำดับที่แนะนำคือเรียงตามเลข ยกเว้น guide ขั้น 6.2 (ticket 16) ซึ่งเขียนบนโครงโค้ดก่อน ticket 14 ย้าย tracker/posture logic เข้า `PostureEngine` จึงใช้ find-block ไม่ได้ทั้งขั้น ต้อง implement ใหม่ตามโครง engine (ดูหมายเหตุใน ticket 16)
 
 | # | Ticket | Blocked by | Plan step |
 |---|---|---|---|
@@ -21,7 +21,7 @@ Gate ของทุก ticket: `npm run build` · `npm run lint` · `npx vitest
 | 11 | [แสดง inference ms](11-inference-time-display.md) | 10 | 3.3 |
 | 12 | [วัดใน pixel space + smoothing](12-pixel-space-features-smoothing.md) | 08 | 4 (ส่วน 1) |
 | 13 | [Calibration ต่อกล้อง](13-per-camera-calibration.md) | 12 | 4 (ส่วน 2) |
-| 14 | [(ไม่บังคับ) แยก posture engine](14-posture-engine-extraction.md) | 05, 06, 13 | 5.6 |
+| 14 | [แยก posture engine](14-posture-engine-extraction.md) (ทำแล้ว ticket 16 จึงต้องยึดโครง engine) | 05, 06, 13 | 5.6 |
 | 15 | ~~[หลายปัญหาพร้อมกัน](15-multi-issue-posture.md)~~ **skipped**: RULA รวมเป็นคะแนนเดียว การเตือนแยกต่อปัญหาจะต้องรื้อทิ้ง | 13 | 6.1 |
 | 16 | [Dataset recorder (dev)](16-dataset-recorder.md) | 13 | 6.2 |
 | 17 | [[HITL] ตรวจกับกล้องจริง + รายงาน](17-hitl-camera-verification.md) | 01–14, 16 | Hand-off |
