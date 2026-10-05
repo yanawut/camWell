@@ -18,6 +18,7 @@ import { DEFAULT_FALL_THRESHOLDS, type FallThresholds } from './types/fall'
 import type { AlertEvent } from './types/alerts'
 import type { EnrolledPerson } from './types/identity'
 import type { PersonSummary } from './types/person'
+import type { DetectionMode } from './lib/multiPerson'
 import { consoleAlertReporter } from './services/alertReporter'
 import { listEnrolledPeople, removePerson } from './services/faceEnrollment'
 import { DEFAULT_FACE_FEATURES_ENABLED, getCameraPeopleVisibility } from './lib/featureVisibility'
@@ -39,6 +40,7 @@ export default function App() {
   const [fallThresholds, setFallThresholds] = useState<FallThresholds>(DEFAULT_FALL_THRESHOLDS)
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [faceFeaturesEnabled, setFaceFeaturesEnabled] = useState(DEFAULT_FACE_FEATURES_ENABLED)
+  const [detectionMode, setDetectionMode] = useState<DetectionMode>('workstation')
 
   const [events, setEvents] = useState<AlertEvent[]>([])
   // (Phase 2) รายชื่อพนักงานที่ลงทะเบียนใบหน้าไว้ย้ายมาเก็บที่ camwell-backend แล้ว — ดึงมาตอน mount ด้วย
@@ -230,6 +232,7 @@ export default function App() {
                     fallThresholds={fallThresholds}
                     soundEnabled={soundEnabled}
                     faceFeaturesEnabled={faceFeaturesEnabled}
+                    detectionMode={detectionMode}
                     enrolledPeople={enrolledPeople}
                     baselineFaceWidthPx={baselineFaceWidthPx}
                     cameraSource={slot.source}
@@ -284,6 +287,8 @@ export default function App() {
             onSoundEnabledChange={setSoundEnabled}
             faceFeaturesEnabled={faceFeaturesEnabled}
             onFaceFeaturesEnabledChange={setFaceFeaturesEnabled}
+            detectionMode={detectionMode}
+            onDetectionModeChange={setDetectionMode}
           />
           {faceFeaturesEnabled && enrolledPeopleError && <p className="panel-note panel-warning">{enrolledPeopleError}</p>}
           {faceFeaturesEnabled && <EnrollmentPanel people={enrolledPeople} onRemove={handleRemovePerson} />}

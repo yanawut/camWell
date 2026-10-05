@@ -10,7 +10,7 @@ import { analyzeDistanceFrame, DISTANCE_LABELS_TH } from '../lib/distanceAnalysi
 import { getBreakReminderLabel, initialBreakState, stepBreakReminder } from '../lib/breakReminder'
 import { initialSustainedState, stepSustainedAlert, type SustainedAlertState } from '../lib/sustainedAlertMachine'
 import { PositionTracker, type Point2D } from '../lib/tracker'
-import { MAX_TRACKED_PEOPLE } from '../lib/multiPerson'
+import { limitPeopleForMode, maxPeopleFor, type DetectionMode } from '../lib/multiPerson'
 import {
   pruneHistory,
   computeDropRatio,
@@ -93,6 +93,7 @@ interface Props {
   fallThresholds: FallThresholds
   soundEnabled: boolean
   faceFeaturesEnabled: boolean
+  detectionMode: DetectionMode
   enrolledPeople: EnrolledPerson[]
   baselineFaceWidthPx: number | null
   cameraSource: CameraSource
@@ -120,6 +121,7 @@ export default function CameraStage({
   fallThresholds,
   soundEnabled,
   faceFeaturesEnabled,
+  detectionMode,
   enrolledPeople,
   baselineFaceWidthPx,
   cameraSource,
@@ -138,7 +140,7 @@ export default function CameraStage({
   const imgRef = useRef<HTMLImageElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  const { landmarkerRef, status: poseStatus, error: poseError } = usePoseLandmarker()
+  const { landmarkerRef, status: poseStatus, error: poseError } = usePoseLandmarker(maxPeopleFor(detectionMode))
   const { status: faceStatus, error: faceError } = useFaceApiModels()
 
   const lastVideoTimeRef = useRef(-1)
@@ -191,6 +193,7 @@ export default function CameraStage({
     fallThresholds,
     soundEnabled,
     faceFeaturesEnabled,
+    detectionMode,
     enrolledPeople,
     baselineFaceWidthPx,
     cameraSource,
@@ -211,6 +214,7 @@ export default function CameraStage({
       fallThresholds,
       soundEnabled,
       faceFeaturesEnabled,
+      detectionMode,
       enrolledPeople,
       baselineFaceWidthPx,
       cameraSource,
@@ -337,14 +341,14 @@ export default function CameraStage({
         .withFaceLandmarks()
         .withFaceDescriptors()
 
-      // จำกัดจำนวนไม่ให้เกิน MAX_TRACKED_PEOPLE โดยเลือกใบหน้าที่ใหญ่สุด (ใกล้กล้องที่สุด) ก่อน
-      const limited = [...results].sort((a, b) => b.detection.box.width - a.detection.box.width).slice(0, MAX_TRACKED_PEOPLE)
+      const p = propsRef.current
+      // จำกัดจำนวนตามโหมดที่เลือก โดยยังเลือกใบหน้าที่ใหญ่สุด (ใกล้กล้องที่สุด) ก่อนเหมือนเดิม
+      const limited = limitPeopleForMode(results, p.detectionMode, (result) => result.detection.box.width)
 
       latestFaceResultsRef.current = limited
       primaryFaceRef.current = limited[0] ?? null
       setHasFaceSignal(!!limited[0])
 
-      const p = propsRef.current
       const canvas = canvasRef.current
       const frameWidth = canvas?.width ?? 640
       const linkDistanceThreshold = frameWidth * 0.3
@@ -814,7 +818,7 @@ export default function CameraStage({
         {isAlerting && <div className="camera-status-banner banner-alert">⚠ {alertBannerText}</div>}
       </div>
       <p className="current-issue">
-        ตรวจพบในเฟรม: {peopleCount} คน (รองรับสูงสุด {MAX_TRACKED_PEOPLE} คนพร้อมกัน)
+        ตรวจพบในเฟรม: {peopleCount} คน (รองรับสูงสุด {maxPeopleFor(detectionMode)} คน)
       </p>
       {faceFeaturesEnabled && (
         <>

@@ -3,14 +3,14 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { FilesetResolver, PoseLandmarker } from '@mediapipe/tasks-vision'
-import { MAX_TRACKED_PEOPLE } from '../lib/multiPerson'
 
 export type LandmarkerStatus = 'loading' | 'ready' | 'error'
 
 const WASM_BASE_PATH = `${import.meta.env.BASE_URL}wasm`
 const MODEL_PATH = `${import.meta.env.BASE_URL}models/pose_landmarker_lite.task`
 
-export function usePoseLandmarker() {
+/** @param numPoses จำนวนคนสูงสุดที่ให้โมเดลหา — เปลี่ยนค่าแล้วโมเดลจะถูกสร้างใหม่อัตโนมัติ */
+export function usePoseLandmarker(numPoses: number) {
   const landmarkerRef = useRef<PoseLandmarker | null>(null)
   const [status, setStatus] = useState<LandmarkerStatus>('loading')
   const [error, setError] = useState<string | null>(null)
@@ -32,7 +32,7 @@ export function usePoseLandmarker() {
               delegate: 'GPU',
             },
             runningMode: 'VIDEO',
-            numPoses: MAX_TRACKED_PEOPLE,
+            numPoses,
           })
         } catch (gpuErr) {
           // บาง GPU/เบราว์เซอร์ไม่รองรับ WebGL delegate — fallback ไป CPU
@@ -43,7 +43,7 @@ export function usePoseLandmarker() {
               delegate: 'CPU',
             },
             runningMode: 'VIDEO',
-            numPoses: MAX_TRACKED_PEOPLE,
+            numPoses,
           })
         }
 
@@ -73,7 +73,7 @@ export function usePoseLandmarker() {
       landmarkerRef.current?.close()
       landmarkerRef.current = null
     }
-  }, [])
+  }, [numPoses])
 
   return { landmarkerRef, status, error }
 }

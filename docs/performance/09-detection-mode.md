@@ -4,13 +4,14 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
 อ้างอิง: guide ขั้น 3.1 · plan Step 3.1 · branch `phase-3-performance`
 
-- [ ] `DetectionMode = 'workstation' | 'multi'` และ `maxPeopleFor(mode)` (1 / 4) อยู่ในโมดูล multiPerson
-- [ ] `usePoseLandmarker(numPoses)` ใส่ `[numPoses]` เป็น dependency ของ effect
-- [ ] state ของโหมดอยู่ใน `App` (ค่าเริ่มต้น `'workstation'`), มี radio ใน SettingsPanel, ส่งเป็น prop และเพิ่มเข้า `propsRef` ของ `CameraStage`
-- [ ] ผลตรวจใบหน้าถูกตัดเหลือ `maxPeopleFor(mode)`
-- [ ] ไม่เหลือการอ้างถึง `MAX_TRACKED_PEOPLE` นอกโมดูล multiPerson (รวมถึงข้อความในบรรทัดสถานะ)
-- [ ] Gate เขียว
+- [x] `DetectionMode = 'workstation' | 'multi'` และ `maxPeopleFor(mode)` (1 / 4) อยู่ในโมดูล multiPerson
+- [x] `usePoseLandmarker(numPoses)` ใส่ `[numPoses]` เป็น dependency ของ effect
+- [x] state ของโหมดอยู่ใน `App` (ค่าเริ่มต้น `'workstation'`), มี radio ใน SettingsPanel, ส่งเป็น prop และเพิ่มเข้า `propsRef` ของ `CameraStage`
+- [x] ผลตรวจใบหน้าถูกตัดเหลือ `maxPeopleFor(mode)`
+- [x] ไม่เหลือการอ้างถึง `MAX_TRACKED_PEOPLE` นอกโมดูล multiPerson (รวมถึงข้อความในบรรทัดสถานะ)
+- [x] Gate เขียว
+- [ ] Manual browser smoke test ผ่าน (ดู 09-browser-smoke.md) — เลื่อนไปทดสอบซ้ำภายหลังตามการตัดสินใจของผู้ใช้

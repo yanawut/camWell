@@ -1,6 +1,7 @@
 import type { PostureThresholds } from '../types/posture'
 import type { BreakThresholds, DistanceThresholds, FatigueThresholds } from '../types/wellbeing'
 import type { FallThresholds } from '../types/fall'
+import type { DetectionMode } from '../lib/multiPerson'
 import { breakResetMinutesToMs, getBreakResetSliderModel } from '../lib/breakReminderSettings'
 
 interface Props {
@@ -18,6 +19,8 @@ interface Props {
   onSoundEnabledChange: (enabled: boolean) => void
   faceFeaturesEnabled: boolean
   onFaceFeaturesEnabledChange: (enabled: boolean) => void
+  detectionMode: DetectionMode
+  onDetectionModeChange: (mode: DetectionMode) => void
 }
 
 function Slider({
@@ -62,6 +65,8 @@ export default function SettingsPanel({
   onSoundEnabledChange,
   faceFeaturesEnabled,
   onFaceFeaturesEnabledChange,
+  detectionMode,
+  onDetectionModeChange,
 }: Props) {
   const setPosture = <K extends keyof PostureThresholds>(key: K, value: PostureThresholds[K]) => {
     onPostureChange({ ...postureThresholds, [key]: value })
@@ -91,6 +96,26 @@ export default function SettingsPanel({
       <label className="settings-row settings-checkbox">
         <span>เปิดฟีเจอร์เกี่ยวกับใบหน้า (ความเหนื่อยล้า/ระยะห่างจอ/face recognition)</span>
         <input type="checkbox" checked={faceFeaturesEnabled} onChange={(e) => onFaceFeaturesEnabledChange(e.target.checked)} />
+      </label>
+
+      <h3>โหมดการตรวจจับ</h3>
+      <label className="settings-row settings-checkbox">
+        <span>ใช้คนเดียว (Personal Workstation) — แนะนำ</span>
+        <input
+          type="radio"
+          name="detection-mode"
+          checked={detectionMode === 'workstation'}
+          onChange={() => onDetectionModeChange('workstation')}
+        />
+      </label>
+      <label className="settings-row settings-checkbox">
+        <span>กล้องเดียวหลายคน (Multi-person)</span>
+        <input
+          type="radio"
+          name="detection-mode"
+          checked={detectionMode === 'multi'}
+          onChange={() => onDetectionModeChange('multi')}
+        />
       </label>
 
       <h3>ท่านั่ง</h3>
