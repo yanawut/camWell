@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computeDropRatio, pruneHistory } from './fallDetection'
+import { computeDropRatio, pruneHistory, shouldAlertLeftFrame } from './fallDetection'
 
 describe('computeDropRatio', () => {
   it('returns null when there is only one torso reading', () => {
@@ -38,5 +38,19 @@ describe('pruneHistory', () => {
       { t: 500, y: 0.45 },
       { t: 900, y: 0.5 },
     ])
+  })
+})
+
+describe('shouldAlertLeftFrame', () => {
+  it('alerts when the last sighting is exactly at the disappear grace boundary after a rapid drop', () => {
+    expect(shouldAlertLeftFrame(3500, 1000, 2500)).toBe(true)
+  })
+
+  it('does not alert when the person remained visible beyond the disappear grace window', () => {
+    expect(shouldAlertLeftFrame(3501, 1000, 2500)).toBe(false)
+  })
+
+  it('does not alert when no rapid drop was recorded before the person left frame', () => {
+    expect(shouldAlertLeftFrame(3500, 0, 2500)).toBe(false)
   })
 })

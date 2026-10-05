@@ -11,7 +11,7 @@ import { getBreakReminderLabel, initialBreakState, stepBreakReminder } from '../
 import { initialSustainedState, stepSustainedAlert, type SustainedAlertState } from '../lib/sustainedAlertMachine'
 import { PositionTracker, type Point2D } from '../lib/tracker'
 import { MAX_TRACKED_PEOPLE } from '../lib/multiPerson'
-import { pruneHistory, computeDropRatio, type TorsoReading } from '../lib/fallDetection'
+import { pruneHistory, computeDropRatio, shouldAlertLeftFrame, type TorsoReading } from '../lib/fallDetection'
 import { nextCachedPoseResult } from '../lib/poseResultCache'
 import { enrollPerson, identifyFace } from '../services/faceEnrollment'
 import { playAlertBeep, playFallAlarm } from '../services/beep'
@@ -75,6 +75,8 @@ interface PersonState {
   /** เวลาที่ตรวจพบ "ร่วงตัวเร็ว" ครั้งล่าสุด (ms, Date.now()) ไม่ว่าจะลำตัวราบหรือไม่ — ใช้เชื่อมกับเหตุการณ์
    * "หายไปจากเฟรมกะทันหัน" ตอน track หลุด (ดูใน removedIds cleanup) เพื่อตรวจกรณีตกจากเก้าอี้จนหลุดมุมกล้อง */
   lastRapidDropAt: number
+  /** เวลาที่เห็นคนนี้ในเฟรมครั้งล่าสุด (ms, Date.now()) ใช้เทียบกับ lastRapidDropAt ตอน track หลุด */
+  lastSeenAt: number
 }
 
 interface Props {
@@ -579,7 +581,7 @@ export default function CameraStage({
 
         // เพิ่งร่วงตัวเร็วแล้วหายไปจากเฟรมทันที (ไม่ทันเห็นลำตัวราบเพราะหลุดมุมกล้องไปก่อน) — เข้าข่าย
         // "หกล้ม/ตกจากเก้าอี้จนหลุดจากเฟรม" เช่น ตกจากเก้าอี้ไปด้านหลัง/ด้านข้างจนกล้องมองไม่เห็นตัวแล้ว
-        if (person.lastRapidDropAt > 0 && now - person.lastRapidDropAt <= p.fallThresholds.disappearGraceMs) {
+        if (shouldAlertLeftFrame(person.lastSeenAt, person.lastRapidDropAt, p.fallThresholds.disappearGraceMs)) {
           const plainLabel = person.identityName ?? `คนที่ ${person.slotNumber}`
           const fallEvent: AlertEvent = {
             id: `fall-left-${id}-${now}`,
@@ -618,12 +620,14 @@ export default function CameraStage({
             torsoYHistory: [],
             lastFallAlertAt: 0,
             lastRapidDropAt: 0,
+            lastSeenAt: now,
           }
           personStatesRef.current.set(match.id, person)
         }
 
         const left = landmarks[11]
         const right = landmarks[12]
+        person.lastSeenAt = now
         const normalizedTorsoY = left && right ? (left.y + right.y) / 2 : null
         if (left && right && normalizedTorsoY !== null) {
           person.anchorPx = { x: ((left.x + right.x) / 2) * canvas.width, y: normalizedTorsoY * canvas.height }

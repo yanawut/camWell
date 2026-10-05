@@ -4,11 +4,12 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
 อ้างอิง: guide ขั้น 1.5 · plan Step 1.5
 
-- [ ] `PersonState` มี `lastSeenAt` กำหนดตอนสร้าง person และทุกครั้งที่ match
-- [ ] เงื่อนไขเปลี่ยนเป็น `person.lastSeenAt - person.lastRapidDropAt <= disappearGraceMs` และไม่อ้างถึง `now` อีก
-- [ ] การตรวจการล้มแบบ edge-triggered ปกติ (`fall_detected`) ทำงานเหมือนเดิม และเทสต์ของ fall detection ยังเขียว
-- [ ] Gate เขียว
+- [x] `PersonState` มี `lastSeenAt` กำหนดตอนสร้าง person และทุกครั้งที่ match
+- [x] เงื่อนไขเปลี่ยนเป็น `person.lastSeenAt - person.lastRapidDropAt <= disappearGraceMs` และไม่อ้างถึง `now` อีก
+- [x] การตรวจการล้มแบบ edge-triggered ปกติ (`fall_detected`) ทำงานเหมือนเดิม และเทสต์ของ fall detection ยังเขียว
+- [x] Gate เขียว
+- [ ] Manual browser smoke test ผ่าน (ดู 06-browser-smoke.md) — เลื่อนไปทดสอบซ้ำภายหลังตามการตัดสินใจของผู้ใช้
