@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_THRESHOLDS, type Point } from '../types/posture'
 import { classifyPosture, extractPostureFeatures } from './postureAnalysis'
+import { computeBaseline } from './postureCalibration'
 
 const FRAME = { width: 640, height: 480 }
 const MIN_VIS = DEFAULT_THRESHOLDS.minVisibility
@@ -31,6 +32,13 @@ const LEAN = makePose({
   8: [0.45, 0.3],
   11: [0.62, 0.55],
   12: [0.38, 0.45],
+})
+
+const HEAD_DOWN = makePose({
+  7: [0.55, 0.36],
+  8: [0.45, 0.36],
+  11: [0.62, 0.5],
+  12: [0.38, 0.5],
 })
 
 function featuresOf(pose: Point[]) {
@@ -124,5 +132,30 @@ describe('classifyPosture', () => {
 
   it('classifies sufficiently tilted shoulders as leaning', () => {
     expect(classifyPosture(featuresOf(LEAN), DEFAULT_THRESHOLDS, null)).toBe('leaning')
+  })
+
+  it('compares neck, torso, and shoulder angles as deviations from a baseline', () => {
+    const baseline = {
+      neckAngleDeg: 20,
+      torsoAngleDeg: 10,
+      shoulderTiltDeg: 8,
+      headHeightRatio: 0.62,
+      createdAt: 0,
+    }
+    const current = {
+      quality: 'full_body' as const,
+      neckAngleDeg: 30,
+      torsoAngleDeg: 20,
+      shoulderTiltDeg: 15,
+      headHeightRatio: 0.62,
+    }
+
+    expect(classifyPosture(current, DEFAULT_THRESHOLDS, baseline)).toBe('good')
+  })
+
+  it('classifies a calibrated head drop at the configured ratio as forward_head', () => {
+    const baseline = computeBaseline(Array.from({ length: 20 }, () => featuresOf(GOOD)), 0)
+    expect(baseline).not.toBeNull()
+    expect(classifyPosture(featuresOf(HEAD_DOWN), DEFAULT_THRESHOLDS, baseline)).toBe('forward_head')
   })
 })

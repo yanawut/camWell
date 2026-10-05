@@ -127,25 +127,52 @@ export function extractPostureFeatures(
 
 /**
  * ขั้นที่ 2: ตัวเลข -> ท่านั่ง
- * baseline ถูกเตรียมไว้ใน signature สำหรับ ticket 13; ticket นี้ยังตัดสินจาก threshold แบบเดิม
+ * ถ้ามี baseline ให้ตัดสินจากส่วนต่างของมุมเทียบกับท่าที่ calibrate และจากสัดส่วนหัวที่ต่ำลง
  */
 export function classifyPosture(
   features: PostureFeatures,
   thresholds: PostureThresholds,
   baseline: PostureBaseline | null,
 ): Exclude<PostureIssueType, 'no_person'> {
-  void baseline
+  const neckAngleDeg = baseline
+    ? features.neckAngleDeg - baseline.neckAngleDeg
+    : features.neckAngleDeg
+  const shoulderTiltDeg = baseline
+    ? features.shoulderTiltDeg - baseline.shoulderTiltDeg
+    : features.shoulderTiltDeg
+
+  let torsoAngleDeg = features.torsoAngleDeg
+  if (
+    torsoAngleDeg !== null &&
+    baseline?.torsoAngleDeg !== null &&
+    baseline?.torsoAngleDeg !== undefined
+  ) {
+    torsoAngleDeg -= baseline.torsoAngleDeg
+  }
+
+  let headDrop: number | null = null
+  if (
+    baseline?.headHeightRatio !== null &&
+    baseline?.headHeightRatio !== undefined &&
+    baseline.headHeightRatio > 0 &&
+    features.headHeightRatio !== null
+  ) {
+    headDrop = 1 - features.headHeightRatio / baseline.headHeightRatio
+  }
 
   if (
-    features.torsoAngleDeg !== null &&
-    features.torsoAngleDeg >= thresholds.torsoAngleThresholdDeg
+    torsoAngleDeg !== null &&
+    torsoAngleDeg >= thresholds.torsoAngleThresholdDeg
   ) {
     return 'slouching'
   }
-  if (features.neckAngleDeg >= thresholds.neckAngleThresholdDeg) {
+  if (
+    neckAngleDeg >= thresholds.neckAngleThresholdDeg ||
+    (headDrop !== null && headDrop >= thresholds.headDropThreshold)
+  ) {
     return 'forward_head'
   }
-  if (features.shoulderTiltDeg >= thresholds.shoulderTiltThresholdDeg) {
+  if (shoulderTiltDeg >= thresholds.shoulderTiltThresholdDeg) {
     return 'leaning'
   }
   return 'good'

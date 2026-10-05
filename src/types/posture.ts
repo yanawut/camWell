@@ -58,6 +58,8 @@ export interface PostureThresholds {
   sustainedMs: number
   /** ค่าความมั่นใจขั้นต่ำของ landmark ที่จะนำมาคำนวณ (0-1) */
   minVisibility: number
+  /** หัวต่ำลงจากตอน calibrate เกินสัดส่วนนี้ (0.15 = 15%) ถือว่าเป็น forward head */
+  headDropThreshold: number
 }
 
 export const DEFAULT_THRESHOLDS: PostureThresholds = {
@@ -66,4 +68,5 @@ export const DEFAULT_THRESHOLDS: PostureThresholds = {
   shoulderTiltThresholdDeg: 10,
   sustainedMs: 8000,
   minVisibility: 0.5,
+  headDropThreshold: 0.15,
 }

@@ -147,6 +147,15 @@ export default function SettingsPanel({
         onChange={(v) => setPosture('shoulderTiltThresholdDeg', v)}
       />
       <Slider
+        label="หัวต่ำลงจากท่าที่ Calibrate ได้ไม่เกิน"
+        unit="%"
+        min={5}
+        max={40}
+        step={1}
+        value={Math.round(postureThresholds.headDropThreshold * 100)}
+        onChange={(v) => setPosture('headDropThreshold', v / 100)}
+      />
+      <Slider
         label="นั่งท่าไม่ดีต่อเนื่องนานเท่าไหร่ก่อนแจ้งเตือน"
         unit="s"
         min={2}

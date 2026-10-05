@@ -6,6 +6,7 @@ import { usePoseLandmarker } from '../hooks/usePoseLandmarker'
 import { useFaceApiModels } from '../hooks/useFaceApiModels'
 import { classifyPosture, extractPostureFeatures, POSTURE_LABELS_TH } from '../lib/postureAnalysis'
 import { smoothFeatures } from '../lib/smoothing'
+import { computeBaseline } from '../lib/postureCalibration'
 import { analyzeFatigueFrame, FATIGUE_LABELS_TH } from '../lib/fatigueAnalysis'
 import { analyzeDistanceFrame, DISTANCE_LABELS_TH } from '../lib/distanceAnalysis'
 import { getBreakReminderLabel, initialBreakState, stepBreakReminder } from '../lib/breakReminder'
@@ -23,8 +24,9 @@ import { nextCachedPoseResult } from '../lib/poseResultCache'
 import { shouldProcessPose } from '../lib/poseThrottle'
 import { updateInferenceEma } from '../lib/inferenceTiming'
 import { enrollPerson, identifyFace } from '../services/faceEnrollment'
+import { loadPostureBaseline, savePostureBaseline } from '../services/postureBaselineStore'
 import { playAlertBeep, playFallAlarm } from '../services/beep'
-import type { PostureFeatures, PostureThresholds } from '../types/posture'
+import type { PostureBaseline, PostureFeatures, PostureThresholds } from '../types/posture'
 import type { BreakReminderState, BreakThresholds, DistanceThresholds, FatigueThresholds } from '../types/wellbeing'
 import type { EnrolledPerson } from '../types/identity'
 import type { AlertEvent } from '../types/alerts'
@@ -48,6 +50,7 @@ const SKELETON_EDGES: [number, number][] = [
 
 const FACE_DETECT_INTERVAL_MS = 400 // ตรวจใบหน้า (fatigue/distance/identity) ไม่ทุกเฟรม กันหน่วง
 const POSTURE_SMOOTHING_ALPHA = 0.3
+const POSTURE_CALIBRATION_MS = 3000
 const IDENTITY_RECHECK_INTERVAL_MS = 3000 // identity ไม่ต้องเช็คถี่เท่า fatigue/distance
 const PEOPLE_SUMMARY_INTERVAL_MS = 500 // ส่งสรุปสถานะ "ใครอยู่บ้าง" ขึ้นไปแสดงผลไม่ต้องทุกเฟรม กัน re-render ถี่เกิน
 
@@ -76,6 +79,10 @@ interface PersonState {
   yawnTimestamps: number[]
   identityName: string | null
   postureStatusLabel: string
+  /** มุมคอดิบจากเฟรมล่าสุด (ยังไม่ลบ baseline / ยังไม่ smoothing) เก็บไว้ให้ scoring เช่น RULA ใช้มุมสัมบูรณ์ */
+  neckAngleDeg: number
+  /** มุมลำตัวดิบจากเฟรมล่าสุด; null เมื่อมองไม่เห็นสะโพก */
+  torsoAngleDeg: number | null
   smoothedFeatures: PostureFeatures | null
   /** ตำแหน่งจุดกึ่งกลางไหล่ล่าสุด เป็นพิกเซลของเฟรม (ไม่ใช่ normalized) ใช้จับคู่กับใบหน้าที่ตรวจพบ */
   anchorPx: Point2D
@@ -187,6 +194,12 @@ export default function CameraStage({
   // เปิด/ปิดปุ่ม Calibrate/ลงทะเบียน ให้ตรงกับความเป็นจริง
   const [hasFaceSignal, setHasFaceSignal] = useState(false)
   const [enrollName, setEnrollName] = useState('')
+  const [postureBaseline, setPostureBaseline] = useState<PostureBaseline | null>(() =>
+    loadPostureBaseline(cameraId),
+  )
+  const calibrationRef = useRef<{ endsAt: number; samples: PostureFeatures[] } | null>(null)
+  const [isCalibratingPosture, setIsCalibratingPosture] = useState(false)
+  const [calibrationMessage, setCalibrationMessage] = useState<string | null>(null)
   // ต้องติ๊กยืนยันว่าขอความยินยอมจากพนักงานแล้ว (PDPA) ก่อนปุ่ม "ลงทะเบียนใบหน้า" จะกดได้ — backend เองก็ปฏิเสธ
   // คำขอที่ไม่มี consentGiven: true อยู่ดี แต่เช็คฝั่ง UI ไว้ด้วยกันลืม/กดพลาด
   const [enrollConsentChecked, setEnrollConsentChecked] = useState(false)
@@ -205,8 +218,10 @@ export default function CameraStage({
     enrolledPeople,
     baselineFaceWidthPx,
     cameraSource,
+    cameraId,
     cameraLabel,
     multiCameraMode,
+    postureBaseline,
     onAlertStart,
     onAlertEnd,
     onBreakDue,
@@ -226,8 +241,10 @@ export default function CameraStage({
       enrolledPeople,
       baselineFaceWidthPx,
       cameraSource,
+      cameraId,
       cameraLabel,
       multiCameraMode,
+      postureBaseline,
       onAlertStart,
       onAlertEnd,
       onBreakDue,
@@ -653,6 +670,8 @@ export default function CameraStage({
             yawnTimestamps: [],
             identityName: null,
             postureStatusLabel: POSTURE_LABELS_TH.no_person,
+            neckAngleDeg: features.neckAngleDeg,
+            torsoAngleDeg: features.torsoAngleDeg,
             smoothedFeatures: null,
             anchorPx: { x: 0, y: 0 },
             torsoYHistory: [],
@@ -671,9 +690,18 @@ export default function CameraStage({
           person.anchorPx = { x: ((left.x + right.x) / 2) * canvas.width, y: normalizedTorsoY * canvas.height }
         }
 
+        // เก็บค่ามุมดิบแบบสัมบูรณ์ไว้ใน PersonState ก่อน smoothing/baseline สำหรับ scoring อื่น เช่น RULA
+        person.neckAngleDeg = features.neckAngleDeg
+        person.torsoAngleDeg = features.torsoAngleDeg
+
+        // ระหว่าง calibrate เก็บ raw features เท่านั้น และต้องตรวจพบคนเดียวพอดีเพื่อไม่ให้ตัวอย่างปนกัน
+        if (calibrationRef.current && matches.length === 1) {
+          calibrationRef.current.samples.push(features)
+        }
+
         const smoothed = smoothFeatures(person.smoothedFeatures, features, POSTURE_SMOOTHING_ALPHA)
         person.smoothedFeatures = smoothed
-        const postureIssue = classifyPosture(smoothed, p.postureThresholds, null)
+        const postureIssue = classifyPosture(smoothed, p.postureThresholds, p.postureBaseline)
         person.postureStatusLabel =
           POSTURE_LABELS_TH[postureIssue] + (smoothed.quality === 'upper_body' ? ' (เห็นแค่ช่วงบน)' : '')
 
@@ -695,7 +723,7 @@ export default function CameraStage({
           if (dropRatio !== null && dropRatio >= p.fallThresholds.dropRatioThreshold) {
             person.lastRapidDropAt = now
             // หกล้มต้องตอบสนองทันที จึงใช้ค่า raw ไม่ผ่าน posture smoothing
-            const torsoAngleDeg = features.torsoAngleDeg
+            const torsoAngleDeg = person.torsoAngleDeg
             const isNearHorizontal = isFallTorsoNearHorizontal(torsoAngleDeg, p.fallThresholds.fallTorsoAngleDeg)
             if (isNearHorizontal && now - person.lastFallAlertAt >= p.fallThresholds.cooldownMs) {
               person.lastFallAlertAt = now
@@ -737,6 +765,25 @@ export default function CameraStage({
         }
         if (step.endedEvent) p.onAlertEnd(step.endedEvent)
 
+      }
+
+      const calibration = calibrationRef.current
+      if (calibration && now >= calibration.endsAt) {
+        calibrationRef.current = null
+        setIsCalibratingPosture(false)
+
+        const baseline = computeBaseline(calibration.samples, now)
+        if (baseline) {
+          try {
+            savePostureBaseline(p.cameraId, baseline)
+            setPostureBaseline(baseline)
+            setCalibrationMessage('Calibrate ท่านั่งสำเร็จ ✓ ระบบจะเทียบกับท่านี้เป็นหลัก')
+          } catch {
+            setCalibrationMessage('Calibrate ไม่สำเร็จ — เบราว์เซอร์ไม่สามารถบันทึก baseline ของกล้องนี้ได้')
+          }
+        } else {
+          setCalibrationMessage('Calibrate ไม่สำเร็จ — ต้องมีคนเดียวในเฟรมและเห็นหัว+ไหล่ชัดเจน ลองใหม่อีกครั้ง')
+        }
       }
 
       // เตือนพักระดับกล้อง: เดินหนึ่งครั้งต่อ pose frame ไม่ใช่หนึ่งครั้งต่อ person track
@@ -789,6 +836,15 @@ export default function CameraStage({
     const face = primaryFaceRef.current
     if (face) onCalibrateDistance(face.detection.box.width)
   }, [onCalibrateDistance])
+
+  const handleCalibratePosture = useCallback(() => {
+    calibrationRef.current = {
+      endsAt: Date.now() + POSTURE_CALIBRATION_MS,
+      samples: [],
+    }
+    setIsCalibratingPosture(true)
+    setCalibrationMessage('กำลัง Calibrate... นั่งท่าที่ดีที่สุดค้างไว้ 3 วินาที')
+  }, [])
 
   const handleEnroll = useCallback(() => {
     const face = primaryFaceRef.current
@@ -858,6 +914,19 @@ export default function CameraStage({
       <p className="current-issue">
         ตรวจพบในเฟรม: {peopleCount} คน (รองรับสูงสุด {maxPeopleFor(detectionMode)} คน) · Pose ใช้เวลา ~{poseInferenceMs} ms/ครั้ง
       </p>
+      <button
+        type="button"
+        className="secondary-button"
+        onClick={handleCalibratePosture}
+        disabled={isCalibratingPosture}
+      >
+        {isCalibratingPosture
+          ? 'กำลัง Calibrate...'
+          : postureBaseline
+            ? 'Calibrate ท่านั่งดีใหม่'
+            : 'Calibrate ท่านั่งดี (แนะนำให้ทำก่อนใช้งาน)'}
+      </button>
+      {calibrationMessage && <p className="panel-note">{calibrationMessage}</p>}
       {faceFeaturesEnabled && (
         <>
           <button type="button" className="secondary-button" onClick={handleCalibrate} disabled={!hasFaceSignal}>

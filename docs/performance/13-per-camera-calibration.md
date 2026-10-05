@@ -4,7 +4,7 @@
 
 **Blocked by:** 12
 
-**Status:** ready-for-agent
+**Status:** done
 
 อ้างอิง: guide ขั้น 4.4–4.5, §5.4 · plan Phase 4
 
@@ -18,10 +18,11 @@ median(values): number | null; computeBaseline(samples, now): PostureBaseline | 
 loadPostureBaseline(cameraId) / savePostureBaseline(cameraId, b) / clearPostureBaseline(cameraId)
 ```
 
-- [ ] เมื่อมี baseline เปรียบเทียบด้วยค่าเบี่ยงเบน (`current − baseline`); `headDrop = 1 − current.headHeightRatio / baseline.headHeightRatio` ≥ `headDropThreshold` → `forward_head`
-- [ ] เก็บตัวอย่าง **raw** (ก่อน smoothing) ระหว่าง calibrate และเฉพาะเมื่อตรวจพบคนเดียวพอดี
-- [ ] ปุ่มตั้ง `calibrationRef = { endsAt: now + 3000, samples: [] }`; เมื่อครบเวลาให้คำนวณ baseline → `savePostureBaseline(p.cameraId, …)` → set state → แสดงข้อความสำเร็จหรือล้มเหลว
-- [ ] `CameraStage` เป็นเจ้าของ baseline: `useState(() => loadPostureBaseline(cameraId))`; เพิ่ม `cameraId` และ `postureBaseline` เข้า `propsRef`; **ไม่แตะ `App`** ใน ticket นี้
-- [ ] สไลเดอร์ `headDropThreshold` (5–40 %)
-- [ ] เทสต์ของ posture analysis ผ่านครบ รวมเคส calibrated head drop → `forward_head`
-- [ ] Gate เขียว
+- [x] เมื่อมี baseline เปรียบเทียบด้วยค่าเบี่ยงเบน (`current − baseline`); `headDrop = 1 − current.headHeightRatio / baseline.headHeightRatio` ≥ `headDropThreshold` → `forward_head`
+- [x] เก็บตัวอย่าง **raw** (ก่อน smoothing) ระหว่าง calibrate และเฉพาะเมื่อตรวจพบคนเดียวพอดี
+- [x] ปุ่มตั้ง `calibrationRef = { endsAt: now + 3000, samples: [] }`; เมื่อครบเวลาให้คำนวณ baseline → `savePostureBaseline(p.cameraId, …)` → set state → แสดงข้อความสำเร็จหรือล้มเหลว
+- [x] `CameraStage` เป็นเจ้าของ baseline: `useState(() => loadPostureBaseline(cameraId))`; เพิ่ม `cameraId` และ `postureBaseline` เข้า `propsRef`; **ไม่แตะ `App`** ใน ticket นี้
+- [x] สไลเดอร์ `headDropThreshold` (5–40 %)
+- [x] เทสต์ของ posture analysis ผ่านครบ รวมเคส calibrated head drop → `forward_head`
+- [x] Gate เขียว
+- [ ] Manual browser smoke test ผ่าน (ดู 13-browser-smoke.md) — ผู้ใช้เลือก skip และปิด Ticket นี้โดยอิง code review + automated verification ที่ผ่านแล้ว
