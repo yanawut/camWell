@@ -13,7 +13,7 @@
 <style>body{margin:0;background:#f4f5f7;color:#1f2430;font:14px/1.5 system-ui,'Segoe UI',Roboto,'Noto Sans Thai',sans-serif}*{box-sizing:border-box}a{color:#2563eb;text-decoration:none}a:hover{color:#1d4ed8;text-decoration:underline}input[type=range]{accent-color:#2563eb}@keyframes fall-alert-pulse{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.6)}50%{box-shadow:0 0 0 8px rgba(220,38,38,0)}}</style>
 </helmet>
 <div style="display:grid;grid-template-columns:232px minmax(0,1fr);min-height:100vh">
-  <aside style="background:#fff;border-right:1px solid #e2e4e9;display:flex;flex-direction:column;position:sticky;top:0;height:100vh">
+  <aside style="background:#fff;border-right:1px solid #e2e4e9;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto">
     <div style="padding:18px 20px;border-bottom:1px solid #e2e4e9;display:flex;flex-direction:column;gap:2px">
       <div style="display:flex;align-items:center;gap:8px"><strong style="font-size:17px;letter-spacing:-.01em">Camwell</strong><span style="font:600 10px/1 ui-monospace,Consolas,monospace;padding:4px 6px;border-radius:4px;background:#1f2430;color:#fff;letter-spacing:.06em">DEV</span></div>
       <span style="font-size:12px;color:#6b7280">คอนโซลผู้ดูแลระบบ</span>
@@ -25,7 +25,19 @@
         </button>
       </sc-for>
     </nav>
-    <div style="margin-top:auto;padding:16px 20px;border-top:1px solid #e2e4e9;display:flex;flex-direction:column;gap:8px;font-size:12px;color:#6b7280">
+    <div style="margin-top:auto;border-top:1px solid #e2e4e9;padding:14px 20px 12px;display:flex;flex-direction:column;gap:2px">
+      <span style="font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#6b7280;margin-bottom:4px">สถานะโมเดลและบริการ</span>
+      <sc-for list="{{ services }}" as="s" hint-placeholder-count="4">
+        <div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0">
+          <span style="width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:6px;background:{{ s.color }}"></span>
+          <div style="display:flex;flex-direction:column;min-width:0;flex:1">
+            <span style="display:flex;justify-content:space-between;gap:6px;font-size:12px"><span style="font-weight:500">{{ s.name }}</span><span style="color:{{ s.color }};white-space:nowrap">{{ s.status }}</span></span>
+            <span style="font:10.5px/1.4 ui-monospace,Consolas,monospace;color:#6b7280;overflow-wrap:anywhere">{{ s.detail }}</span>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="padding:12px 20px 16px;border-top:1px solid #e2e4e9;display:flex;flex-direction:column;gap:8px;font-size:12px;color:#6b7280">
       <div style="display:flex;flex-direction:column;gap:1px"><span>Branch</span><span style="font-family:ui-monospace,Consolas,monospace;color:#1f2430">improve-app-performance</span></div>
       <div style="display:flex;flex-direction:column;gap:1px"><span>Pose model</span><span style="font-family:ui-monospace,Consolas,monospace;color:#1f2430">pose_landmarker_lite.task</span></div>
       <div style="display:flex;flex-direction:column;gap:1px"><span>API_BASE_URL</span><span style="font-family:ui-monospace,Consolas,monospace;color:#1f2430">http://localhost:4000</span></div>
@@ -47,6 +59,7 @@
         </div>
         <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" checked="{{ sound }}" onChange="{{ toggleSound }}"></input>เสียงแจ้งเตือน</label>
         <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" checked="{{ face }}" onChange="{{ toggleFace }}"></input>ฟีเจอร์ใบหน้า</label>
+        <label title="{{ recToggleTitle }}" style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;padding-left:14px;border-left:1px solid #e2e4e9"><input type="checkbox" checked="{{ showRecorder }}" onChange="{{ toggleRecorder }}" disabled="{{ recording }}"></input>Dataset Recorder<span style="font:600 9px/1 ui-monospace,Consolas,monospace;padding:3px 4px;border-radius:3px;background:#1f2430;color:#fff;letter-spacing:.06em">DEV</span></label>
         <div style="display:flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid #e2e4e9;border-radius:999px;font-size:12px"><span style="width:8px;height:8px;border-radius:50%;background:#16a34a"></span><span>backend</span><span style="font-family:ui-monospace,Consolas,monospace;color:#6b7280">/health 200</span></div>
       </div>
     </header>
@@ -104,8 +117,19 @@
                         <span style="font:500 11px/1 ui-monospace,Consolas,monospace;color:#fff;background:rgba(17,24,39,.85);padding:5px 7px;border-radius:5px">{{ c.delegate }}</span>
                         <span style="font:500 11px/1 ui-monospace,Consolas,monospace;color:#fff;background:rgba(17,24,39,.85);padding:5px 7px;border-radius:5px">{{ c.msText }}</span>
                         <span style="font:500 11px/1 ui-monospace,Consolas,monospace;color:#fff;background:rgba(17,24,39,.85);padding:5px 7px;border-radius:5px">{{ c.peopleText }}</span>
+                        <sc-if value="{{ c.rec }}" hint-placeholder-val="{{ false }}"><span style="font:600 11px/1 ui-monospace,Consolas,monospace;color:#fff;background:#dc2626;padding:5px 8px;border-radius:5px">● REC {{ c.recLabel }} · {{ c.recCount }}</span></sc-if>
                       </div>
                     </div>
+                    <sc-if value="{{ c.rec }}" hint-placeholder-val="{{ false }}">
+                      <div style="position:absolute;left:12px;right:12px;bottom:12px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:rgba(255,255,255,.12);border-radius:8px;overflow:hidden">
+                        <sc-for list="{{ c.features }}" as="f" hint-placeholder-count="4">
+                          <div style="background:rgba(17,24,39,.9);padding:7px 9px;display:flex;flex-direction:column;gap:2px;min-width:0">
+                            <span style="font:10px/1.2 ui-monospace,Consolas,monospace;color:#9ca3af;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ f.key }}</span>
+                            <span style="font:600 14px/1.2 ui-monospace,Consolas,monospace;color:#fff">{{ f.value }}</span>
+                          </div>
+                        </sc-for>
+                      </div>
+                    </sc-if>
                     <sc-if value="{{ c.error }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:12px;right:12px;bottom:12px;padding:8px 12px;border-radius:8px;background:rgba(220,38,38,.9);color:#fff;font-size:13px">{{ c.errorText }}</div></sc-if>
                   </div>
                   <div style="padding:0 16px 14px;display:flex;flex-direction:column;gap:10px">
@@ -129,21 +153,47 @@
           </div>
 
           <div style="display:flex;flex-direction:column;gap:20px;flex:1 1 300px;min-width:0">
-            <div style="background:#fff;border:1px solid #e2e4e9;border-radius:12px;padding:16px 18px">
-              <h2 style="margin:0 0 10px;font-size:15px">สถานะโมเดลและบริการ</h2>
-              <div style="display:flex;flex-direction:column">
-                <sc-for list="{{ services }}" as="s" hint-placeholder-count="4">
-                  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #e2e4e9">
-                    <div style="display:flex;flex-direction:column;min-width:0">
-                      <span style="font-size:13px;font-weight:500">{{ s.name }}</span>
-                      <span style="font:11px/1.4 ui-monospace,Consolas,monospace;color:#6b7280;overflow-wrap:anywhere">{{ s.detail }}</span>
-                    </div>
-                    <span style="display:flex;align-items:center;gap:5px;font-size:12px;white-space:nowrap;color:{{ s.color }}"><span style="width:7px;height:7px;border-radius:50%;background:{{ s.color }}"></span>{{ s.status }}</span>
-                  </div>
-                </sc-for>
+            <sc-if value="{{ showRecorder }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#fff;border:1px solid {{ recPanelBorder }};border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                <div style="display:flex;align-items:center;gap:8px"><h2 style="margin:0;font-size:15px">Dataset Recorder</h2><span style="font:600 10px/1 ui-monospace,Consolas,monospace;padding:3px 5px;border-radius:4px;background:#1f2430;color:#fff;letter-spacing:.06em">DEV</span></div>
+                <a href="#" onClick="{{ toggleSchema }}" style="font-size:12px">{{ schemaLink }}</a>
               </div>
+              <span style="font-size:12px;color:#6b7280;margin-top:-6px">เก็บเฉพาะตัวเลข landmark/feature ไม่เก็บภาพ · ต้องมีคนเดียวในเฟรม</span>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <span style="font-size:12px;color:#6b7280">กล้อง</span>
+                <div style="display:flex;gap:4px;flex-wrap:wrap">
+                  <sc-for list="{{ recCams }}" as="rc" hint-placeholder-count="1">
+                    <button type="button" onClick="{{ rc.go }}" disabled="{{ rc.disabled }}" style="border:1px solid {{ rc.border }};border-radius:6px;padding:5px 10px;font:500 12px/1.2 ui-monospace,Consolas,monospace;cursor:pointer;background:{{ rc.bg }};color:{{ rc.color }};opacity:{{ rc.opacity }}">{{ rc.label }}</button>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <span style="font-size:12px;color:#6b7280">Label</span>
+                <div style="display:flex;flex-wrap:wrap;gap:4px">
+                  <sc-for list="{{ labels }}" as="l" hint-placeholder-count="5">
+                    <button type="button" onClick="{{ l.go }}" disabled="{{ recording }}" style="border:1px solid {{ l.border }};background:{{ l.bg }};color:{{ l.color }};padding:5px 9px;border-radius:6px;cursor:pointer;font:500 11px/1.2 ui-monospace,Consolas,monospace;opacity:{{ l.opacity }}">{{ l.label }}</button>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid #e2e4e9;border-radius:10px;background:#f9fafb">
+                <div style="display:flex;flex-direction:column;min-width:0">
+                  <span style="font:600 22px/1.2 ui-monospace,Consolas,monospace">{{ countText }}</span>
+                  <span style="font-size:12px;color:{{ recColor }}">{{ recStatus }}</span>
+                </div>
+                <button type="button" onClick="{{ toggleRec }}" style="border:none;background:{{ recBtnBg }};color:#fff;padding:9px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap;flex-shrink:0">{{ recBtnText }}</button>
+              </div>
+              <div style="display:flex;gap:8px">
+                <button type="button" disabled="{{ noSamples }}" style="flex:1;border:1px solid #e2e4e9;background:#fff;color:#1f2430;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:13px;opacity:{{ exportOpacity }}">Export JSON</button>
+                <button type="button" onClick="{{ clearSamples }}" disabled="{{ clearDisabled }}" style="flex:1;border:1px solid #e2e4e9;background:#fff;color:#dc2626;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:13px;opacity:{{ clearOpacity }}">ล้างข้อมูล</button>
+              </div>
+              <sc-if value="{{ showSchema }}" hint-placeholder-val="{{ false }}">
+                <pre style="margin:0;padding:12px 14px;background:#0b0d12;color:#e5e7eb;border-radius:8px;font:11px/1.6 ui-monospace,Consolas,monospace;overflow:auto">{{ schema }}</pre>
+                <span style="font-size:11px;color:#6b7280">meta: schemaVersion, exportedAt, thresholdsAtExport · landmarks ต้องมี visibility ทุกจุด</span>
+              </sc-if>
             </div>
-            <div style="background:#fff;border:1px solid #e2e4e9;border-radius:12px;padding:16px 18px">
+            </sc-if>
+                        <div style="background:#fff;border:1px solid #e2e4e9;border-radius:12px;padding:16px 18px">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><h2 style="margin:0;font-size:15px">แจ้งเตือนล่าสุด</h2><a href="#" onClick="{{ goEvents }}" style="font-size:12px">ดูทั้งหมด</a></div>
               <div style="display:flex;flex-direction:column;gap:8px">
                 <sc-for list="{{ recent }}" as="e" hint-placeholder-count="4">
@@ -268,72 +318,11 @@
         </div>
       </sc-if>
 
-      <sc-if value="{{ isDataset }}" hint-placeholder-val="{{ false }}">
-        <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start">
-          <div style="flex:2.2 1 560px;min-width:0;background:#fff;border:1px solid #e2e4e9;border-radius:12px;overflow:hidden;display:flex;flex-direction:column">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 16px;border-bottom:1px solid #e2e4e9;flex-wrap:wrap">
-              <div style="display:flex;align-items:center;gap:8px"><strong style="font-size:15px">ภาพจากกล้องที่บันทึก</strong></div>
-              <div style="display:flex;gap:4px;background:#f4f5f7;border:1px solid #e2e4e9;border-radius:8px;padding:2px">
-                <sc-for list="{{ recCams }}" as="rc" hint-placeholder-count="1">
-                  <button type="button" onClick="{{ rc.go }}" disabled="{{ recording }}" style="border:none;border-radius:6px;padding:4px 10px;font:500 12px/1.2 ui-monospace,Consolas,monospace;cursor:pointer;background:{{ rc.bg }};color:{{ rc.color }};box-shadow:{{ rc.shadow }}">{{ rc.id }}</button>
-                </sc-for>
-              </div>
-            </div>
-            <div style="position:relative;aspect-ratio:4/3;background:#0b0d12;border:3px solid {{ recFrameBorder }};margin:12px;border-radius:12px;overflow:hidden">
-              <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#6b7280;font-size:12px">สตรีม {{ recCamId }} · 640×480 · mirrored</div>
-              <div style="position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap">
-                <div style="display:flex;gap:6px;flex-wrap:wrap">
-                  <span style="font:500 11px/1 ui-monospace,Consolas,monospace;color:#fff;background:rgba(17,24,39,.85);padding:5px 7px;border-radius:5px">1 คนในเฟรม ✓</span>
-                  <span style="font:500 11px/1 ui-monospace,Consolas,monospace;color:#fff;background:rgba(17,24,39,.85);padding:5px 7px;border-radius:5px">full_body</span>
-                </div>
-                <sc-if value="{{ recording }}" hint-placeholder-val="{{ false }}"><span style="font:600 11px/1 ui-monospace,Consolas,monospace;color:#fff;background:#dc2626;padding:5px 8px;border-radius:5px">● REC {{ label }}</span></sc-if>
-              </div>
-              <div style="position:absolute;left:12px;right:12px;bottom:12px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:rgba(255,255,255,.12);border-radius:8px;overflow:hidden">
-                <sc-for list="{{ liveFeatures }}" as="f" hint-placeholder-count="4">
-                  <div style="background:rgba(17,24,39,.9);padding:7px 9px;display:flex;flex-direction:column;gap:2px;min-width:0">
-                    <span style="font:10px/1.2 ui-monospace,Consolas,monospace;color:#9ca3af;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ f.key }}</span>
-                    <span style="font:600 14px/1.2 ui-monospace,Consolas,monospace;color:#fff">{{ f.value }}</span>
-                  </div>
-                </sc-for>
-              </div>
-            </div>
-            <p style="margin:0;padding:0 16px 14px;font-size:12px;color:#6b7280">ค่าดิบก่อน smoothing — เป็นค่าเดียวกับที่ถูกบันทึกลงแต่ละ sample</p>
-          </div>
-          <div style="flex:1 1 320px;min-width:0;background:#fff;border:1px solid #e2e4e9;border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:16px">
-            <div style="display:flex;flex-direction:column;gap:2px"><h2 style="margin:0;font-size:15px">บันทึก dataset ท่านั่ง</h2><span style="font-size:12px;color:#6b7280">บันทึกเฉพาะตัวเลข landmark/feature ไม่บันทึกภาพหรือวิดีโอ · ต้องมีคนเดียวในเฟรม · เปิดเฉพาะ <code>import.meta.env.DEV</code></span></div>
-            <div style="display:flex;flex-direction:column;gap:6px">
-              <span style="font-size:12px;color:#6b7280">Label ท่าที่กำลังจะบันทึก</span>
-              <div style="display:flex;flex-wrap:wrap;gap:6px">
-                <sc-for list="{{ labels }}" as="l" hint-placeholder-count="5">
-                  <button type="button" onClick="{{ l.go }}" disabled="{{ recording }}" style="border:1px solid {{ l.border }};background:{{ l.bg }};color:{{ l.color }};padding:6px 12px;border-radius:6px;cursor:pointer;font:500 12px/1.2 ui-monospace,Consolas,monospace">{{ l.label }}</button>
-                </sc-for>
-              </div>
-            </div>
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border:1px solid #e2e4e9;border-radius:10px;background:#f9fafb">
-              <div style="display:flex;flex-direction:column">
-                <span style="font-size:12px;color:#6b7280">จำนวนตัวอย่างที่เก็บแล้ว</span>
-                <span style="font:600 28px/1.2 ui-monospace,Consolas,monospace">{{ countText }}</span>
-                <span style="font-size:12px;color:{{ recColor }}">{{ recStatus }}</span>
-              </div>
-              <button type="button" onClick="{{ toggleRec }}" style="border:none;background:{{ recBtnBg }};color:#fff;padding:10px 18px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600">{{ recBtnText }}</button>
-            </div>
-            <div style="display:flex;gap:8px">
-              <button type="button" disabled="{{ noSamples }}" style="border:1px solid #e2e4e9;background:#fff;color:#1f2430;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px;opacity:{{ exportOpacity }}">Export เป็น JSON</button>
-              <button type="button" onClick="{{ clearSamples }}" disabled="{{ clearDisabled }}" style="border:1px solid #e2e4e9;background:#fff;color:#dc2626;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px;opacity:{{ clearOpacity }}">ล้างข้อมูลทั้งหมด</button>
-            </div>
-          </div>
-          <div style="flex:1 1 100%;min-width:0;background:#fff;border:1px solid #e2e4e9;border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:10px">
-            <div style="display:flex;align-items:baseline;justify-content:space-between"><h2 style="margin:0;font-size:15px">Schema ตัวอย่าง (1 sample)</h2><span style="font:11px ui-monospace,Consolas,monospace;color:#6b7280">camwell-dataset-*.json</span></div>
-            <pre style="margin:0;padding:14px 16px;background:#0b0d12;color:#e5e7eb;border-radius:8px;font:12px/1.6 ui-monospace,Consolas,monospace;overflow:auto">{{ schema }}</pre>
-            <span style="font-size:12px;color:#6b7280">meta: schemaVersion, exportedAt, thresholdsAtExport · landmarks ต้องมี <code>visibility</code> ทุกจุด</span>
-          </div>
-        </div>
-      </sc-if>
     </main>
   </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;cameraCount&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;1&quot;,&quot;2&quot;],&quot;default&quot;:&quot;2&quot;,&quot;tsType&quot;:&quot;'1' | '2'&quot;},&quot;simulateFall&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;startTab&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;monitor&quot;,&quot;thresholds&quot;,&quot;events&quot;,&quot;people&quot;,&quot;dataset&quot;],&quot;default&quot;:&quot;monitor&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;cameraCount&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;1&quot;,&quot;2&quot;],&quot;default&quot;:&quot;2&quot;,&quot;tsType&quot;:&quot;'1' | '2'&quot;},&quot;simulateFall&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;startTab&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;monitor&quot;,&quot;thresholds&quot;,&quot;events&quot;,&quot;people&quot;],&quot;default&quot;:&quot;monitor&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
 const DEF = {
   neck: 25, torso: 15, tilt: 10, headDrop: 15, sustained: 8,
   dropRatio: 0.2, dropWin: 700, fallTorso: 55, cooldown: 15, grace: 2.5,
@@ -383,7 +372,6 @@ const TABS = {
   thresholds: ['เกณฑ์การตรวจจับ', 'ค่า threshold ที่ใช้กับทุกกล้อง'],
   events: ['เหตุการณ์แจ้งเตือน', 'AlertEvent ทุกหมวดของวันนี้'],
   people: ['ข้อมูลใบหน้า', 'รายชื่อที่ลงทะเบียนใน camwell-backend'],
-  dataset: ['Dataset Recorder', 'เก็บ landmark/feature สำหรับปรับจูนสูตรท่านั่ง'],
 };
 
 class Component extends DCLogic {
@@ -403,14 +391,14 @@ class Component extends DCLogic {
   fmt(v) { return Number.isInteger(v) ? String(v) : String(+v.toFixed(2)); }
   renderVals() {
     const s = this.state, P = this.props;
-    const tab = s.tab ?? P.startTab ?? 'monitor';
+    let tab = s.tab ?? P.startTab ?? 'monitor'; if (!TABS[tab]) tab = 'monitor';
     const camCount = ((P.cameraCount ?? '2') === '2' || s.extraCam) ? 2 : 1;
     const maxP = s.multi ? 4 : 1;
     const go = t => () => this.setState({ tab: t });
     const active = EVENTS.filter(e => !e.dur).length;
     const nav = [
-      ['monitor', 'ภาพรวมระบบ', camCount + ' cam'], ['thresholds', 'เกณฑ์การตรวจจับ', ''], ['events', 'เหตุการณ์', String(EVENTS.length)],
-      ['people', 'ข้อมูลใบหน้า', String(s.people.length)], ['dataset', 'Dataset Recorder', s.rec ? '● REC' : ''],
+      ['monitor', 'ภาพรวมระบบ', s.rec ? '● REC' : camCount + ' cam'], ['thresholds', 'เกณฑ์การตรวจจับ', ''], ['events', 'เหตุการณ์', String(EVENTS.length)],
+      ['people', 'ข้อมูลใบหน้า', String(s.people.length)],
     ].map(([id, label, badge]) => ({ label, badge, go: go(id), bg: tab === id ? '#eff6ff' : 'transparent', color: tab === id ? '#1d4ed8' : '#1f2430', weight: tab === id ? 600 : 400 }));
 
     const ms0 = s.ms[0];
@@ -426,7 +414,14 @@ class Component extends DCLogic {
       error: true, errorText: 'ประมวลผล AI กับภาพจากกล้องนี้ไม่ได้ เพราะติดข้อจำกัด CORS ของเบราว์เซอร์ (กล้อง IP อยู่คนละ origin กับเว็บแอป)',
       baseline: 'ยังไม่ Calibrate', baselineColor: '#f97316', peopleLine: '—',
     });
-    const avg = camCount > 1 ? ms0 : ms0;
+    const avg = ms0;
+    const recCamId = camCount > 1 && s.recCam === 'cam-2' ? 'cam-2' : 'cam-1';
+    const jj = (s.ms[0] - 18) / 4;
+    const features = [
+      ['neckAngleDeg', (12.8 + jj * 1.6).toFixed(1) + '°'], ['torsoAngleDeg', (4.1 + jj * 0.7).toFixed(1) + '°'],
+      ['shoulderTiltDeg', (1.9 + jj * 0.4).toFixed(1) + '°'], ['headHeightRatio', (0.71 - jj * 0.02).toFixed(2)],
+    ].map(([key, value]) => ({ key, value }));
+    cams.forEach(c => { c.rec = s.rec && c.id === recCamId; c.recLabel = s.label; c.recCount = s.samples.toLocaleString(); c.features = features; });
 
     const services = [
       { name: 'Pose Landmarker', detail: 'pose_landmarker_lite.task · numPoses ' + maxP + ' · VIDEO', status: 'ready', color: '#16a34a' },
@@ -459,19 +454,14 @@ class Component extends DCLogic {
 
     const labels = ['GOOD', 'FORWARD_HEAD', 'SLOUCH', 'LEAN_LEFT', 'LEAN_RIGHT'].map(l => {
       const on = s.label === l;
-      return { label: l, go: () => this.setState({ label: l }), bg: on ? '#1f2430' : '#fff', color: on ? '#fff' : '#1f2430', border: on ? '#1f2430' : '#e2e4e9' };
+      return { label: l, opacity: s.rec && !on ? 0.45 : 1, go: () => this.setState({ label: l }), bg: on ? '#1f2430' : '#fff', color: on ? '#fff' : '#1f2430', border: on ? '#1f2430' : '#e2e4e9' };
     });
 
-    const recCamId = camCount > 1 && s.recCam === 'cam-2' ? 'cam-2' : 'cam-1';
     const recCams = cams.map(c => {
-      const on = c.id === recCamId;
-      return { id: c.id, go: () => this.setState({ recCam: c.id }), bg: on ? '#fff' : 'transparent', color: '#1f2430', shadow: on ? '0 1px 2px rgba(17,24,39,.12)' : 'none' };
+      const on = c.id === recCamId, dis = c.error || s.rec;
+      return { label: c.id + (c.error ? ' (ใช้ไม่ได้)' : ''), go: () => this.setState({ recCam: c.id }), disabled: dis,
+        bg: on ? '#1f2430' : '#fff', color: on ? '#fff' : '#1f2430', border: on ? '#1f2430' : '#e2e4e9', opacity: c.error || (s.rec && !on) ? 0.45 : 1 };
     });
-    const j = (s.ms[0] - 18) / 4;
-    const liveFeatures = [
-      ['neckAngleDeg', (12.8 + j * 1.6).toFixed(1) + '°'], ['torsoAngleDeg', (4.1 + j * 0.7).toFixed(1) + '°'],
-      ['shoulderTiltDeg', (1.9 + j * 0.4).toFixed(1) + '°'], ['headHeightRatio', (0.71 - j * 0.02).toFixed(2)],
-    ].map(([key, value]) => ({ key, value }));
     const schema = `{
   "cameraId": "${recCamId}",
   "label": "${s.label}",
@@ -507,11 +497,14 @@ class Component extends DCLogic {
       people: s.people.map(p => ({ ...p, remove: () => this.setState(st => ({ people: st.people.filter(x => x.id !== p.id) })) })),
       peopleCount: s.people.length, noPeople: s.people.length === 0,
       labels, recording: s.rec, countText: s.samples.toLocaleString(),
-      recStatus: s.rec ? '● กำลังบันทึก ' + s.label + ' · 12 sample/วิ' : 'พร้อมบันทึก — ตรวจพบ 1 คนในเฟรม',
+      recStatus: s.rec ? '● บันทึก ' + s.label + ' จาก ' + recCamId + ' · ~12/วิ' : 'samples · ' + recCamId + ' พร้อม (1 คนในเฟรม)',
       recColor: s.rec ? '#dc2626' : '#16a34a', recBtnBg: s.rec ? '#1f2430' : '#dc2626', recBtnText: s.rec ? '■ หยุดบันทึก' : '● เริ่มบันทึก',
       toggleRec: () => this.setState({ rec: !s.rec }), noSamples: s.samples === 0, exportOpacity: s.samples === 0 ? 0.5 : 1,
       clearDisabled: s.rec || s.samples === 0, clearOpacity: (s.rec || s.samples === 0) ? 0.5 : 1, clearSamples: () => this.setState({ samples: 0 }),
-      schema, recCams, recCamId, liveFeatures, label: s.label, recFrameBorder: s.rec ? '#dc2626' : 'transparent',
+      showRecorder: !!s.showRecorder || s.rec, toggleRecorder: () => this.setState({ showRecorder: !s.showRecorder }),
+      recToggleTitle: s.rec ? 'หยุดบันทึกก่อนจึงจะซ่อนได้' : 'แสดงแผงเก็บ dataset ในหน้าภาพรวม',
+      schema, recCams, recPanelBorder: s.rec ? '#dc2626' : '#e2e4e9',
+      showSchema: !!s.showSchema, schemaLink: s.showSchema ? 'ซ่อน schema' : 'ดู schema', toggleSchema: e => { e.preventDefault(); this.setState({ showSchema: !s.showSchema }); },
     };
   }
 }
