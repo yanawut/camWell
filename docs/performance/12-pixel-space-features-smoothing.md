@@ -4,7 +4,7 @@
 
 **Blocked by:** 08 (ขยายจาก `quality` / torso ที่เป็น `null` ได้)
 
-**Status:** ready-for-agent
+**Status:** done
 
 อ้างอิง: guide ขั้น 4.1–4.3 และส่วนเชื่อม smoothing ใน 4.5, §5.4 · plan Phase 4
 
@@ -18,10 +18,11 @@ classifyPosture(features, thresholds, baseline: PostureBaseline | null)  // ณ 
 ema(prev: number | null, cur, alpha); smoothFeatures(prev | null, cur, alpha)
 ```
 
-- [ ] geometry ทั้งหมดคำนวณใน pixel space (`x * width`, `y * height`) โดยใช้ `canvas.width/height` เป็นขนาดเฟรม
-- [ ] `headHeightRatio = (shoulderMid.y − head.y) / shoulderWidthPx` คิดเฉพาะเมื่อเห็นไหล่ทั้งสองข้าง
-- [ ] ลำดับต่อเฟรมใน `CameraStage`: extract → `smoothFeatures` (alpha 0.3 เก็บใน `PersonState.smoothedFeatures`) → classify → posture state machine
-- [ ] fall detection อ่าน `features.torsoAngleDeg` ที่เป็นค่า raw (ยังไม่ผ่าน smoothing)
-- [ ] ไม่เหลือการอ้างถึง `analyzePosture` หรือ `analysis.` ใน `CameraStage`
-- [ ] เทสต์ของ posture analysis ผ่านในส่วนที่ไม่ต้องมี baseline: ไหล่ระดับเดียวกัน ≈ 0°, upper-body quality, ไม่เห็นไหล่ → `null`, `good`, `leaning`; มีเทสต์ของ `ema`/`smoothFeatures`
-- [ ] Gate เขียว
+- [x] geometry ทั้งหมดคำนวณใน pixel space (`x * width`, `y * height`) โดยใช้ `canvas.width/height` เป็นขนาดเฟรม
+- [x] `headHeightRatio = (shoulderMid.y − head.y) / shoulderWidthPx` คิดเฉพาะเมื่อเห็นไหล่ทั้งสองข้าง
+- [x] ลำดับต่อเฟรมใน `CameraStage`: extract → `smoothFeatures` (alpha 0.3 เก็บใน `PersonState.smoothedFeatures`) → classify → posture state machine
+- [x] fall detection อ่าน `features.torsoAngleDeg` ที่เป็นค่า raw (ยังไม่ผ่าน smoothing)
+- [x] ไม่เหลือการอ้างถึง `analyzePosture` หรือ `analysis.` ใน `CameraStage`
+- [x] เทสต์ของ posture analysis ผ่านในส่วนที่ไม่ต้องมี baseline: ไหล่ระดับเดียวกัน ≈ 0°, upper-body quality, ไม่เห็นไหล่ → `null`, `good`, `leaning`; มีเทสต์ของ `ema`/`smoothFeatures`
+- [x] Gate เขียว
+- [ ] Manual browser smoke test ผ่าน (ดู 12-browser-smoke.md) — ผู้ใช้เลือก skip และปิด Ticket นี้โดยอิง code review + automated verification ที่ผ่านแล้ว

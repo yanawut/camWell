@@ -4,7 +4,8 @@ import * as faceapi from '@vladmandic/face-api'
 import type { NormalizedLandmark, PoseLandmarkerResult } from '@mediapipe/tasks-vision'
 import { usePoseLandmarker } from '../hooks/usePoseLandmarker'
 import { useFaceApiModels } from '../hooks/useFaceApiModels'
-import { analyzePosture, POSTURE_LABELS_TH, type PostureAnalysisResult } from '../lib/postureAnalysis'
+import { classifyPosture, extractPostureFeatures, POSTURE_LABELS_TH } from '../lib/postureAnalysis'
+import { smoothFeatures } from '../lib/smoothing'
 import { analyzeFatigueFrame, FATIGUE_LABELS_TH } from '../lib/fatigueAnalysis'
 import { analyzeDistanceFrame, DISTANCE_LABELS_TH } from '../lib/distanceAnalysis'
 import { getBreakReminderLabel, initialBreakState, stepBreakReminder } from '../lib/breakReminder'
@@ -23,7 +24,7 @@ import { shouldProcessPose } from '../lib/poseThrottle'
 import { updateInferenceEma } from '../lib/inferenceTiming'
 import { enrollPerson, identifyFace } from '../services/faceEnrollment'
 import { playAlertBeep, playFallAlarm } from '../services/beep'
-import type { PostureThresholds } from '../types/posture'
+import type { PostureFeatures, PostureThresholds } from '../types/posture'
 import type { BreakReminderState, BreakThresholds, DistanceThresholds, FatigueThresholds } from '../types/wellbeing'
 import type { EnrolledPerson } from '../types/identity'
 import type { AlertEvent } from '../types/alerts'
@@ -46,6 +47,7 @@ const SKELETON_EDGES: [number, number][] = [
 ]
 
 const FACE_DETECT_INTERVAL_MS = 400 // ตรวจใบหน้า (fatigue/distance/identity) ไม่ทุกเฟรม กันหน่วง
+const POSTURE_SMOOTHING_ALPHA = 0.3
 const IDENTITY_RECHECK_INTERVAL_MS = 3000 // identity ไม่ต้องเช็คถี่เท่า fatigue/distance
 const PEOPLE_SUMMARY_INTERVAL_MS = 500 // ส่งสรุปสถานะ "ใครอยู่บ้าง" ขึ้นไปแสดงผลไม่ต้องทุกเฟรม กัน re-render ถี่เกิน
 
@@ -74,6 +76,7 @@ interface PersonState {
   yawnTimestamps: number[]
   identityName: string | null
   postureStatusLabel: string
+  smoothedFeatures: PostureFeatures | null
   /** ตำแหน่งจุดกึ่งกลางไหล่ล่าสุด เป็นพิกเซลของเฟรม (ไม่ใช่ normalized) ใช้จับคู่กับใบหน้าที่ตรวจพบ */
   anchorPx: Point2D
   /** ประวัติตำแหน่ง Y ของจุดกึ่งกลางไหล่ (normalized 0-1) ช่วงสั้นๆ ล่าสุด ใช้ตรวจจับ "ร่วงตัวเร็ว" สำหรับฟีเจอร์หกล้ม */
@@ -164,7 +167,7 @@ export default function CameraStage({
   const personStatesRef = useRef<Map<string, PersonState>>(new Map())
   const poseTrackerRef = useRef(
     // prefix ด้วย cameraId กัน trackId ชนกับกล้องตัวอื่นตอนต่อหลายกล้องพร้อมกัน (grid)
-    new PositionTracker<{ landmarks: NormalizedLandmark[]; analysis: PostureAnalysisResult }>(`pose-${cameraId}`, {
+    new PositionTracker<{ landmarks: NormalizedLandmark[]; features: PostureFeatures }>(`pose-${cameraId}`, {
       maxDistance: POSE_TRACK_MAX_DISTANCE,
       staleAfterMs: POSE_TRACK_STALE_MS,
     }),
@@ -583,14 +586,18 @@ export default function CameraStage({
       // คำนวณตำแหน่ง anchor (จุดกึ่งกลางไหล่ซ้าย-ขวา) ของแต่ละคนที่ตรวจพบ สำหรับส่งเข้า tracker
       const detections = (poseResult.landmarks ?? [])
         .map((landmarks) => {
-          const analysis = analyzePosture(landmarks, p.postureThresholds)
-          if (analysis.issue === 'no_person') return null
+          const features = extractPostureFeatures(
+            landmarks,
+            { width: canvas.width, height: canvas.height },
+            p.postureThresholds.minVisibility,
+          )
+          if (!features) return null
           const left = landmarks[11]
           const right = landmarks[12]
           const anchorNorm: Point2D | undefined =
             left && right ? { x: (left.x + right.x) / 2, y: (left.y + right.y) / 2 } : landmarks[0]
           if (!anchorNorm) return null
-          return { position: anchorNorm, data: { landmarks, analysis } }
+          return { position: anchorNorm, data: { landmarks, features } }
         })
         .filter((d): d is NonNullable<typeof d> => d !== null)
 
@@ -631,7 +638,7 @@ export default function CameraStage({
       }
 
       for (const match of matches) {
-        const { landmarks, analysis } = match.data
+        const { landmarks, features } = match.data
 
         let person = personStatesRef.current.get(match.id)
         if (!person) {
@@ -646,6 +653,7 @@ export default function CameraStage({
             yawnTimestamps: [],
             identityName: null,
             postureStatusLabel: POSTURE_LABELS_TH.no_person,
+            smoothedFeatures: null,
             anchorPx: { x: 0, y: 0 },
             torsoYHistory: [],
             lastFallAlertAt: 0,
@@ -663,8 +671,11 @@ export default function CameraStage({
           person.anchorPx = { x: ((left.x + right.x) / 2) * canvas.width, y: normalizedTorsoY * canvas.height }
         }
 
+        const smoothed = smoothFeatures(person.smoothedFeatures, features, POSTURE_SMOOTHING_ALPHA)
+        person.smoothedFeatures = smoothed
+        const postureIssue = classifyPosture(smoothed, p.postureThresholds, null)
         person.postureStatusLabel =
-          POSTURE_LABELS_TH[analysis.issue] + (analysis.quality === 'upper_body' ? ' (เห็นแค่ช่วงบน)' : '')
+          POSTURE_LABELS_TH[postureIssue] + (smoothed.quality === 'upper_body' ? ' (เห็นแค่ช่วงบน)' : '')
 
         // ชื่อที่จะโผล่ใน EventLog/banner หกล้ม/ข้อความเตือนพัก (รวมข้ามกล้อง) — แปะชื่อกล้องนำหน้าด้วยถ้ามี
         // มากกว่า 1 กล้องเชื่อมต่ออยู่ (กันข้อความรกตอนมีกล้องเดียว)
@@ -672,7 +683,7 @@ export default function CameraStage({
         const label = p.multiCameraMode ? `${p.cameraLabel} • ${plainLabel}` : plainLabel
 
         // --- Fall detection: สัญญาณร่วม "ร่วงตัวเร็ว" (normalized Y ไหล่เปลี่ยนเร็วในหน้าต่างเวลาสั้นๆ)
-        // + "ลำตัวใกล้แนวนอน" (torsoAngleDeg จาก analyzePosture) — edge-triggered + cooldown ไม่ใช่ sustained
+        // + "ลำตัวใกล้แนวนอน" (torsoAngleDeg ดิบจาก feature extraction) — edge-triggered + cooldown ไม่ใช่ sustained
         // state เหมือนท่านั่ง/ความเหนื่อยล้า/ระยะห่างจอ เพราะหกล้มต้องแจ้งทันทีที่เกิด ไม่ใช่รอให้ค้างอยู่นาน
         if (normalizedTorsoY !== null) {
           person.torsoYHistory = pruneHistory(
@@ -683,7 +694,8 @@ export default function CameraStage({
           const dropRatio = computeDropRatio(person.torsoYHistory)
           if (dropRatio !== null && dropRatio >= p.fallThresholds.dropRatioThreshold) {
             person.lastRapidDropAt = now
-            const torsoAngleDeg = analysis.torsoAngleDeg
+            // หกล้มต้องตอบสนองทันที จึงใช้ค่า raw ไม่ผ่าน posture smoothing
+            const torsoAngleDeg = features.torsoAngleDeg
             const isNearHorizontal = isFallTorsoNearHorizontal(torsoAngleDeg, p.fallThresholds.fallTorsoAngleDeg)
             if (isNearHorizontal && now - person.lastFallAlertAt >= p.fallThresholds.cooldownMs) {
               person.lastFallAlertAt = now
@@ -703,10 +715,16 @@ export default function CameraStage({
           }
         }
 
-        const postureIssue = analysis.issue === 'no_person' ? 'no_signal' : analysis.issue
         const step = stepSustainedAlert(
           person.postureState,
-          { issue: postureIssue, metrics: { neckAngleDeg: analysis.neckAngleDeg, torsoAngleDeg: analysis.torsoAngleDeg ?? 0, shoulderTiltDeg: analysis.shoulderTiltDeg } },
+          {
+            issue: postureIssue,
+            metrics: {
+              neckAngleDeg: smoothed.neckAngleDeg,
+              torsoAngleDeg: smoothed.torsoAngleDeg ?? 0,
+              shoulderTiltDeg: smoothed.shoulderTiltDeg,
+            },
+          },
           now,
           'posture',
           p.postureThresholds.sustainedMs,
