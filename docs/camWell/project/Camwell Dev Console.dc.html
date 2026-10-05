@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com"></link>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&amp;display=swap" rel="stylesheet"></link>
+<style>body{margin:0;background:#f4f5f7;color:#1f2430;font:14px/1.5 system-ui,'Segoe UI',Roboto,'Noto Sans Thai',sans-serif}*{box-sizing:border-box}a{color:#2563eb;text-decoration:none}a:hover{color:#1d4ed8;text-decoration:underline}input[type=range]{accent-color:#2563eb}@keyframes fall-alert-pulse{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.6)}50%{box-shadow:0 0 0 8px rgba(220,38,38,0)}}</style>
+</helmet>
+<div style="display:grid;grid-template-columns:232px minmax(0,1fr);min-height:100vh">
+  <aside style="background:#fff;border-right:1px solid #e2e4e9;display:flex;flex-direction:column;position:sticky;top:0;height:100vh">
+    <div style="padding:18px 20px;border-bottom:1px solid #e2e4e9;display:flex;flex-direction:column;gap:2px">
+      <div style="display:flex;align-items:center;gap:8px"><strong style="font-size:17px;letter-spacing:-.01em">Camwell</strong><span style="font:600 10px/1 ui-monospace,Consolas,monospace;padding:4px 6px;border-radius:4px;background:#1f2430;color:#fff;letter-spacing:.06em">DEV</span></div>
+      <span style="font-size:12px;color:#6b7280">คอนโซลผู้ดูแลระบบ</span>
+    </div>
+    <nav style="padding:12px 10px;display:flex;flex-direction:column;gap:2px">
+      <sc-for list="{{ nav }}" as="n" hint-placeholder-count="5">
+        <button type="button" onClick="{{ n.go }}" style="display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;text-align:left;border:none;border-radius:8px;padding:9px 12px;font:inherit;font-size:14px;cursor:pointer;background:{{ n.bg }};color:{{ n.color }};font-weight:{{ n.weight }}" style-hover="background:#f4f5f7">
+          <span>{{ n.label }}</span><span style="font:500 11px/1 ui-monospace,Consolas,monospace;color:#6b7280">{{ n.badge }}</span>
+        </button>
+      </sc-for>
+    </nav>
+    <div style="margin-top:auto;padding:16px 20px;border-top:1px solid #e2e4e9;display:flex;flex-direction:column;gap:8px;font-size:12px;color:#6b7280">
+      <div style="display:flex;flex-direction:column;gap:1px"><span>Branch</span><span style="font-family:ui-monospace,Consolas,monospace;color:#1f2430">improve-app-performance</span></div>
+      <div style="display:flex;flex-direction:column;gap:1px"><span>Pose model</span><span style="font-family:ui-monospace,Consolas,monospace;color:#1f2430">pose_landmarker_lite.task</span></div>
+      <div style="display:flex;flex-direction:column;gap:1px"><span>API_BASE_URL</span><span style="font-family:ui-monospace,Consolas,monospace;color:#1f2430">http://localhost:4000</span></div>
+    </div>
+  </aside>
+
+  <div style="display:flex;flex-direction:column;min-width:0">
+    <header style="position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid #e2e4e9;padding:12px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+      <div style="display:flex;flex-direction:column">
+        <h1 style="margin:0;font-size:18px;font-weight:600">{{ pageTitle }}</h1>
+        <span style="font-size:12px;color:#6b7280">{{ pageSub }}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#6b7280"><span>โหมด</span>
+          <div style="display:flex;background:#f4f5f7;border:1px solid #e2e4e9;border-radius:8px;padding:2px">
+            <button type="button" onClick="{{ setWorkstation }}" style="border:none;border-radius:6px;padding:5px 10px;font:inherit;font-size:12px;cursor:pointer;background:{{ wsBg }};color:#1f2430;box-shadow:{{ wsShadow }}">Workstation · 1 คน</button>
+            <button type="button" onClick="{{ setMulti }}" style="border:none;border-radius:6px;padding:5px 10px;font:inherit;font-size:12px;cursor:pointer;background:{{ mpBg }};color:#1f2430;box-shadow:{{ mpShadow }}">Multi · สูงสุด 4</button>
+          </div>
+        </div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" checked="{{ sound }}" onChange="{{ toggleSound }}"></input>เสียงแจ้งเตือน</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" checked="{{ face }}" onChange="{{ toggleFace }}"></input>ฟีเจอร์ใบหน้า</label>
+        <div style="display:flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid #e2e4e9;border-radius:999px;font-size:12px"><span style="width:8px;height:8px;border-radius:50%;background:#16a34a"></span><span>backend</span><span style="font-family:ui-monospace,Consolas,monospace;color:#6b7280">/health 200</span></div>
+      </div>
+    </header>
+
+    <main style="padding:24px 28px 40px;display:flex;flex-direction:column;gap:20px;max-width:1440px;width:100%">
+      <sc-if value="{{ showFall }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:#7f1d1d;border:2px solid #dc2626;color:#fff;border-radius:10px;padding:12px 16px;font-size:15px;font-weight:600;animation:fall-alert-pulse 1s ease-in-out infinite">
+          <span>🚨 สงสัยว่า กล้อง 1 • สมชาย ใจดี หกล้ม/ตกจากเก้าอี้ แล้วหายไปจากมุมกล้องกะทันหัน — กรุณาตรวจสอบด่วน!</span>
+          <button type="button" onClick="{{ ackFall }}" style="border:none;background:#dc2626;color:#fff;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;flex-shrink:0">รับทราบ</button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isMonitor }}" hint-placeholder-val="{{ true }}">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));background:#fff;border:1px solid #e2e4e9;border-radius:12px;overflow:hidden">
+          <div style="padding:16px 20px;display:flex;flex-direction:column;gap:2px;border-right:1px solid #e2e4e9">
+            <span style="font-size:12px;color:#6b7280">Pose inference (EMA)</span>
+            <span style="font:600 26px/1.2 ui-monospace,Consolas,monospace">{{ avgMs }}<span style="font-size:14px;color:#6b7280"> ms</span></span>
+            <span style="font-size:12px;color:#6b7280">จำกัด 12 fps · ช่วง 83 ms/รอบ</span>
+          </div>
+          <div style="padding:16px 20px;display:flex;flex-direction:column;gap:2px;border-right:1px solid #e2e4e9">
+            <span style="font-size:12px;color:#6b7280">Face detection</span>
+            <span style="font:600 26px/1.2 ui-monospace,Consolas,monospace">{{ faceInterval }}</span>
+            <span style="font-size:12px;color:#6b7280">{{ faceIntervalSub }}</span>
+          </div>
+          <div style="padding:16px 20px;display:flex;flex-direction:column;gap:2px;border-right:1px solid #e2e4e9">
+            <span style="font-size:12px;color:#6b7280">คนที่กำลังติดตาม</span>
+            <span style="font:600 26px/1.2 ui-monospace,Consolas,monospace">{{ trackedText }}</span>
+            <span style="font-size:12px;color:#6b7280">{{ trackedSub }}</span>
+          </div>
+          <div style="padding:16px 20px;display:flex;flex-direction:column;gap:2px">
+            <span style="font-size:12px;color:#6b7280">แจ้งเตือนที่ยัง active</span>
+            <span style="font:600 26px/1.2 ui-monospace,Consolas,monospace;color:#dc2626">{{ activeCount }}</span>
+            <span style="font-size:12px;color:#6b7280">จาก {{ eventsTotal }} เหตุการณ์วันนี้</span>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start">
+          <div style="display:flex;flex-direction:column;gap:12px;flex:999 1 480px;min-width:0">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:20px">
+              <sc-for list="{{ cams }}" as="c" hint-placeholder-count="1">
+                <div style="background:#fff;border:1px solid #e2e4e9;border-radius:12px;overflow:hidden;display:flex;flex-direction:column">
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 16px;border-bottom:1px solid #e2e4e9">
+                    <div style="display:flex;align-items:center;gap:10px;min-width:0">
+                      <span style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:{{ c.dot }}"></span>
+                      <strong style="font-size:15px">{{ c.label }}</strong>
+                      <span style="font:500 11px/1 ui-monospace,Consolas,monospace;color:#6b7280;padding:4px 6px;border:1px solid #e2e4e9;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.source }}</span>
+                    </div>
+                    <span style="font:500 11px/1 ui-monospace,Consolas,monospace;color:#6b7280">{{ c.id }}</span>
+                  </div>
+                  <div style="position:relative;aspect-ratio:4/3;background:#0b0d12;border:3px solid {{ c.frameBorder }};margin:12px;border-radius:12px;overflow:hidden">
+                    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#6b7280;font-size:12px">{{ c.placeholder }}</div>
+                    <div style="position:absolute;top:12px;left:12px;right:12px;display:flex;flex-direction:column;gap:8px">
+                      <sc-if value="{{ c.alerting }}" hint-placeholder-val="{{ false }}"><div style="padding:8px 12px;border-radius:8px;background:#dc2626;color:#fff;font-size:13px;font-weight:600">⚠ {{ c.alertText }}</div></sc-if>
+                      <div style="display:flex;gap:6px;flex-wrap:wrap">
+                        <span style="font:500 11px/1 ui-monospace,Consolas,monospace;color:#fff;background:rgba(17,24,39,.85);padding:5px 7px;border-radius:5px">{{ c.delegate }}</span>
+                        <span style="font:500 11px/1 ui-monospace,Consolas,monospace;color:#fff;background:rgba(17,24,39,.85);padding:5px 7px;border-radius:5px">{{ c.msText }}</span>
+                        <span style="font:500 11px/1 ui-monospace,Consolas,monospace;color:#fff;background:rgba(17,24,39,.85);padding:5px 7px;border-radius:5px">{{ c.peopleText }}</span>
+                      </div>
+                    </div>
+                    <sc-if value="{{ c.error }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:12px;right:12px;bottom:12px;padding:8px 12px;border-radius:8px;background:rgba(220,38,38,.9);color:#fff;font-size:13px">{{ c.errorText }}</div></sc-if>
+                  </div>
+                  <div style="padding:0 16px 14px;display:flex;flex-direction:column;gap:10px">
+                    <div style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;font-size:12px">
+                      <span style="color:#6b7280">Posture baseline</span><span style="color:{{ c.baselineColor }}">{{ c.baseline }}</span>
+                      <span style="color:#6b7280">Storage key</span><span style="font-family:ui-monospace,Consolas,monospace;font-size:11px;overflow-wrap:anywhere">camwell:posture-baseline:v1:{{ c.id }}</span>
+                      <span style="color:#6b7280">ในเฟรม</span><span>{{ c.peopleLine }}</span>
+                    </div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                      <button type="button" style="border:1px solid #2563eb;background:#2563eb;color:#fff;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px" style-hover="background:#1d4ed8">Calibrate ท่านั่ง (3 วิ)</button>
+                      <button type="button" style="border:1px solid #e2e4e9;background:#fff;color:#1f2430;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px" style-hover="background:#f4f5f7">Calibrate ระยะนั่ง</button>
+                      <button type="button" style="border:1px solid #e2e4e9;background:#fff;color:#1f2430;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px" style-hover="background:#f4f5f7">เปลี่ยนแหล่งภาพ</button>
+                    </div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+            <sc-if value="{{ canAddCam }}" hint-placeholder-val="{{ true }}">
+              <button type="button" onClick="{{ addCam }}" style="align-self:flex-start;border:1px dashed #c9ccd3;background:transparent;color:#1f2430;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13px" style-hover="background:#fff">+ เพิ่มกล้อง (สูงสุด 2 ตัวพร้อมกัน — แต่ละตัวรันโมเดลแยกชุด)</button>
+            </sc-if>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:20px;flex:1 1 300px;min-width:0">
+            <div style="background:#fff;border:1px solid #e2e4e9;border-radius:12px;padding:16px 18px">
+              <h2 style="margin:0 0 10px;font-size:15px">สถานะโมเดลและบริการ</h2>
+              <div style="display:flex;flex-direction:column">
+                <sc-for list="{{ services }}" as="s" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #e2e4e9">
+                    <div style="display:flex;flex-direction:column;min-width:0">
+                      <span style="font-size:13px;font-weight:500">{{ s.name }}</span>
+                      <span style="font:11px/1.4 ui-monospace,Consolas,monospace;color:#6b7280;overflow-wrap:anywhere">{{ s.detail }}</span>
+                    </div>
+                    <span style="display:flex;align-items:center;gap:5px;font-size:12px;white-space:nowrap;color:{{ s.color }}"><span style="width:7px;height:7px;border-radius:50%;background:{{ s.color }}"></span>{{ s.status }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="background:#fff;border:1px solid #e2e4e9;border-radius:12px;padding:16px 18px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><h2 style="margin:0;font-size:15px">แจ้งเตือนล่าสุด</h2><a href="#" onClick="{{ goEvents }}" style="font-size:12px">ดูทั้งหมด</a></div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <sc-for list="{{ recent }}" as="e" hint-placeholder-count="4">
+                  <div style="display:grid;grid-template-columns:62px minmax(0,1fr);gap:8px;font-size:13px;padding-bottom:8px;border-bottom:1px solid #e2e4e9">
+                    <span style="font:12px/1.6 ui-monospace,Consolas,monospace;color:#6b7280">{{ e.time }}</span>
+                    <div style="display:flex;flex-direction:column;min-width:0">
+                      <span style="color:{{ e.color }};font-weight:{{ e.weight }}">{{ e.type }}</span>
+                      <span style="font-size:12px;color:#6b7280">{{ e.person }} · {{ e.durText }}</span>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isEvents }}" hint-placeholder-val="{{ false }}">
+        <div style="background:#fff;border:1px solid #e2e4e9;border-radius:12px;overflow:hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid #e2e4e9;flex-wrap:wrap">
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <sc-for list="{{ catFilters }}" as="f" hint-placeholder-count="5">
+                <button type="button" onClick="{{ f.go }}" style="border:1px solid {{ f.border }};background:{{ f.bg }};color:{{ f.color }};padding:5px 12px;border-radius:999px;cursor:pointer;font-size:12px">{{ f.label }} <span style="font-family:ui-monospace,Consolas,monospace;opacity:.75">{{ f.count }}</span></button>
+              </sc-for>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px">
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" checked="{{ activeOnly }}" onChange="{{ toggleActiveOnly }}"></input>เฉพาะที่ยัง active</label>
+              <button type="button" style="border:1px solid #e2e4e9;background:#fff;color:#1f2430;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px" style-hover="background:#f4f5f7">Export JSON</button>
+            </div>
+          </div>
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:13px">
+              <thead><tr style="background:#f9fafb">
+                <th style="text-align:left;padding:9px 18px;border-bottom:1px solid #e2e4e9;font-size:12px;font-weight:500;color:#6b7280">เวลาเริ่ม</th>
+                <th style="text-align:left;padding:9px 10px;border-bottom:1px solid #e2e4e9;font-size:12px;font-weight:500;color:#6b7280">กล้อง</th>
+                <th style="text-align:left;padding:9px 10px;border-bottom:1px solid #e2e4e9;font-size:12px;font-weight:500;color:#6b7280">บุคคล</th>
+                <th style="text-align:left;padding:9px 10px;border-bottom:1px solid #e2e4e9;font-size:12px;font-weight:500;color:#6b7280">หมวด</th>
+                <th style="text-align:left;padding:9px 10px;border-bottom:1px solid #e2e4e9;font-size:12px;font-weight:500;color:#6b7280">ประเภท</th>
+                <th style="text-align:left;padding:9px 10px;border-bottom:1px solid #e2e4e9;font-size:12px;font-weight:500;color:#6b7280">ระยะเวลา</th>
+                <th style="text-align:left;padding:9px 18px 9px 10px;border-bottom:1px solid #e2e4e9;font-size:12px;font-weight:500;color:#6b7280">metrics (ค่าแย่สุด)</th>
+              </tr></thead>
+              <tbody>
+                <sc-for list="{{ filteredEvents }}" as="e" hint-placeholder-count="6">
+                  <tr style-hover="background:#f9fafb">
+                    <td style="padding:9px 18px;border-bottom:1px solid #e2e4e9;font-family:ui-monospace,Consolas,monospace;font-size:12px">{{ e.time }}</td>
+                    <td style="padding:9px 10px;border-bottom:1px solid #e2e4e9">{{ e.cam }}</td>
+                    <td style="padding:9px 10px;border-bottom:1px solid #e2e4e9">{{ e.person }}</td>
+                    <td style="padding:9px 10px;border-bottom:1px solid #e2e4e9"><span style="font-size:12px;padding:2px 8px;border-radius:999px;background:{{ e.catBg }};color:{{ e.catColor }}">{{ e.catLabel }}</span></td>
+                    <td style="padding:9px 10px;border-bottom:1px solid #e2e4e9;color:{{ e.color }};font-weight:{{ e.weight }}">{{ e.type }}</td>
+                    <td style="padding:9px 10px;border-bottom:1px solid #e2e4e9;white-space:nowrap;color:{{ e.color }}">{{ e.durText }}</td>
+                    <td style="padding:9px 18px 9px 10px;border-bottom:1px solid #e2e4e9;font-family:ui-monospace,Consolas,monospace;font-size:11px;color:#6b7280">{{ e.metrics }}</td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+          <sc-if value="{{ noEvents }}" hint-placeholder-val="{{ false }}"><p style="margin:0;padding:24px 18px;color:#6b7280;font-size:13px">ไม่มีเหตุการณ์ตามตัวกรองนี้</p></sc-if>
+          <p style="margin:0;padding:12px 18px;font-size:12px;color:#6b7280;border-top:1px solid #e2e4e9">เก็บในหน่วยความจำของเบราว์เซอร์เท่านั้น · ส่งออกผ่าน <code>consoleAlertReporter</code> — ยังไม่ได้ส่งไป backend (Phase 2: <code>createWebSocketAlertReporter()</code>)</p>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isThresholds }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <span style="font-size:13px;color:#6b7280">แก้ไขแล้ว <strong style="color:#1f2430">{{ modifiedCount }}</strong> ค่า จากค่าเริ่มต้นใน <code>types/*.ts</code> · มีผลทุกกล้องทันที</span>
+          <button type="button" onClick="{{ resetAll }}" style="border:1px solid #e2e4e9;background:#fff;color:#1f2430;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px" style-hover="background:#f4f5f7">คืนค่าเริ่มต้นทั้งหมด</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,380px),1fr));gap:20px;align-items:start">
+          <sc-for list="{{ groups }}" as="g" hint-placeholder-count="5">
+            <div style="background:#fff;border:1px solid #e2e4e9;border-radius:12px;padding:16px 18px;opacity:{{ g.opacity }}">
+              <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:4px">
+                <h2 style="margin:0;font-size:15px">{{ g.title }}</h2>
+                <span style="font:11px/1 ui-monospace,Consolas,monospace;color:#6b7280">{{ g.type }}</span>
+              </div>
+              <p style="margin:0 0 12px;font-size:12px;color:#6b7280">{{ g.note }}</p>
+              <div style="display:flex;flex-direction:column;gap:14px">
+                <sc-for list="{{ g.items }}" as="s" hint-placeholder-count="3">
+                  <label style="display:flex;flex-direction:column;gap:4px;font-size:13px">
+                    <span style="display:flex;justify-content:space-between;gap:10px;align-items:baseline">
+                      <span style="display:flex;align-items:center;gap:6px"><span style="width:6px;height:6px;border-radius:50%;flex-shrink:0;background:{{ s.dot }}"></span>{{ s.label }}</span>
+                      <strong style="font-family:ui-monospace,Consolas,monospace;white-space:nowrap">{{ s.display }}</strong>
+                    </span>
+                    <input type="range" min="{{ s.min }}" max="{{ s.max }}" step="{{ s.step }}" value="{{ s.value }}" onChange="{{ s.onChange }}" disabled="{{ g.disabled }}" style="width:100%"></input>
+                    <span style="display:flex;justify-content:space-between;font:11px/1 ui-monospace,Consolas,monospace;color:#6b7280"><span>{{ s.key }}</span><span>ค่าเริ่มต้น {{ s.defDisplay }}</span></span>
+                  </label>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isPeople }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;gap:10px;align-items:flex-start;padding:12px 16px;border:1px solid #fdba74;background:#fff7ed;border-radius:10px;font-size:13px;color:#7c2d12">
+          <span>⚠️</span><span>Face descriptor เป็นข้อมูลชีวภาพตาม PDPA — ลงทะเบียนได้เฉพาะเมื่อติ๊กยืนยันความยินยอมแล้ว (backend ปฏิเสธคำขอที่ไม่มี <code>consentGiven: true</code>) และพนักงานขอลบได้ตลอดเวลา</span>
+        </div>
+        <div style="background:#fff;border:1px solid #e2e4e9;border-radius:12px;overflow:hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid #e2e4e9;flex-wrap:wrap">
+            <div style="display:flex;flex-direction:column"><h2 style="margin:0;font-size:15px">พนักงานที่ลงทะเบียนใบหน้าไว้ ({{ peopleCount }})</h2><span style="font:11px/1.4 ui-monospace,Consolas,monospace;color:#6b7280">GET /api/employees · SQLite (camwell-backend)</span></div>
+            <span style="font-size:12px;color:#6b7280">ลงทะเบียนใหม่จากหน้ากล้อง — ใช้ใบหน้าที่ใหญ่สุดในเฟรม</span>
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead><tr style="background:#f9fafb">
+              <th style="text-align:left;padding:9px 18px;border-bottom:1px solid #e2e4e9;font-size:12px;font-weight:500;color:#6b7280">ชื่อ</th>
+              <th style="text-align:left;padding:9px 10px;border-bottom:1px solid #e2e4e9;font-size:12px;font-weight:500;color:#6b7280">ID</th>
+              <th style="text-align:left;padding:9px 10px;border-bottom:1px solid #e2e4e9;font-size:12px;font-weight:500;color:#6b7280">Descriptor</th>
+              <th style="text-align:left;padding:9px 10px;border-bottom:1px solid #e2e4e9;font-size:12px;font-weight:500;color:#6b7280">ความยินยอม</th>
+              <th style="padding:9px 18px;border-bottom:1px solid #e2e4e9"></th>
+            </tr></thead>
+            <tbody>
+              <sc-for list="{{ people }}" as="p" hint-placeholder-count="3">
+                <tr style-hover="background:#f9fafb">
+                  <td style="padding:10px 18px;border-bottom:1px solid #e2e4e9;font-weight:500">{{ p.name }}</td>
+                  <td style="padding:10px;border-bottom:1px solid #e2e4e9;font-family:ui-monospace,Consolas,monospace;font-size:12px;color:#6b7280">{{ p.id }}</td>
+                  <td style="padding:10px;border-bottom:1px solid #e2e4e9;font-family:ui-monospace,Consolas,monospace;font-size:12px;color:#6b7280">Float32 × 128</td>
+                  <td style="padding:10px;border-bottom:1px solid #e2e4e9;color:#16a34a">✓ ยืนยันแล้ว</td>
+                  <td style="padding:10px 18px;border-bottom:1px solid #e2e4e9;text-align:right"><button type="button" onClick="{{ p.remove }}" style="border:none;background:none;color:#dc2626;cursor:pointer;font-size:13px;padding:0">ลบข้อมูล</button></td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+          <sc-if value="{{ noPeople }}" hint-placeholder-val="{{ false }}"><p style="margin:0;padding:24px 18px;color:#6b7280;font-size:13px">ยังไม่มีใครลงทะเบียนไว้</p></sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isDataset }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start">
+          <div style="flex:2.2 1 560px;min-width:0;background:#fff;border:1px solid #e2e4e9;border-radius:12px;overflow:hidden;display:flex;flex-direction:column">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 16px;border-bottom:1px solid #e2e4e9;flex-wrap:wrap">
+              <div style="display:flex;align-items:center;gap:8px"><strong style="font-size:15px">ภาพจากกล้องที่บันทึก</strong></div>
+              <div style="display:flex;gap:4px;background:#f4f5f7;border:1px solid #e2e4e9;border-radius:8px;padding:2px">
+                <sc-for list="{{ recCams }}" as="rc" hint-placeholder-count="1">
+                  <button type="button" onClick="{{ rc.go }}" disabled="{{ recording }}" style="border:none;border-radius:6px;padding:4px 10px;font:500 12px/1.2 ui-monospace,Consolas,monospace;cursor:pointer;background:{{ rc.bg }};color:{{ rc.color }};box-shadow:{{ rc.shadow }}">{{ rc.id }}</button>
+                </sc-for>
+              </div>
+            </div>
+            <div style="position:relative;aspect-ratio:4/3;background:#0b0d12;border:3px solid {{ recFrameBorder }};margin:12px;border-radius:12px;overflow:hidden">
+              <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#6b7280;font-size:12px">สตรีม {{ recCamId }} · 640×480 · mirrored</div>
+              <div style="position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap">
+                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                  <span style="font:500 11px/1 ui-monospace,Consolas,monospace;color:#fff;background:rgba(17,24,39,.85);padding:5px 7px;border-radius:5px">1 คนในเฟรม ✓</span>
+                  <span style="font:500 11px/1 ui-monospace,Consolas,monospace;color:#fff;background:rgba(17,24,39,.85);padding:5px 7px;border-radius:5px">full_body</span>
+                </div>
+                <sc-if value="{{ recording }}" hint-placeholder-val="{{ false }}"><span style="font:600 11px/1 ui-monospace,Consolas,monospace;color:#fff;background:#dc2626;padding:5px 8px;border-radius:5px">● REC {{ label }}</span></sc-if>
+              </div>
+              <div style="position:absolute;left:12px;right:12px;bottom:12px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:rgba(255,255,255,.12);border-radius:8px;overflow:hidden">
+                <sc-for list="{{ liveFeatures }}" as="f" hint-placeholder-count="4">
+                  <div style="background:rgba(17,24,39,.9);padding:7px 9px;display:flex;flex-direction:column;gap:2px;min-width:0">
+                    <span style="font:10px/1.2 ui-monospace,Consolas,monospace;color:#9ca3af;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ f.key }}</span>
+                    <span style="font:600 14px/1.2 ui-monospace,Consolas,monospace;color:#fff">{{ f.value }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <p style="margin:0;padding:0 16px 14px;font-size:12px;color:#6b7280">ค่าดิบก่อน smoothing — เป็นค่าเดียวกับที่ถูกบันทึกลงแต่ละ sample</p>
+          </div>
+          <div style="flex:1 1 320px;min-width:0;background:#fff;border:1px solid #e2e4e9;border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:16px">
+            <div style="display:flex;flex-direction:column;gap:2px"><h2 style="margin:0;font-size:15px">บันทึก dataset ท่านั่ง</h2><span style="font-size:12px;color:#6b7280">บันทึกเฉพาะตัวเลข landmark/feature ไม่บันทึกภาพหรือวิดีโอ · ต้องมีคนเดียวในเฟรม · เปิดเฉพาะ <code>import.meta.env.DEV</code></span></div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <span style="font-size:12px;color:#6b7280">Label ท่าที่กำลังจะบันทึก</span>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <sc-for list="{{ labels }}" as="l" hint-placeholder-count="5">
+                  <button type="button" onClick="{{ l.go }}" disabled="{{ recording }}" style="border:1px solid {{ l.border }};background:{{ l.bg }};color:{{ l.color }};padding:6px 12px;border-radius:6px;cursor:pointer;font:500 12px/1.2 ui-monospace,Consolas,monospace">{{ l.label }}</button>
+                </sc-for>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border:1px solid #e2e4e9;border-radius:10px;background:#f9fafb">
+              <div style="display:flex;flex-direction:column">
+                <span style="font-size:12px;color:#6b7280">จำนวนตัวอย่างที่เก็บแล้ว</span>
+                <span style="font:600 28px/1.2 ui-monospace,Consolas,monospace">{{ countText }}</span>
+                <span style="font-size:12px;color:{{ recColor }}">{{ recStatus }}</span>
+              </div>
+              <button type="button" onClick="{{ toggleRec }}" style="border:none;background:{{ recBtnBg }};color:#fff;padding:10px 18px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600">{{ recBtnText }}</button>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button type="button" disabled="{{ noSamples }}" style="border:1px solid #e2e4e9;background:#fff;color:#1f2430;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px;opacity:{{ exportOpacity }}">Export เป็น JSON</button>
+              <button type="button" onClick="{{ clearSamples }}" disabled="{{ clearDisabled }}" style="border:1px solid #e2e4e9;background:#fff;color:#dc2626;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px;opacity:{{ clearOpacity }}">ล้างข้อมูลทั้งหมด</button>
+            </div>
+          </div>
+          <div style="flex:1 1 100%;min-width:0;background:#fff;border:1px solid #e2e4e9;border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;align-items:baseline;justify-content:space-between"><h2 style="margin:0;font-size:15px">Schema ตัวอย่าง (1 sample)</h2><span style="font:11px ui-monospace,Consolas,monospace;color:#6b7280">camwell-dataset-*.json</span></div>
+            <pre style="margin:0;padding:14px 16px;background:#0b0d12;color:#e5e7eb;border-radius:8px;font:12px/1.6 ui-monospace,Consolas,monospace;overflow:auto">{{ schema }}</pre>
+            <span style="font-size:12px;color:#6b7280">meta: schemaVersion, exportedAt, thresholdsAtExport · landmarks ต้องมี <code>visibility</code> ทุกจุด</span>
+          </div>
+        </div>
+      </sc-if>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;cameraCount&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;1&quot;,&quot;2&quot;],&quot;default&quot;:&quot;2&quot;,&quot;tsType&quot;:&quot;'1' | '2'&quot;},&quot;simulateFall&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;startTab&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;monitor&quot;,&quot;thresholds&quot;,&quot;events&quot;,&quot;people&quot;,&quot;dataset&quot;],&quot;default&quot;:&quot;monitor&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+const DEF = {
+  neck: 25, torso: 15, tilt: 10, headDrop: 15, sustained: 8,
+  dropRatio: 0.2, dropWin: 700, fallTorso: 55, cooldown: 15, grace: 2.5,
+  drowsy: 2, yawn: 3, close: 1.35, sit: 45, reset: 3,
+};
+const SL = [
+  { g: 'posture', k: 'neck', key: 'neckAngleThresholdDeg', label: 'มุมคอที่ยอมรับได้ (forward head)', unit: '°', min: 10, max: 45, step: 1 },
+  { g: 'posture', k: 'torso', key: 'torsoAngleThresholdDeg', label: 'มุมลำตัวที่ยอมรับได้ (หลังค่อม)', unit: '°', min: 5, max: 35, step: 1 },
+  { g: 'posture', k: 'tilt', key: 'shoulderTiltThresholdDeg', label: 'มุมเอียงไหล่ที่ยอมรับได้', unit: '°', min: 5, max: 30, step: 1 },
+  { g: 'posture', k: 'headDrop', key: 'headDropThreshold', label: 'หัวต่ำลงจากท่าที่ Calibrate ได้ไม่เกิน', unit: '%', min: 5, max: 40, step: 1 },
+  { g: 'posture', k: 'sustained', key: 'sustainedMs', label: 'นั่งท่าไม่ดีต่อเนื่องก่อนแจ้งเตือน', unit: ' s', min: 2, max: 30, step: 1 },
+  { g: 'fall', k: 'dropRatio', key: 'dropRatioThreshold', label: 'สัดส่วนร่วงตัวที่ถือว่าเร็วผิดปกติ', unit: '', min: 0.1, max: 0.4, step: 0.01 },
+  { g: 'fall', k: 'dropWin', key: 'dropWindowMs', label: 'หน้าต่างเวลาที่ใช้ดูการร่วงตัว', unit: ' ms', min: 300, max: 1500, step: 100 },
+  { g: 'fall', k: 'fallTorso', key: 'fallTorsoAngleDeg', label: 'มุมลำตัวที่ถือว่าล้มราบ', unit: '°', min: 30, max: 80, step: 1 },
+  { g: 'fall', k: 'cooldown', key: 'cooldownMs', label: 'Cooldown แจ้งซ้ำคนเดิม', unit: ' s', min: 5, max: 60, step: 5 },
+  { g: 'fall', k: 'grace', key: 'disappearGraceMs', label: 'ทนรอหลังหายจากเฟรม', unit: ' s', min: 1, max: 10, step: 0.5 },
+  { g: 'fatigue', k: 'drowsy', key: 'drowsySustainedMs', label: 'ตาหลับนานเท่าไหร่ถึงเตือนว่าง่วง', unit: ' s', min: 1, max: 10, step: 0.5 },
+  { g: 'fatigue', k: 'yawn', key: 'yawnCountThreshold', label: 'หาวกี่ครั้ง (ใน 10 นาที) ถือว่าถี่', unit: ' ครั้ง', min: 2, max: 8, step: 1 },
+  { g: 'distance', k: 'close', key: 'tooCloseRatio', label: 'ใกล้กว่าค่ามาตรฐานกี่เท่าถึงเตือน', unit: 'x', min: 1.1, max: 2, step: 0.05 },
+  { g: 'break', k: 'sit', key: 'continuousSittingMs', label: 'นั่งต่อเนื่องกี่นาทีถึงเตือนให้พัก', unit: ' นาที', min: 15, max: 90, step: 5 },
+  { g: 'break', k: 'reset', key: 'breakResetMs', label: 'ลุกไปนานกี่นาทีถึงถือว่าพักแล้ว', unit: ' นาที', min: 1, max: 10, step: 1 },
+];
+const GROUPS = [
+  { id: 'posture', title: 'ท่านั่ง', type: 'PostureThresholds', note: 'เทียบกับ baseline ต่อกล้องถ้า calibrate แล้ว · minVisibility 0.5', face: false },
+  { id: 'fall', title: 'หกล้ม / ตกจากเก้าอี้', type: 'FallThresholds', note: 'ใช้ pose landmarks เดิม แจ้งทันทีที่ตรวจพบ (edge-triggered)', face: false },
+  { id: 'fatigue', title: 'ความเหนื่อยล้า', type: 'FatigueThresholds', note: 'EAR/MAR จาก face-api 68 จุด · ต้องเปิดฟีเจอร์ใบหน้า', face: true },
+  { id: 'distance', title: 'ระยะห่างจากจอ', type: 'DistanceThresholds', note: 'เทียบความกว้างใบหน้ากับ baseline · ต้องเปิดฟีเจอร์ใบหน้า', face: true },
+  { id: 'break', title: 'เตือนพัก', type: 'BreakThresholds', note: 'ตัวจับเวลาแยกต่อกล้อง ไม่ขึ้นกับท่านั่ง', face: false },
+];
+const CAT = {
+  posture: { label: 'ท่านั่ง', bg: '#eff6ff', color: '#1d4ed8' },
+  fatigue: { label: 'ความเหนื่อยล้า', bg: '#fff7ed', color: '#c2410c' },
+  distance: { label: 'ระยะห่างจากจอ', bg: '#f0fdf4', color: '#15803d' },
+  fall: { label: 'การหกล้ม', bg: '#fef2f2', color: '#b91c1c' },
+};
+const EVENTS = [
+  { id: 'e7', time: '14:22:08', cam: 'กล้อง 1', person: 'สมชาย ใจดี', cat: 'posture', type: 'ก้มคอ/ยื่นคอไปข้างหน้า', dur: null, metrics: 'neckAngleDeg: 31.40' },
+  { id: 'e6', time: '14:19:33', cam: 'กล้อง 1', person: 'สมชาย ใจดี', cat: 'fall', type: 'สงสัยหกล้ม — หายไปจากเฟรมกะทันหันหลังร่วงตัวเร็ว', dur: '—', metrics: '—' },
+  { id: 'e5', time: '14:05:51', cam: 'กล้อง 1', person: 'สมชาย ใจดี', cat: 'fatigue', type: 'หาวถี่ผิดปกติ', dur: '12 วิ', metrics: 'eyeClosedScore: 0.21, mouthAspectRatio: 0.71, yawnCount: 3.00' },
+  { id: 'e4', time: '13:48:02', cam: 'กล้อง 1', person: 'สมชาย ใจดี', cat: 'distance', type: 'นั่งใกล้จอเกินไป', dur: '1 นาที 4 วิ', metrics: 'relativeSize: 1.48' },
+  { id: 'e3', time: '13:31:47', cam: 'กล้อง 1', person: 'คนที่ 1', cat: 'posture', type: 'หลังค่อม/โน้มตัว', dur: '38 วิ', metrics: 'torsoAngleDeg: 19.82' },
+  { id: 'e2', time: '11:12:09', cam: 'กล้อง 1', person: 'สมชาย ใจดี', cat: 'fatigue', type: 'ง่วง/หลับตานาน', dur: '4 วิ', metrics: 'eyeClosedScore: 0.83, mouthAspectRatio: 0.12, yawnCount: 0.00' },
+  { id: 'e1', time: '10:02:55', cam: 'กล้อง 1', person: 'คนที่ 1', cat: 'posture', type: 'นั่งเอียงข้าง', dur: '21 วิ', metrics: 'shoulderTiltDeg: 12.30' },
+];
+const TABS = {
+  monitor: ['ภาพรวมระบบ', 'สถานะกล้อง โมเดล และ pipeline แบบเรียลไทม์'],
+  thresholds: ['เกณฑ์การตรวจจับ', 'ค่า threshold ที่ใช้กับทุกกล้อง'],
+  events: ['เหตุการณ์แจ้งเตือน', 'AlertEvent ทุกหมวดของวันนี้'],
+  people: ['ข้อมูลใบหน้า', 'รายชื่อที่ลงทะเบียนใน camwell-backend'],
+  dataset: ['Dataset Recorder', 'เก็บ landmark/feature สำหรับปรับจูนสูตรท่านั่ง'],
+};
+
+class Component extends DCLogic {
+  state = {
+    tab: null, multi: false, sound: true, face: true, th: { ...DEF },
+    cat: 'all', activeOnly: false, rec: false, label: 'GOOD', samples: 0,
+    people: [{ id: 'emp_01HZ8K', name: 'สมชาย ใจดี' }, { id: 'emp_01HZ9Q', name: 'มาลี วงศ์สุข' }, { id: 'emp_01J0A2', name: 'ธนา ศรีสวัสดิ์' }],
+    ms: [18.4, 24.1], fallAck: false, extraCam: false,
+  };
+  componentDidMount() {
+    this.t = setInterval(() => this.setState(s => ({
+      ms: s.ms.map(v => Math.max(12, Math.min(34, v * 0.9 + (14 + Math.random() * 12) * 0.1))),
+      samples: s.rec ? s.samples + 6 : s.samples,
+    })), 500);
+  }
+  componentWillUnmount() { clearInterval(this.t); }
+  fmt(v) { return Number.isInteger(v) ? String(v) : String(+v.toFixed(2)); }
+  renderVals() {
+    const s = this.state, P = this.props;
+    const tab = s.tab ?? P.startTab ?? 'monitor';
+    const camCount = ((P.cameraCount ?? '2') === '2' || s.extraCam) ? 2 : 1;
+    const maxP = s.multi ? 4 : 1;
+    const go = t => () => this.setState({ tab: t });
+    const active = EVENTS.filter(e => !e.dur).length;
+    const nav = [
+      ['monitor', 'ภาพรวมระบบ', camCount + ' cam'], ['thresholds', 'เกณฑ์การตรวจจับ', ''], ['events', 'เหตุการณ์', String(EVENTS.length)],
+      ['people', 'ข้อมูลใบหน้า', String(s.people.length)], ['dataset', 'Dataset Recorder', s.rec ? '● REC' : ''],
+    ].map(([id, label, badge]) => ({ label, badge, go: go(id), bg: tab === id ? '#eff6ff' : 'transparent', color: tab === id ? '#1d4ed8' : '#1f2430', weight: tab === id ? 600 : 400 }));
+
+    const ms0 = s.ms[0];
+    const cams = [{
+      id: 'cam-1', label: 'กล้อง 1', source: 'local · Integrated Camera', dot: '#16a34a', frameBorder: '#dc2626',
+      placeholder: 'สตรีมกล้อง 640×480 · mirrored', alerting: true, alertText: (camCount > 1 ? 'กล้อง 1 • ' : '') + 'สมชาย ใจดี: ก้มคอ/ยื่นคอไปข้างหน้า',
+      delegate: 'GPU', msText: '~' + Math.round(ms0) + ' ms', peopleText: '1 / ' + maxP + ' คน', error: false, errorText: '',
+      baseline: 'Calibrate แล้ว · 5 ต.ค. 09:12', baselineColor: '#16a34a', peopleLine: 'สมชาย ใจดี — ก้มคอ/ยื่นคอไปข้างหน้า',
+    }];
+    if (camCount > 1) cams.push({
+      id: 'cam-2', label: 'กล้อง 2', source: 'ip-mjpeg · http://192.168.1.50:8080/video', dot: '#dc2626', frameBorder: 'transparent',
+      placeholder: 'ภาพแสดงได้ แต่ AI อ่านพิกเซลไม่ได้', alerting: false, alertText: '', delegate: 'CPU', msText: 'หยุดประมวลผล', peopleText: '— / ' + maxP + ' คน',
+      error: true, errorText: 'ประมวลผล AI กับภาพจากกล้องนี้ไม่ได้ เพราะติดข้อจำกัด CORS ของเบราว์เซอร์ (กล้อง IP อยู่คนละ origin กับเว็บแอป)',
+      baseline: 'ยังไม่ Calibrate', baselineColor: '#f97316', peopleLine: '—',
+    });
+    const avg = camCount > 1 ? ms0 : ms0;
+
+    const services = [
+      { name: 'Pose Landmarker', detail: 'pose_landmarker_lite.task · numPoses ' + maxP + ' · VIDEO', status: 'ready', color: '#16a34a' },
+      { name: 'face-api', detail: 'TinyFaceDetector · Landmark68 · Recognition', status: s.face ? 'ready' : 'ปิดอยู่', color: s.face ? '#16a34a' : '#6b7280' },
+      { name: 'camwell-backend', detail: 'localhost:4000 · /api/employees', status: 'online', color: '#16a34a' },
+      { name: 'Alert reporter', detail: 'consoleAlertReporter (local เท่านั้น)', status: 'Phase 1', color: '#f97316' },
+    ];
+    if (camCount > 1) services.splice(1, 0, { name: 'กล้อง 2 · source', detail: 'SecurityError: canvas tainted (CORS)', status: 'error', color: '#dc2626' });
+
+    const mapEv = e => ({ ...e, catLabel: CAT[e.cat].label, catBg: CAT[e.cat].bg, catColor: CAT[e.cat].color, durText: e.dur ?? 'กำลังดำเนินอยู่...', color: e.dur ? '#1f2430' : '#dc2626', weight: e.dur ? 400 : 600 });
+    const filtered = EVENTS.filter(e => (s.cat === 'all' || e.cat === s.cat) && (!s.activeOnly || !e.dur)).map(mapEv);
+    const catFilters = [['all', 'ทั้งหมด'], ...Object.entries(CAT).map(([k, v]) => [k, v.label])].map(([k, label]) => {
+      const on = s.cat === k;
+      return { label, count: k === 'all' ? EVENTS.length : EVENTS.filter(e => e.cat === k).length, go: () => this.setState({ cat: k }), bg: on ? '#1f2430' : '#fff', color: on ? '#fff' : '#1f2430', border: on ? '#1f2430' : '#e2e4e9' };
+    });
+
+    let modified = 0;
+    const groups = GROUPS.map(g => {
+      const disabled = g.face && !s.face;
+      return {
+        ...g, disabled, opacity: disabled ? 0.5 : 1, note: disabled ? 'ปิดอยู่ — เปิด "ฟีเจอร์ใบหน้า" ที่แถบด้านบนเพื่อปรับ' : g.note,
+        items: SL.filter(x => x.g === g.id).map(x => {
+          const v = s.th[x.k], changed = v !== DEF[x.k];
+          if (changed) modified++;
+          return { ...x, value: v, display: this.fmt(v) + x.unit, defDisplay: this.fmt(DEF[x.k]) + x.unit, dot: changed ? '#2563eb' : '#e2e4e9',
+            onChange: ev => { const n = Number(ev.target.value); this.setState(st => ({ th: { ...st.th, [x.k]: n } })); } };
+        }),
+      };
+    });
+
+    const labels = ['GOOD', 'FORWARD_HEAD', 'SLOUCH', 'LEAN_LEFT', 'LEAN_RIGHT'].map(l => {
+      const on = s.label === l;
+      return { label: l, go: () => this.setState({ label: l }), bg: on ? '#1f2430' : '#fff', color: on ? '#fff' : '#1f2430', border: on ? '#1f2430' : '#e2e4e9' };
+    });
+
+    const recCamId = camCount > 1 && s.recCam === 'cam-2' ? 'cam-2' : 'cam-1';
+    const recCams = cams.map(c => {
+      const on = c.id === recCamId;
+      return { id: c.id, go: () => this.setState({ recCam: c.id }), bg: on ? '#fff' : 'transparent', color: '#1f2430', shadow: on ? '0 1px 2px rgba(17,24,39,.12)' : 'none' };
+    });
+    const j = (s.ms[0] - 18) / 4;
+    const liveFeatures = [
+      ['neckAngleDeg', (12.8 + j * 1.6).toFixed(1) + '°'], ['torsoAngleDeg', (4.1 + j * 0.7).toFixed(1) + '°'],
+      ['shoulderTiltDeg', (1.9 + j * 0.4).toFixed(1) + '°'], ['headHeightRatio', (0.71 - j * 0.02).toFixed(2)],
+    ].map(([key, value]) => ({ key, value }));
+    const schema = `{
+  "cameraId": "${recCamId}",
+  "label": "${s.label}",
+  "timestamp": 1759674128000,
+  "neckAngleDeg": 12.84,
+  "torsoAngleDeg": 4.10,
+  "shoulderTiltDeg": 1.92,
+  "headHeightRatio": 0.71,
+  "quality": "full_body",
+  "landmarks": [{ "x", "y", "z", "visibility" } × 33],
+  "worldLandmarks": [ … × 33 ],
+  "frameWidth": 640,
+  "frameHeight": 480,
+  "minVisibility": 0.5
+}`;
+
+    return {
+      nav, pageTitle: TABS[tab][0], pageSub: TABS[tab][1],
+      isMonitor: tab === 'monitor', isEvents: tab === 'events', isThresholds: tab === 'thresholds', isPeople: tab === 'people', isDataset: tab === 'dataset',
+      setWorkstation: () => this.setState({ multi: false }), setMulti: () => this.setState({ multi: true }),
+      wsBg: s.multi ? 'transparent' : '#fff', mpBg: s.multi ? '#fff' : 'transparent',
+      wsShadow: s.multi ? 'none' : '0 1px 2px rgba(17,24,39,.12)', mpShadow: s.multi ? '0 1px 2px rgba(17,24,39,.12)' : 'none',
+      sound: s.sound, face: s.face, toggleSound: () => this.setState({ sound: !s.sound }), toggleFace: () => this.setState({ face: !s.face }),
+      showFall: !!P.simulateFall && !s.fallAck, ackFall: () => this.setState({ fallAck: true }),
+      avgMs: (Math.round(avg * 10) / 10).toFixed(1),
+      faceInterval: s.face ? '400 ms' : 'ปิด', faceIntervalSub: s.face ? 'identity เช็คซ้ำทุก 3 วิ ต่อคน' : 'ไม่โหลด/ไม่รัน face-api',
+      trackedText: '1 / ' + (maxP * camCount), trackedSub: (s.multi ? 'Multi-person' : 'Workstation') + ' · ' + camCount + ' กล้อง',
+      activeCount: String(active), eventsTotal: EVENTS.length,
+      cams, canAddCam: camCount < 2, addCam: () => this.setState({ extraCam: true }),
+      services, recent: EVENTS.slice(0, 4).map(mapEv), goEvents: e => { e.preventDefault(); this.setState({ tab: 'events' }); },
+      catFilters, filteredEvents: filtered, noEvents: filtered.length === 0, activeOnly: s.activeOnly, toggleActiveOnly: () => this.setState({ activeOnly: !s.activeOnly }),
+      groups, modifiedCount: modified, resetAll: () => this.setState({ th: { ...DEF } }),
+      people: s.people.map(p => ({ ...p, remove: () => this.setState(st => ({ people: st.people.filter(x => x.id !== p.id) })) })),
+      peopleCount: s.people.length, noPeople: s.people.length === 0,
+      labels, recording: s.rec, countText: s.samples.toLocaleString(),
+      recStatus: s.rec ? '● กำลังบันทึก ' + s.label + ' · 12 sample/วิ' : 'พร้อมบันทึก — ตรวจพบ 1 คนในเฟรม',
+      recColor: s.rec ? '#dc2626' : '#16a34a', recBtnBg: s.rec ? '#1f2430' : '#dc2626', recBtnText: s.rec ? '■ หยุดบันทึก' : '● เริ่มบันทึก',
+      toggleRec: () => this.setState({ rec: !s.rec }), noSamples: s.samples === 0, exportOpacity: s.samples === 0 ? 0.5 : 1,
+      clearDisabled: s.rec || s.samples === 0, clearOpacity: (s.rec || s.samples === 0) ? 0.5 : 1, clearSamples: () => this.setState({ samples: 0 }),
+      schema, recCams, recCamId, liveFeatures, label: s.label, recFrameBorder: s.rec ? '#dc2626' : 'transparent',
+    };
+  }
+}
+</script>
+</body>
+</html>
