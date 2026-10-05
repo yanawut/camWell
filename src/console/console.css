@@ -1,0 +1,495 @@
+/* Dev Console — ค่าสี/ระยะตาม docs/camWell/project/Camwell Dev Console.dc.html
+   ใช้ตัวแปรสีจาก index.css (--bg, --border, --accent ฯลฯ) ซึ่งตรงกับ design อยู่แล้ว */
+
+.dc-root {
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+  min-height: 100vh;
+  font-size: 14px;
+  background: var(--bg);
+}
+
+.dc-root code {
+  font-size: 0.92em;
+}
+
+/* --- utilities --- */
+.dc-row { display: flex; align-items: center; }
+.dc-col { display: flex; flex-direction: column; }
+.dc-mono { font-family: ui-monospace, Consolas, monospace; }
+.dc-mono-11 { font: 500 11px/1 ui-monospace, Consolas, monospace; }
+.dc-muted { color: var(--text-muted); }
+.dc-muted-12 { font-size: 12px; color: var(--text-muted); }
+.dc-text { color: var(--text); }
+.dc-w500 { font-weight: 500; }
+.dc-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+.dc-dot-8 { width: 8px; height: 8px; }
+.dc-dot-6 { width: 6px; height: 6px; }
+.dc-badge {
+  font: 600 10px/1 ui-monospace, Consolas, monospace;
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: var(--text);
+  color: #fff;
+  letter-spacing: 0.06em;
+}
+.dc-badge-sm { font-size: 9px; padding: 3px 4px; border-radius: 3px; }
+
+/* --- sidebar --- */
+.dc-aside {
+  background: var(--panel-bg);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+.dc-brand {
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dc-brand .dc-row { gap: 8px; }
+.dc-brand-name { font-size: 17px; letter-spacing: -0.01em; }
+.dc-nav { padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; }
+.dc-nav-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 12px;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text);
+}
+.dc-nav-item:hover { background: var(--bg); }
+.dc-nav-item.active { background: #eff6ff; color: #1d4ed8; font-weight: 600; }
+.dc-services {
+  margin-top: auto;
+  border-top: 1px solid var(--border);
+  padding: 14px 20px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dc-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.dc-service { display: flex; align-items: flex-start; gap: 8px; padding: 5px 0; }
+.dc-service-body { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.dc-service-head { display: flex; justify-content: space-between; gap: 6px; font-size: 12px; }
+.dc-service-detail {
+  font: 10.5px/1.4 ui-monospace, Consolas, monospace;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.dc-aside-footer {
+  padding: 12px 20px 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.dc-kv { display: flex; flex-direction: column; gap: 1px; }
+.dc-kv .dc-mono { overflow-wrap: anywhere; }
+
+/* --- header --- */
+.dc-main-col { display: flex; flex-direction: column; min-width: 0; }
+.dc-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--panel-bg);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.dc-title { margin: 0; font-size: 18px; font-weight: 600; }
+.dc-header-controls { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.dc-segment {
+  display: flex;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 2px;
+}
+.dc-segment button {
+  border: none;
+  border-radius: 6px;
+  padding: 5px 10px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text);
+}
+.dc-segment button.active { background: #fff; box-shadow: 0 1px 2px rgba(17, 24, 39, 0.12); }
+.dc-check { display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; }
+.dc-check-divider { padding-left: 14px; border-left: 1px solid var(--border); }
+.dc-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+/* --- main --- */
+.dc-main {
+  padding: 24px 28px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 1440px;
+  width: 100%;
+}
+.dc-main .fall-alert-banner,
+.dc-main .break-banner { margin: 0; }
+.dc-stack { display: flex; flex-direction: column; gap: 20px; }
+.dc-stack[hidden] { display: none; }
+.dc-card { background: var(--panel-bg); border: 1px solid var(--border); border-radius: 12px; }
+.dc-pad { padding: 16px 18px; }
+.dc-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.dc-h2 { margin: 0; font-size: 15px; }
+.dc-link-12 { font-size: 12px; color: var(--accent); text-decoration: none; }
+.dc-link-12:hover { text-decoration: underline; }
+.dc-empty { margin: 0; color: var(--text-muted); font-size: 13px; }
+.dc-empty-pad { padding: 24px 18px; }
+.dc-warn-note {
+  margin: 0;
+  font-size: 12px;
+  color: #7c2d12;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.dc-btn {
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.dc-btn:hover:not(:disabled) { background: var(--bg); }
+.dc-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.dc-btn-danger-text { color: var(--danger); }
+.dc-link-danger {
+  border: none;
+  background: none;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0;
+}
+
+/* --- stat bar --- */
+.dc-statbar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.dc-stat {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-right: 1px solid var(--border);
+}
+.dc-stat:last-child { border-right: none; }
+.dc-stat-value { font: 600 26px/1.2 ui-monospace, Consolas, monospace; }
+.dc-stat-unit { font-size: 14px; color: var(--text-muted); }
+
+/* --- monitor layout --- */
+.dc-monitor-row { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+.dc-cams-col { display: flex; flex-direction: column; gap: 12px; flex: 999 1 480px; min-width: 0; }
+.dc-side-col { display: flex; flex-direction: column; gap: 20px; flex: 1 1 300px; min-width: 0; }
+.dc-cams-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 20px;
+}
+.dc-add-cam {
+  align-self: flex-start;
+  border: 1px dashed #c9ccd3;
+  background: transparent;
+  color: var(--text);
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.dc-add-cam:hover { background: #fff; }
+
+/* --- camera card --- */
+.dc-cam { overflow: hidden; display: flex; flex-direction: column; }
+.dc-cam-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.dc-tag {
+  font: 500 11px/1 ui-monospace, Consolas, monospace;
+  color: var(--text-muted);
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dc-cam-body { padding: 12px 16px 14px; display: flex; flex-direction: column; gap: 10px; }
+.dc-cam-body > .dc-btn { align-self: flex-start; }
+/* CameraStage เดิม: ซ่อนบรรทัดสรุปที่ชิปบนภาพแสดงแทนแล้ว ที่เหลือคงไว้ (ปุ่ม Calibrate/ลงทะเบียน) */
+.dc-cam .current-issue { display: none; }
+.dc-cam .privacy-note { margin: 0; }
+.dc-cam .secondary-button { font-size: 13px; }
+.dc-cam .posture-monitor > .secondary-button:first-of-type {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+/* ชิปอยู่บนสุด — ดันแบนเนอร์แจ้งเตือนของ CameraStage ลงมาใต้ชิป */
+.dc-cam .banner-alert { top: 44px; }
+.dc-cam-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.dc-chips { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; gap: 6px; flex-wrap: wrap; }
+.dc-chip {
+  font: 500 11px/1 ui-monospace, Consolas, monospace;
+  color: #fff;
+  background: rgba(17, 24, 39, 0.85);
+  padding: 5px 7px;
+  border-radius: 5px;
+}
+.dc-chip-rec { font-weight: 600; background: var(--danger); padding: 5px 8px; }
+.dc-features {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.dc-feature {
+  background: rgba(17, 24, 39, 0.9);
+  padding: 7px 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.dc-feature-key {
+  font: 10px/1.2 ui-monospace, Consolas, monospace;
+  color: #9ca3af;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dc-feature-value { font: 600 14px/1.2 ui-monospace, Consolas, monospace; color: #fff; }
+.dc-cam-info {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 12px;
+  font-size: 12px;
+}
+
+/* --- recorder --- */
+.dc-recorder { display: flex; flex-direction: column; gap: 12px; }
+.dc-toggle-row { display: flex; gap: 4px; flex-wrap: wrap; }
+.dc-toggle {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font: 500 12px/1.2 ui-monospace, Consolas, monospace;
+  cursor: pointer;
+  background: #fff;
+  color: var(--text);
+}
+.dc-toggle-sm { padding: 5px 9px; font-size: 11px; }
+.dc-toggle.on { background: var(--text); color: #fff; border-color: var(--text); }
+.dc-toggle:disabled { cursor: not-allowed; }
+.dc-rec-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #f9fafb;
+}
+.dc-rec-count { font: 600 22px/1.2 ui-monospace, Consolas, monospace; }
+.dc-rec-btn {
+  border: none;
+  color: #fff;
+  padding: 9px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.dc-rec-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.dc-pre {
+  margin: 0;
+  padding: 12px 14px;
+  background: #0b0d12;
+  color: #e5e7eb;
+  border-radius: 8px;
+  font: 11px/1.6 ui-monospace, Consolas, monospace;
+  overflow: auto;
+}
+
+/* --- recent alerts --- */
+.dc-recent { display: flex; flex-direction: column; gap: 8px; }
+.dc-recent-item {
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr);
+  gap: 8px;
+  font-size: 13px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* --- tables (events / people) --- */
+.dc-table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.dc-filter {
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  padding: 5px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.dc-filter.on { background: var(--text); color: #fff; border-color: var(--text); }
+.dc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.dc-table th {
+  text-align: left;
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: #f9fafb;
+}
+.dc-table td { padding: 9px 10px; border-bottom: 1px solid var(--border); }
+.dc-table th:first-child,
+.dc-table td:first-child { padding-left: 18px; }
+.dc-table th:last-child,
+.dc-table td:last-child { padding-right: 18px; }
+.dc-table tbody tr:hover { background: #f9fafb; }
+.dc-cat { font-size: 12px; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.dc-table-foot {
+  margin: 0;
+  padding: 12px 18px;
+  font-size: 12px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+}
+
+/* --- thresholds --- */
+.dc-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.dc-threshold-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr));
+  gap: 20px;
+  align-items: start;
+}
+.dc-slider { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.dc-slider input[type='range'] { width: 100%; accent-color: var(--accent); }
+.dc-slider-head { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.dc-slider-foot {
+  display: flex;
+  justify-content: space-between;
+  font: 11px/1 ui-monospace, Consolas, monospace;
+  color: var(--text-muted);
+}
+
+/* --- people --- */
+.dc-pdpa {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 16px;
+  border: 1px solid #fdba74;
+  background: #fff7ed;
+  border-radius: 10px;
+  font-size: 13px;
+  color: #7c2d12;
+}
+
+/* --- จอกว้าง: คอลัมน์เกณฑ์การตรวจจับข้างหน้าภาพรวม --- */
+.dc-body { display: flex; align-items: flex-start; }
+.dc-body > .dc-main { flex: 1 1 auto; min-width: 0; }
+.dc-wide-thresholds { display: none; }
+/* main ถูกจำกัด 1440px — คอลัมน์นี้ขยายกินที่เหลือทั้งหมด แล้วการ์ด wrap เป็นหลายคอลัมน์ตามความกว้างเอง */
+@media (min-width: 1700px) {
+  .dc-wide-thresholds {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    flex: 1 1 360px;
+    min-width: 0;
+    padding: 24px 28px 40px 0;
+  }
+  .dc-wide-thresholds .dc-threshold-grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+  }
+}
+
+/* --- จอแคบ: sidebar ขึ้นไปอยู่บน --- */
+@media (max-width: 760px) {
+  .dc-root { grid-template-columns: minmax(0, 1fr); }
+  .dc-aside { position: static; height: auto; }
+  .dc-services { margin-top: 0; }
+  .dc-header { position: static; padding: 12px 16px; }
+  .dc-main { padding: 16px 16px 32px; }
+}

@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import Webcam from 'react-webcam'
 import * as faceapi from '@vladmandic/face-api'
 import type { PoseLandmarkerResult } from '@mediapipe/tasks-vision'
-import { usePoseLandmarker } from '../hooks/usePoseLandmarker'
-import { useFaceApiModels } from '../hooks/useFaceApiModels'
+import { usePoseLandmarker, type LandmarkerStatus, type PoseDelegate } from '../hooks/usePoseLandmarker'
+import { useFaceApiModels, type FaceApiStatus } from '../hooks/useFaceApiModels'
 import { computeBaseline } from '../lib/postureCalibration'
 import { POSTURE_LABELS_TH } from '../lib/postureAnalysis'
 import { PostureEngine } from '../lib/postureEngine'
@@ -74,6 +74,19 @@ interface PersonState {
   anchorPx: Point2D
 }
 
+/** สถานะเชิงเทคนิคของกล้อง 1 ตัว ส่งออกให้ Dev Console แสดงผล (อ่านอย่างเดียว ไม่มีผลกับการตรวจจับ) */
+export interface CameraStats {
+  inferenceMs: number
+  poseStatus: LandmarkerStatus
+  faceStatus: FaceApiStatus
+  delegate: PoseDelegate | null
+  cameraError: string | null
+  /** raw features ก่อน smoothing เมื่อมีคนเดียวในเฟรม (ค่าเดียวกับที่ Dataset Recorder บันทึก) */
+  rawFeatures: PostureFeatures | null
+}
+
+const STATS_INTERVAL_MS = 500
+
 interface Props {
   postureThresholds: PostureThresholds
   fatigueThresholds: FatigueThresholds
@@ -100,6 +113,10 @@ interface Props {
   onFallDetected: (event: AlertEvent) => void
   onPeopleUpdate: (people: PersonSummary[]) => void
   onPersonEnrolled: (person: EnrolledPerson) => void
+  /** (Dev Console) รับสถานะเชิงเทคนิคทุก 500ms — ไม่ส่ง = ไม่มีอะไรเปลี่ยน */
+  onStats?: (stats: CameraStats) => void
+  /** (Dev Console) element ที่จะวางซ้อนในกรอบวิดีโอ */
+  overlay?: ReactNode
 }
 
 export default function CameraStage({
@@ -124,17 +141,20 @@ export default function CameraStage({
   onFallDetected,
   onPeopleUpdate,
   onPersonEnrolled,
+  onStats,
+  overlay,
 }: Props) {
   const webcamRef = useRef<Webcam>(null)
   const imgRef = useRef<HTMLImageElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  const { landmarkerRef, status: poseStatus, error: poseError } = usePoseLandmarker(maxPeopleFor(detectionMode))
+  const { landmarkerRef, status: poseStatus, error: poseError, delegate: poseDelegate } = usePoseLandmarker(maxPeopleFor(detectionMode))
   const { status: faceStatus, error: faceError } = useFaceApiModels()
 
   const lastVideoTimeRef = useRef(-1)
   const lastPoseRunAtRef = useRef(0)
   const poseInferenceMsRef = useRef(0)
+  const latestRawFeaturesRef = useRef<PostureFeatures | null>(null)
   const latestPoseResultRef = useRef<PoseLandmarkerResult | null>(null)
   const lastFaceRunAtRef = useRef(0)
   const lastPeopleUpdateAtRef = useRef(0)
@@ -585,6 +605,7 @@ export default function CameraStage({
       )
 
       if (engineResult.peopleChanged) peopleChanged = true
+      latestRawFeaturesRef.current = engineResult.people.length === 1 ? engineResult.people[0].rawFeatures : null
 
       // เก็บเฉพาะ state ที่ UI/face pipeline ยังต้องใช้ ส่วน tracker/posture/fall/break อยู่ใน PostureEngine
       for (const enginePerson of engineResult.people) {
@@ -753,6 +774,28 @@ export default function CameraStage({
     return () => cancelAnimationFrame(rafId)
   }, [poseStatus])
 
+  // (Dev Console) ส่งสถานะออกเป็นระยะ — เก็บ callback ไว้ใน ref กัน effect รีสตาร์ททุกครั้งที่ parent re-render
+  const onStatsRef = useRef(onStats)
+  useEffect(() => {
+    onStatsRef.current = onStats
+  })
+  const hasStatsListener = !!onStats
+  useEffect(() => {
+    if (!hasStatsListener) return
+    const emit = () =>
+      onStatsRef.current?.({
+        inferenceMs: poseInferenceMsRef.current,
+        poseStatus,
+        faceStatus,
+        delegate: poseDelegate,
+        cameraError,
+        rawFeatures: latestRawFeaturesRef.current,
+      })
+    emit()
+    const id = window.setInterval(emit, STATS_INTERVAL_MS)
+    return () => window.clearInterval(id)
+  }, [hasStatsListener, poseStatus, faceStatus, poseDelegate, cameraError])
+
   // ปุ่ม Calibrate/ลงทะเบียน ทำงานกับ "ใบหน้าที่ใหญ่สุดในเฟรม ณ ขณะนี้" (คนที่นั่งใกล้กล้องที่สุด) —
   // ยังไม่มี UI ให้เลือกว่าจะ calibrate/ลงทะเบียนให้คนไหนเจาะจงเมื่อมีหลายคนพร้อมกัน
   const handleCalibrate = useCallback(() => {
@@ -833,6 +876,7 @@ export default function CameraStage({
         {faceStatus === 'error' && <div className="camera-status-banner banner-error">{faceError}</div>}
         {cameraError && <div className="camera-status-banner banner-error">{cameraError}</div>}
         {isAlerting && <div className="camera-status-banner banner-alert">⚠ {alertBannerText}</div>}
+        {overlay}
       </div>
       <p className="current-issue">
         ตรวจพบในเฟรม: {peopleCount} คน (รองรับสูงสุด {maxPeopleFor(detectionMode)} คน) · Pose ใช้เวลา ~{poseInferenceMs} ms/ครั้ง

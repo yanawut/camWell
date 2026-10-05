@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { FilesetResolver, PoseLandmarker } from '@mediapipe/tasks-vision'
 
 export type LandmarkerStatus = 'loading' | 'ready' | 'error'
+export type PoseDelegate = 'GPU' | 'CPU'
 
 const WASM_BASE_PATH = `${import.meta.env.BASE_URL}wasm`
 const MODEL_PATH = `${import.meta.env.BASE_URL}models/pose_landmarker_lite.task`
@@ -14,6 +15,7 @@ export function usePoseLandmarker(numPoses: number) {
   const landmarkerRef = useRef<PoseLandmarker | null>(null)
   const [status, setStatus] = useState<LandmarkerStatus>('loading')
   const [error, setError] = useState<string | null>(null)
+  const [delegate, setDelegate] = useState<PoseDelegate | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -25,6 +27,7 @@ export function usePoseLandmarker(numPoses: number) {
         const vision = await FilesetResolver.forVisionTasks(WASM_BASE_PATH)
 
         let landmarker: PoseLandmarker
+        let usedDelegate: PoseDelegate = 'GPU'
         try {
           landmarker = await PoseLandmarker.createFromOptions(vision, {
             baseOptions: {
@@ -37,6 +40,7 @@ export function usePoseLandmarker(numPoses: number) {
         } catch (gpuErr) {
           // บาง GPU/เบราว์เซอร์ไม่รองรับ WebGL delegate — fallback ไป CPU
           console.warn('[usePoseLandmarker] สร้างด้วย GPU delegate ไม่สำเร็จ ลองใหม่ด้วย CPU:', gpuErr)
+          usedDelegate = 'CPU'
           landmarker = await PoseLandmarker.createFromOptions(vision, {
             baseOptions: {
               modelAssetPath: MODEL_PATH,
@@ -52,6 +56,7 @@ export function usePoseLandmarker(numPoses: number) {
           return
         }
         landmarkerRef.current = landmarker
+        setDelegate(usedDelegate)
         setStatus('ready')
       } catch (err) {
         console.error('[usePoseLandmarker] โหลดโมเดลไม่สำเร็จ:', err)
@@ -75,5 +80,5 @@ export function usePoseLandmarker(numPoses: number) {
     }
   }, [numPoses])
 
-  return { landmarkerRef, status, error }
+  return { landmarkerRef, status, error, delegate }
 }

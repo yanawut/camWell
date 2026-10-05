@@ -29,18 +29,22 @@ export interface DatasetSampleInput {
 
 const samples: DatasetSample[] = []
 let activeLabel: DatasetLabel | null = null
+// null = รับ sample จากทุกกล้อง (พฤติกรรมเดิมของหน้าหลัก) — Dev Console ระบุกล้องเพื่อเก็บจากกล้องเดียว
+let activeCameraId: string | null = null
 
 export function buildDatasetJson(opts: DatasetExportOptions): string {
   return serializeDataset(samples, opts)
 }
 
 export const datasetRecorder = {
-  start(label: DatasetLabel) {
+  start(label: DatasetLabel, cameraId?: string) {
     activeLabel = label
+    activeCameraId = cameraId ?? null
   },
 
   stop() {
     activeLabel = null
+    activeCameraId = null
   },
 
   isRecording(): boolean {
@@ -49,6 +53,7 @@ export const datasetRecorder = {
 
   add(sample: DatasetSampleInput) {
     if (activeLabel === null) return
+    if (activeCameraId !== null && sample.cameraId !== activeCameraId) return
     samples.push({ ...sample, label: activeLabel })
   },
 

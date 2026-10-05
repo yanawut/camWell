@@ -23,7 +23,11 @@ import type { DetectionMode } from './lib/multiPerson'
 import { consoleAlertReporter } from './services/alertReporter'
 import { listEnrolledPeople, removePerson } from './services/faceEnrollment'
 import { DEFAULT_FACE_FEATURES_ENABLED, getCameraPeopleVisibility } from './lib/featureVisibility'
+import DevConsole, { type CameraStageExtras } from './console/DevConsole'
 import './App.css'
+
+// ponytail: เปิด Dev Console ได้ทุก build ผ่าน /?console — กำหนดสิทธิ์ใหม่เมื่อออกจากช่วง dev
+const IS_DEV_CONSOLE = new URLSearchParams(window.location.search).has('console')
 
 const BASELINE_STORAGE_KEY = 'camwell:distance-baseline-px:v1'
 const CAMERA_SLOTS_STORAGE_KEY = 'camwell:camera-slots:v1'
@@ -179,6 +183,71 @@ export default function App() {
         setEnrolledPeopleError(err instanceof Error ? err.message : 'ลบพนักงานไม่สำเร็จ')
       })
   }, [])
+
+  if (IS_DEV_CONSOLE) {
+    // ส่ง props ชุดเดียวกับหน้าหลักทุกตัว + ของเสริมสำหรับ console (onStats/overlay)
+    const renderCameraStage = (slot: CameraSlot, extras: CameraStageExtras) => (
+      <CameraStage
+        postureThresholds={postureThresholds}
+        fatigueThresholds={fatigueThresholds}
+        distanceThresholds={distanceThresholds}
+        breakThresholds={breakThresholds}
+        fallThresholds={fallThresholds}
+        soundEnabled={soundEnabled}
+        faceFeaturesEnabled={faceFeaturesEnabled}
+        detectionMode={detectionMode}
+        enrolledPeople={enrolledPeople}
+        baselineFaceWidthPx={baselineFaceWidthPx}
+        cameraSource={slot.source}
+        cameraId={slot.id}
+        cameraLabel={slot.label}
+        multiCameraMode={multiCameraMode}
+        onCalibrateDistance={handleCalibrateDistance}
+        onAlertStart={handleAlertStart}
+        onAlertEnd={handleAlertEnd}
+        onBreakDue={handleBreakDue}
+        onFallDetected={handleFallDetected}
+        onPeopleUpdate={(summaries) => handlePeopleUpdate(slot.id, summaries)}
+        onPersonEnrolled={handlePersonEnrolled}
+        onStats={extras.onStats}
+        overlay={extras.overlay}
+      />
+    )
+    return (
+      <DevConsole
+        renderCameraStage={renderCameraStage}
+        cameraSlots={cameraSlots}
+        peopleBySlot={peopleBySlot}
+        onAddCameraSlot={handleAddCameraSlot}
+        onRemoveCameraSlot={handleRemoveCameraSlot}
+        onCameraSlotSourceChange={handleCameraSlotSourceChange}
+        events={events}
+        fallAlerts={fallAlerts}
+        onAcknowledgeFall={handleAcknowledgeFall}
+        breakMessage={breakMessage}
+        onDismissBreak={() => setBreakMessage(null)}
+        enrolledPeople={enrolledPeople}
+        enrolledPeopleError={enrolledPeopleError}
+        onRemovePerson={handleRemovePerson}
+        postureThresholds={postureThresholds}
+        onPostureChange={setPostureThresholds}
+        fatigueThresholds={fatigueThresholds}
+        onFatigueChange={setFatigueThresholds}
+        distanceThresholds={distanceThresholds}
+        onDistanceChange={setDistanceThresholds}
+        breakThresholds={breakThresholds}
+        onBreakChange={setBreakThresholds}
+        fallThresholds={fallThresholds}
+        onFallChange={setFallThresholds}
+        soundEnabled={soundEnabled}
+        onSoundEnabledChange={setSoundEnabled}
+        faceFeaturesEnabled={faceFeaturesEnabled}
+        onFaceFeaturesEnabledChange={setFaceFeaturesEnabled}
+        detectionMode={detectionMode}
+        onDetectionModeChange={setDetectionMode}
+      />
+    )
+  }
 
   return (
     <div className="app-shell">

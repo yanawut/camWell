@@ -109,4 +109,23 @@ describe('datasetRecorder', () => {
     datasetRecorder.clear()
     expect(datasetRecorder.count()).toBe(0)
   })
+
+  it('records from every camera when start() has no cameraId', () => {
+    datasetRecorder.start('GOOD')
+    datasetRecorder.add(SAMPLE)
+    datasetRecorder.add({ ...SAMPLE, cameraId: 'cam-2' })
+    expect(datasetRecorder.count()).toBe(2)
+  })
+
+  it('records only the chosen camera when start() has a cameraId, and stop() clears the filter', () => {
+    datasetRecorder.start('SLOUCH', 'cam-2')
+    datasetRecorder.add(SAMPLE)
+    datasetRecorder.add({ ...SAMPLE, cameraId: 'cam-2' })
+    expect(datasetRecorder.count()).toBe(1)
+
+    datasetRecorder.stop()
+    datasetRecorder.start('GOOD')
+    datasetRecorder.add(SAMPLE)
+    expect(datasetRecorder.count()).toBe(2)
+  })
 })
