@@ -1,23 +1,34 @@
+import type { Landmark, NormalizedLandmark } from '@mediapipe/tasks-vision'
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_FALL_THRESHOLDS } from '../types/fall'
-import { DEFAULT_THRESHOLDS, type Point } from '../types/posture'
+import { DEFAULT_THRESHOLDS } from '../types/posture'
 import { DEFAULT_BREAK_THRESHOLDS } from '../types/wellbeing'
 import { PostureEngine, type PostureEngineSettings } from './postureEngine'
 
 const FRAME = { width: 640, height: 480 }
 
-function makePose(points: Record<number, [number, number]>): Point[] {
-  const landmarks: Point[] = Array.from({ length: 33 }, () => ({
+function makePose(points: Record<number, [number, number]>): NormalizedLandmark[] {
+  const landmarks: NormalizedLandmark[] = Array.from({ length: 33 }, () => ({
     x: 0.5,
     y: 0.5,
+    z: 0,
     visibility: 0,
   }))
 
   for (const [index, [x, y]] of Object.entries(points)) {
-    landmarks[Number(index)] = { x, y, visibility: 0.99 }
+    landmarks[Number(index)] = { x, y, z: 0, visibility: 0.99 }
   }
 
   return landmarks
+}
+
+function makeWorldPose(marker: number): Landmark[] {
+  return Array.from({ length: 33 }, (_, index) => ({
+    x: marker + index / 1000,
+    y: marker,
+    z: marker,
+    visibility: 0.8,
+  }))
 }
 
 const LEANING = makePose({
@@ -63,7 +74,7 @@ describe('PostureEngine', () => {
     const started = []
 
     for (let now = 0; now <= 10_000; now += 1_000) {
-      started.push(...engine.processPoseFrame([LEANING], FRAME, now, SETTINGS).startedEvents)
+      started.push(...engine.processPoseFrame([LEANING], [], FRAME, now, SETTINGS).startedEvents)
     }
 
     expect(started).toHaveLength(1)
@@ -76,12 +87,12 @@ describe('PostureEngine', () => {
     let startedId: string | undefined
 
     for (let now = 0; now <= 8_000; now += 1_000) {
-      const result = engine.processPoseFrame([LEANING], FRAME, now, SETTINGS)
+      const result = engine.processPoseFrame([LEANING], [], FRAME, now, SETTINGS)
       startedId ??= result.startedEvents[0]?.event.id
     }
 
-    const removed = engine.processPoseFrame([], FRAME, 13_000, SETTINGS)
-    const repeated = engine.processPoseFrame([], FRAME, 14_000, SETTINGS)
+    const removed = engine.processPoseFrame([], [], FRAME, 13_000, SETTINGS)
+    const repeated = engine.processPoseFrame([], [], FRAME, 14_000, SETTINGS)
 
     expect(startedId).toBeDefined()
     expect(removed.endedEvents).toHaveLength(1)
@@ -99,9 +110,9 @@ describe('PostureEngine', () => {
       },
     }
 
-    const first = engine.processPoseFrame([LEANING], FRAME, 0, settings)
-    const due = engine.processPoseFrame([LEANING], FRAME, 1_000, settings)
-    const repeated = engine.processPoseFrame([LEANING], FRAME, 1_100, settings)
+    const first = engine.processPoseFrame([LEANING], [], FRAME, 0, settings)
+    const due = engine.processPoseFrame([LEANING], [], FRAME, 1_000, settings)
+    const repeated = engine.processPoseFrame([LEANING], [], FRAME, 1_100, settings)
 
     expect(first.breakDue).toBeNull()
     expect(due.breakDue).toEqual({ continuousMinutes: 0 })
@@ -111,8 +122,8 @@ describe('PostureEngine', () => {
   it('allows the first direct fall alert when synthetic time starts at zero', () => {
     const engine = new PostureEngine('camera-1')
 
-    engine.processPoseFrame([FALL_START], FRAME, 0, SETTINGS)
-    const dropped = engine.processPoseFrame([FALL_HORIZONTAL], FRAME, 400, SETTINGS)
+    engine.processPoseFrame([FALL_START], [], FRAME, 0, SETTINGS)
+    const dropped = engine.processPoseFrame([FALL_HORIZONTAL], [], FRAME, 400, SETTINGS)
 
     expect(dropped.fallEvents).toHaveLength(1)
     expect(dropped.fallEvents[0].event.type).toBe('fall_detected')
@@ -121,14 +132,49 @@ describe('PostureEngine', () => {
   it('emits fall_suspected_left_frame exactly once after a rapid drop followed by 5 seconds of absence', () => {
     const engine = new PostureEngine('camera-1')
 
-    engine.processPoseFrame([FALL_START], FRAME, 100, SETTINGS)
-    engine.processPoseFrame([FALL_DROP], FRAME, 500, SETTINGS)
+    engine.processPoseFrame([FALL_START], [], FRAME, 100, SETTINGS)
+    engine.processPoseFrame([FALL_DROP], [], FRAME, 500, SETTINGS)
 
-    const firstAbsent = engine.processPoseFrame([], FRAME, 5_500, SETTINGS)
-    const secondAbsent = engine.processPoseFrame([], FRAME, 6_500, SETTINGS)
+    const firstAbsent = engine.processPoseFrame([], [], FRAME, 5_500, SETTINGS)
+    const secondAbsent = engine.processPoseFrame([], [], FRAME, 6_500, SETTINGS)
     const fallEvents = [...firstAbsent.fallEvents, ...secondAbsent.fallEvents]
 
     expect(fallEvents).toHaveLength(1)
     expect(fallEvents[0].event.type).toBe('fall_suspected_left_frame')
+  })
+
+  it('keeps normalized and world landmarks paired with the same person in a multi-person frame', () => {
+    const engine = new PostureEngine('camera-1')
+    const leftPose = makePose({
+      7: [0.22, 0.3],
+      8: [0.18, 0.3],
+      11: [0.24, 0.5],
+      12: [0.16, 0.5],
+    })
+    const rightPose = makePose({
+      7: [0.82, 0.3],
+      8: [0.78, 0.3],
+      11: [0.84, 0.5],
+      12: [0.76, 0.5],
+    })
+    const leftWorld = makeWorldPose(-1)
+    const rightWorld = makeWorldPose(1)
+
+    const result = engine.processPoseFrame(
+      [leftPose, rightPose],
+      [leftWorld, rightWorld],
+      FRAME,
+      0,
+      SETTINGS,
+    )
+
+    expect(result.people).toHaveLength(2)
+    const leftPerson = result.people.find((person) => person.landmarks[11]?.x < 0.5)
+    const rightPerson = result.people.find((person) => person.landmarks[11]?.x > 0.5)
+
+    expect(leftPerson?.landmarks).toBe(leftPose)
+    expect(leftPerson?.worldLandmarks).toBe(leftWorld)
+    expect(rightPerson?.landmarks).toBe(rightPose)
+    expect(rightPerson?.worldLandmarks).toBe(rightWorld)
   })
 })

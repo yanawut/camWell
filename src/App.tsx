@@ -4,6 +4,7 @@ import CameraSourceSelector from './components/CameraSourceSelector'
 import SettingsPanel from './components/SettingsPanel'
 import EventLog from './components/EventLog'
 import EnrollmentPanel from './components/EnrollmentPanel'
+import DatasetRecorderPanel from './components/DatasetRecorderPanel'
 import { DEFAULT_THRESHOLDS, type PostureThresholds } from './types/posture'
 import { MAX_CAMERA_SLOTS, createCameraSlot, type CameraSlot, type CameraSource } from './types/cameraSource'
 import {
@@ -293,6 +294,7 @@ export default function App() {
           {faceFeaturesEnabled && enrolledPeopleError && <p className="panel-note panel-warning">{enrolledPeopleError}</p>}
           {faceFeaturesEnabled && <EnrollmentPanel people={enrolledPeople} onRemove={handleRemovePerson} />}
           <EventLog events={events} />
+          {import.meta.env.DEV && <DatasetRecorderPanel postureThresholds={postureThresholds} />}
         </section>
       </main>
 

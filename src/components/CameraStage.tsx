@@ -18,6 +18,7 @@ import { shouldProcessPose } from '../lib/poseThrottle'
 import { updateInferenceEma } from '../lib/inferenceTiming'
 import { enrollPerson, identifyFace } from '../services/faceEnrollment'
 import { loadPostureBaseline, savePostureBaseline } from '../services/postureBaselineStore'
+import { datasetRecorder } from '../services/datasetRecorder'
 import { playAlertBeep, playFallAlarm } from '../services/beep'
 import type { PostureBaseline, PostureFeatures, PostureThresholds } from '../types/posture'
 import type { BreakThresholds, DistanceThresholds, FatigueThresholds } from '../types/wellbeing'
@@ -572,6 +573,7 @@ export default function CameraStage({
 
       const engineResult = postureEngineRef.current.processPoseFrame(
         poseResult.landmarks ?? [],
+        poseResult.worldLandmarks ?? [],
         { width: canvas.width, height: canvas.height },
         now,
         {
@@ -613,6 +615,27 @@ export default function CameraStage({
           person.neckAngleDeg = enginePerson.rawFeatures.neckAngleDeg
           person.torsoAngleDeg = enginePerson.rawFeatures.torsoAngleDeg
           person.anchorPx = enginePerson.anchorPx
+        }
+      }
+
+      // Dataset Recorder ใช้เงื่อนไขเดียวกับ calibration: บันทึกเมื่อมีคนเดียวในเฟรมเท่านั้น
+      // เพื่อให้ label ที่ผู้ใช้เลือกไม่ปนกับอีกคน และเก็บ raw features ก่อน smoothing ตาม contract ของ dataset
+      if (import.meta.env.DEV && datasetRecorder.isRecording() && engineResult.people.length === 1) {
+        for (const enginePerson of engineResult.people) {
+          datasetRecorder.add({
+            timestamp: now,
+            cameraId: p.cameraId,
+            neckAngleDeg: enginePerson.rawFeatures.neckAngleDeg,
+            torsoAngleDeg: enginePerson.rawFeatures.torsoAngleDeg,
+            shoulderTiltDeg: enginePerson.rawFeatures.shoulderTiltDeg,
+            headHeightRatio: enginePerson.rawFeatures.headHeightRatio,
+            quality: enginePerson.rawFeatures.quality,
+            landmarks: enginePerson.landmarks,
+            worldLandmarks: enginePerson.worldLandmarks,
+            frameWidth: canvas.width,
+            frameHeight: canvas.height,
+            minVisibility: p.postureThresholds.minVisibility,
+          })
         }
       }
 

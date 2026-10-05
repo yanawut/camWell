@@ -1,7 +1,7 @@
+import type { Landmark, NormalizedLandmark } from '@mediapipe/tasks-vision'
 import type { AlertEvent } from '../types/alerts'
 import type { FallThresholds } from '../types/fall'
 import type {
-  Point,
   PostureBaseline,
   PostureFeatures,
   PostureIssueType,
@@ -44,6 +44,8 @@ export interface EngineAlertEvent {
 export interface EnginePersonFrame {
   trackId: string
   slotNumber: number
+  landmarks: NormalizedLandmark[]
+  worldLandmarks: Landmark[]
   rawFeatures: PostureFeatures
   smoothedFeatures: PostureFeatures
   postureIssue: Exclude<PostureIssueType, 'no_person'>
@@ -62,6 +64,8 @@ export interface PostureEngineResult {
 }
 
 interface TrackedPoseData {
+  landmarks: NormalizedLandmark[]
+  worldLandmarks: Landmark[]
   features: PostureFeatures
   anchorNorm: Point2D
 }
@@ -90,13 +94,14 @@ export class PostureEngine {
   }
 
   processPoseFrame(
-    allLandmarks: Point[][],
+    allLandmarks: NormalizedLandmark[][],
+    allWorldLandmarks: Landmark[][],
     frame: FrameSize,
     now: number,
     settings: PostureEngineSettings,
   ): PostureEngineResult {
     const detections = allLandmarks
-      .map((landmarks) => {
+      .map((landmarks, index) => {
         const features = extractPostureFeatures(
           landmarks,
           frame,
@@ -114,7 +119,12 @@ export class PostureEngine {
 
         return {
           position: anchorNorm,
-          data: { features, anchorNorm },
+          data: {
+            landmarks,
+            worldLandmarks: allWorldLandmarks[index] ?? [],
+            features,
+            anchorNorm,
+          },
         }
       })
       .filter((d): d is NonNullable<typeof d> => d !== null)
@@ -161,7 +171,7 @@ export class PostureEngine {
     }
 
     for (const match of matches) {
-      const { features, anchorNorm } = match.data
+      const { landmarks, worldLandmarks, features, anchorNorm } = match.data
       let person = this.people.get(match.id)
 
       if (!person) {
@@ -254,6 +264,8 @@ export class PostureEngine {
       people.push({
         trackId: match.id,
         slotNumber: person.slotNumber,
+        landmarks,
+        worldLandmarks,
         rawFeatures: features,
         smoothedFeatures: smoothed,
         postureIssue,
