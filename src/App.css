@@ -390,6 +390,60 @@
   padding: 0;
 }
 
+.link-button-primary {
+  color: var(--accent);
+}
+
+.link-button-muted {
+  color: var(--text-muted);
+}
+
+.link-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.enrolled-actions {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.enrolled-list li.enrolled-edit {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.enrolled-edit input[type='text'] {
+  flex: 1 1 140px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.enrolled-edit .settings-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-basis: 100%;
+  font-size: 12px;
+}
+
+.tag-warning {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--warn) 15%, transparent);
+  color: var(--warn);
+  font-size: 11px;
+}
+
+.attendance-panel tr.row-present td {
+  color: var(--good);
+  font-weight: 600;
+}
+
 .metrics-cell {
   font-family: ui-monospace, Consolas, monospace;
   font-size: 11px;

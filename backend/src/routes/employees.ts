@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from 'express'
 import { randomUUID } from 'node:crypto'
-import { getDb, type EmployeeRow } from '../db.js'
+import { getDb, nextAutoPersonNumber, type EmployeeRow } from '../db.js'
 import { findBestMatch, type DescriptorCandidate } from '../faceMatch.js'
 
 export const employeesRouter = Router()
@@ -10,10 +10,17 @@ interface EmployeeSummary {
   name: string
   enrolledAt: number
   consentGivenAt: number | null
+  autoEnrolled: boolean
 }
 
 function toSummary(row: EmployeeRow): EmployeeSummary {
-  return { id: row.id, name: row.name, enrolledAt: row.created_at, consentGivenAt: row.consent_given_at }
+  return {
+    id: row.id,
+    name: row.name,
+    enrolledAt: row.created_at,
+    consentGivenAt: row.consent_given_at,
+    autoEnrolled: row.auto_enrolled === 1,
+  }
 }
 
 function isNumberArray(value: unknown): value is number[] {
@@ -91,10 +98,39 @@ employeesRouter.delete('/:id', (req: Request, res: Response) => {
   res.status(204).end()
 })
 
+// PATCH /api/employees/:id — เปลี่ยนชื่อพนักงาน (เช่น จาก "คนที่ 3" ที่ระบบตั้งให้อัตโนมัติ เป็นชื่อจริง)
+// ส่ง consentGiven: true มาด้วยได้ เพื่อบันทึกว่าขอความยินยอมจากคนนี้แล้วหลังจากถูกลงทะเบียนอัตโนมัติ
+employeesRouter.patch('/:id', (req: Request, res: Response) => {
+  const id = String(req.params.id)
+  const body = req.body as { name?: unknown; consentGiven?: unknown }
+  const name = typeof body.name === 'string' ? body.name.trim() : ''
+  if (!name) {
+    res.status(400).json({ error: 'ต้องระบุชื่อพนักงาน' })
+    return
+  }
+
+  const db = getDb()
+  const result =
+    body.consentGiven === true
+      ? db
+          .prepare('UPDATE employees SET name = ?, consent_given_at = COALESCE(consent_given_at, ?) WHERE id = ?')
+          .run(name, Date.now(), id)
+      : db.prepare('UPDATE employees SET name = ? WHERE id = ?').run(name, id)
+  if (result.changes === 0) {
+    res.status(404).json({ error: 'ไม่พบพนักงานรายนี้' })
+    return
+  }
+  const updated = db.prepare('SELECT * FROM employees WHERE id = ?').get(id) as unknown as EmployeeRow
+  res.json(toSummary(updated))
+})
+
 // POST /api/identify — รับ face descriptor ที่ตรวจพบจากกล้อง หาว่าตรงกับพนักงานคนไหนที่ลงทะเบียนไว้ไหม
 // ทำการจับคู่ฝั่ง backend ทั้งหมด (ไม่ส่ง descriptor ของพนักงานคนอื่นกลับไปให้ client เลย)
+// ถ้าส่ง autoEnroll: true มาด้วยและไม่ตรงกับใครเลย จะลงทะเบียนหน้านี้เป็นคนใหม่ชื่อ "คนที่ N" (N รันต่อไปเรื่อยๆ)
+// ให้ทันที — ทั้งจับคู่และ INSERT อยู่ใน handler แบบ synchronous เดียวกัน (node:sqlite เป็น sync) จึงไม่มีทางที่
+// 2 กล้องจะส่งหน้าคนเดียวกันมาพร้อมกันแล้วได้คนใหม่ซ้ำ 2 คนจากการแข่งกันระหว่าง "เช็ค" กับ "เพิ่ม"
 employeesRouter.post('/identify', (req: Request, res: Response) => {
-  const body = req.body as { descriptor?: unknown }
+  const body = req.body as { descriptor?: unknown; autoEnroll?: unknown }
   if (!isNumberArray(body.descriptor)) {
     res.status(400).json({ error: 'รูปแบบ face descriptor ไม่ถูกต้อง' })
     return
@@ -115,9 +151,36 @@ employeesRouter.post('/identify', (req: Request, res: Response) => {
   }))
 
   const match = findBestMatch(body.descriptor, candidates)
-  if (!match) {
+  if (match) {
+    res.json({ matched: true, employeeId: match.employeeId, name: match.employeeName, distance: match.distance })
+    return
+  }
+  if (body.autoEnroll !== true) {
     res.json({ matched: false })
     return
   }
-  res.json({ matched: true, employeeId: match.employeeId, name: match.employeeName, distance: match.distance })
+
+  const now = Date.now()
+  const employeeId = randomUUID()
+  let name = ''
+  db.exec('BEGIN')
+  try {
+    name = `คนที่ ${nextAutoPersonNumber(db)}`
+    db.prepare(
+      'INSERT INTO employees (id, name, consent_given_at, created_at, auto_enrolled) VALUES (?, ?, NULL, ?, 1)',
+    ).run(employeeId, name, now)
+    db.prepare('INSERT INTO face_descriptors (id, employee_id, descriptor, created_at) VALUES (?, ?, ?, ?)').run(
+      randomUUID(),
+      employeeId,
+      JSON.stringify(body.descriptor),
+      now,
+    )
+    db.exec('COMMIT')
+  } catch (err) {
+    db.exec('ROLLBACK')
+    throw err
+  }
+
+  const created = db.prepare('SELECT * FROM employees WHERE id = ?').get(employeeId) as unknown as EmployeeRow
+  res.json({ matched: true, employeeId, name, distance: 0, created: toSummary(created) })
 })

@@ -4,6 +4,8 @@
 import express, { type NextFunction, type Request, type Response } from 'express'
 import cors from 'cors'
 import { employeesRouter } from './routes/employees.js'
+import { presenceRouter } from './routes/presence.js'
+import { alertsRouter } from './routes/alerts.js'
 import { getDb } from './db.js'
 
 const PORT = Number(process.env.PORT ?? 4000)
@@ -18,6 +20,8 @@ app.get('/health', (_req, res) => {
 })
 
 app.use('/api/employees', employeesRouter)
+app.use('/api/presence', presenceRouter)
+app.use('/api/alerts', alertsRouter)
 
 // error handler กลาง — กันเซิร์ฟเวอร์ล้มทั้งตัวเวลามี error ที่ไม่คาดคิดจาก route handler
 // (express รู้จักว่าเป็น error-handling middleware จากการมีพารามิเตอร์ครบ 4 ตัวเท่านั้น แม้ _req/_next จะไม่ได้ใช้ก็ต้องคงไว้)

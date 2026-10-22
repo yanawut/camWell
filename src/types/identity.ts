@@ -20,6 +20,9 @@ export interface EnrolledPerson {
   enrolledAt: number
   /** เวลาที่ยืนยันว่าขอความยินยอมจากพนักงานแล้ว (null = ไม่มีบันทึกไว้ — ไม่ควรเกิดขึ้นถ้าลงทะเบียนผ่าน UI นี้) */
   consentGivenAt: number | null
+  /** true = ระบบลงทะเบียนให้เองอัตโนมัติตอนเจอหน้าที่ไม่รู้จัก ชื่อเริ่มต้นเป็น "คนที่ N" (N รันต่อไปเรื่อยๆ ไม่ใช้ซ้ำ)
+   * — เปลี่ยนเป็นชื่อจริง + บันทึกความยินยอมได้ภายหลังจาก EnrollmentPanel */
+  autoEnrolled: boolean
 }
 
 export interface IdentityReading {

@@ -30,8 +30,8 @@ export default function EventLog({ events }: Props) {
     <div className="panel event-log">
       <h2>ประวัติการแจ้งเตือนวันนี้ ({events.length})</h2>
       <p className="panel-note">
-        รายการนี้เก็บอยู่ในหน่วยความจำของเบราว์เซอร์เท่านั้น (Phase 1) — ใน Phase 2 จะถูกส่งไปเก็บที่ backend
-        เพื่อรวมเป็น dashboard ของ HR/หัวหน้างาน
+        แสดงเฉพาะที่เกิดในหน้านี้ตั้งแต่เปิดหน้าเว็บ — ทุกรายการถูกส่งไปเก็บที่ camwell-backend ด้วย (ตาราง
+        alert_events ผูกกับพนักงานที่ระบุตัวตนได้ ดึงย้อนหลังได้ที่ GET /api/alerts)
       </p>
       {sorted.length === 0 ? (
         <p className="empty-state">ยังไม่มีการแจ้งเตือน</p>

@@ -44,7 +44,16 @@ npm start       # รัน dist/index.js
 | GET    | `/api/employees`       | รายชื่อพนักงานที่ลงทะเบียนไว้ (ไม่มี descriptor ติดมาด้วย) |
 | POST   | `/api/employees`       | ลงทะเบียนพนักงานใหม่ — body: `{ name, descriptor: number[], consentGiven: true }` |
 | DELETE | `/api/employees/:id`   | ลบพนักงาน + descriptor ของคนนั้นทั้งหมด |
-| POST   | `/api/employees/identify` | ส่ง `{ descriptor: number[] }` ไปหาว่าตรงกับใครที่ลงทะเบียนไว้ไหม |
+| PATCH  | `/api/employees/:id`   | เปลี่ยนชื่อ — body: `{ name, consentGiven? }` (`consentGiven: true` บันทึกความยินยอมให้คนที่ลงทะเบียนอัตโนมัติ) |
+| POST   | `/api/employees/identify` | ส่ง `{ descriptor: number[], autoEnroll?: boolean }` ไปหาว่าตรงกับใครที่ลงทะเบียนไว้ไหม — ถ้า `autoEnroll: true` และไม่ตรงกับใคร จะลงทะเบียนเป็นคนใหม่ชื่อ "คนที่ N" (เลขรันต่อไปเรื่อยๆ ไม่ใช้เลขซ้ำแม้ลบคนไปแล้ว) แล้วคืนคนนั้นใน `created` |
+| GET    | `/api/presence?limit=50` | บันทึกการเข้า-ออกล่าสุด (ใคร / กล้องไหน / เข้า / ออก) |
+| POST   | `/api/presence`        | เปิดช่วงเข้า — body: `{ employeeId, personName, cameraId, cameraLabel, startedAt? }` |
+| POST   | `/api/presence/:id/end` | ปิดช่วง (ออก) — body: `{ endedAt? }` |
+| GET    | `/api/alerts?limit=100&employeeId=` | เหตุการณ์แจ้งเตือนย้อนหลัง กรองรายพนักงานได้ |
+| POST   | `/api/alerts`          | บันทึก/อัปเดตเหตุการณ์แจ้งเตือน (AlertEvent + `employeeId`, `cameraId`) — ส่ง id เดิมซ้ำตอนจบเหตุการณ์ |
+
+> ⚠️ "ลงทะเบียนอัตโนมัติ" เก็บ face descriptor ของคนที่ยังไม่ได้ให้ความยินยอม (`consentGivenAt = null`) — ก่อนใช้
+> งานจริงต้องมีกระบวนการแจ้ง/ขอความยินยอมที่ครอบคลุมกรณีนี้ (เช่น ป้ายแจ้งหน้าพื้นที่ + ให้ยืนยันในหน้าจอภายหลัง)
 
 `consentGiven` ต้องเป็น `true` เสมอถึงจะลงทะเบียนได้ — ฝั่ง frontend บังคับติ๊กยืนยันว่าขอความยินยอมจาก
 พนักงานแล้วก่อนปุ่ม "ลงทะเบียนใบหน้า" จะกดได้ (ดูรายละเอียด PDPA เพิ่มเติมใน `src/types/identity.ts` ของ
