@@ -1,29 +1,55 @@
-// คุยกับ camwell-backend (Phase 2) เพื่อลงทะเบียน/ลบ/จับคู่ใบหน้าพนักงาน — เดิม (Phase 1) ทำทุกอย่างในเบราว์เซอร์
-// เอง (เก็บลง localStorage + เทียบ descriptor เอง) ตอนนี้ย้ายไปให้ backend ทำแทนทั้งหมด เพื่อให้พนักงานคนเดียว
-// ถูกจำได้ทุกเครื่อง/ทุกกล้องในออฟฟิศ (ไม่ใช่แค่เครื่องที่ลงทะเบียนไว้) และไม่ต้องส่ง descriptor ดิบของทุกคน
-// ไปให้ทุกเบราว์เซอร์ถืออยู่ — ดู camwell-backend/README.md สำหรับรายละเอียด API และ src/types/identity.ts
-// สำหรับข้อควรระวังเรื่อง PDPA
-
 import type { EnrolledPerson } from '../types/identity'
-import { apiFetch } from './apiConfig'
 
-export async function listEnrolledPeople(): Promise<EnrolledPerson[]> {
-  return apiFetch<EnrolledPerson[]>('/api/employees')
+const STORAGE_KEY = 'camwell:enrolled-people:v1'
+const CONSENT_VERSION = 'face-recognition-v1'
+// ค่ายิ่งสูงยิ่งจับคู่ได้ง่ายขึ้น แต่มีโอกาสระบุผิดคนมากขึ้น
+export const FACE_MATCH_DISTANCE_THRESHOLD = 0.65
+
+interface StoredPerson extends EnrolledPerson {
+  descriptor: number[]
 }
 
-/**
- * ลงทะเบียนพนักงานใหม่ — ต้องส่ง consentGiven: true มาด้วยเสมอ (UI ต้องบังคับให้ติ๊กยืนยันว่าขอความยินยอม
- * จากพนักงานแล้วก่อนเรียกฟังก์ชันนี้ ดู CameraStage.tsx) backend จะปฏิเสธคำขอถ้าไม่มีค่านี้
- */
+function readPeople(): StoredPerson[] {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]')
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((person): person is StoredPerson => {
+      if (!person || typeof person !== 'object') return false
+      const value = person as Partial<StoredPerson>
+      return typeof value.id === 'string' && typeof value.name === 'string' && Array.isArray(value.descriptor)
+    })
+  } catch {
+    return []
+  }
+}
+
+function writePeople(people: StoredPerson[]) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(people))
+}
+
+export async function listEnrolledPeople(): Promise<EnrolledPerson[]> {
+  return readPeople()
+}
+
 export async function enrollPerson(name: string, descriptor: Float32Array, consentGiven: boolean): Promise<EnrolledPerson> {
-  return apiFetch<EnrolledPerson>('/api/employees', {
-    method: 'POST',
-    body: JSON.stringify({ name: name.trim(), descriptor: Array.from(descriptor), consentGiven }),
-  })
+  const trimmedName = name.trim()
+  if (!trimmedName) throw new Error('ต้องระบุชื่อพนักงาน')
+  if (!consentGiven) throw new Error('ต้องยืนยันความยินยอมก่อนลงทะเบียนใบหน้า')
+  const now = Date.now()
+  const person: StoredPerson = {
+    id: crypto.randomUUID(),
+    name: trimmedName,
+    enrolledAt: now,
+    consentGivenAt: now,
+    consentVersion: CONSENT_VERSION,
+    descriptor: Array.from(descriptor),
+  }
+  writePeople([...readPeople(), person])
+  return person
 }
 
 export async function removePerson(id: string): Promise<void> {
-  await apiFetch<void>(`/api/employees/${encodeURIComponent(id)}`, { method: 'DELETE' })
+  writePeople(readPeople().filter((person) => person.id !== id))
 }
 
 export interface IdentifyMatch {
@@ -32,12 +58,21 @@ export interface IdentifyMatch {
   distance: number
 }
 
-/** ถามว่า descriptor ที่ตรวจพบตอนนี้ตรงกับใครที่ลงทะเบียนไว้ไหม — backend เป็นคนเทียบให้ทั้งหมด คืน null ถ้าไม่ตรงกับใคร */
+function euclideanDistance(a: number[], b: number[]) {
+  if (a.length !== b.length || a.length === 0) return Number.POSITIVE_INFINITY
+  let sum = 0
+  for (let i = 0; i < a.length; i += 1) sum += (a[i] - b[i]) ** 2
+  return Math.sqrt(sum)
+}
+
 export async function identifyFace(descriptor: Float32Array): Promise<IdentifyMatch | null> {
-  const result = await apiFetch<{ matched: boolean; employeeId?: string; name?: string; distance?: number }>(
-    '/api/employees/identify',
-    { method: 'POST', body: JSON.stringify({ descriptor: Array.from(descriptor) }) },
-  )
-  if (!result.matched || !result.employeeId || !result.name || result.distance === undefined) return null
-  return { employeeId: result.employeeId, name: result.name, distance: result.distance }
+  const current = Array.from(descriptor)
+  let best: IdentifyMatch | null = null
+  for (const person of readPeople()) {
+    const distance = euclideanDistance(current, person.descriptor)
+    if (distance <= FACE_MATCH_DISTANCE_THRESHOLD && (!best || distance < best.distance)) {
+      best = { employeeId: person.id, name: person.name, distance }
+    }
+  }
+  return best
 }

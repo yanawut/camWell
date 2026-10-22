@@ -40,6 +40,7 @@ export default function EventLog({ events }: Props) {
           <thead>
             <tr>
               <th>เวลา</th>
+              <th>ชื่อคน</th>
               <th>หมวด</th>
               <th>ประเภท</th>
               <th>ระยะเวลา</th>
@@ -50,10 +51,10 @@ export default function EventLog({ events }: Props) {
             {sorted.map((e) => (
               <tr key={e.id} className={e.endedAt ? '' : 'row-active'}>
                 <td>{formatTime(e.startedAt)}</td>
+                <td>{e.personName ?? 'ไม่ลงทะเบียน'}</td>
                 <td>{ALERT_CATEGORY_LABELS_TH[e.category]}</td>
                 <td>
                   {ALERT_LABELS_TH[e.type]}
-                  {e.personName && ` (${e.personName})`}
                 </td>
                 <td>{e.endedAt ? formatDuration(e.startedAt, e.endedAt) : 'กำลังดำเนินอยู่...'}</td>
                 <td className="metrics-cell">{formatMetrics(e.metrics)}</td>

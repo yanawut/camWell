@@ -15,9 +15,10 @@ import {
   type FatigueThresholds,
 } from './types/wellbeing'
 import { DEFAULT_FALL_THRESHOLDS, type FallThresholds } from './types/fall'
-import type { AlertEvent } from './types/alerts'
+import { ALERT_CATEGORY_LABELS_TH, ALERT_LABELS_TH, type AlertEvent } from './types/alerts'
 import type { EnrolledPerson } from './types/identity'
 import type { PersonSummary } from './types/person'
+import type { PoseModel } from './hooks/usePoseLandmarker'
 import { consoleAlertReporter } from './services/alertReporter'
 import { listEnrolledPeople, removePerson } from './services/faceEnrollment'
 import './App.css'
@@ -30,7 +31,57 @@ interface FallAlertItem {
   message: string
 }
 
+function DailySummary({ events }: { events: AlertEvent[] }) {
+  const totals = new Map<string, { count: number; durationMs: number }>()
+  const people = new Map<string, { count: number; durationMs: number; riskScore: number }>()
+  for (const event of events) {
+    const durationMs = Math.max(0, (event.endedAt ?? Date.now()) - event.startedAt)
+    const category = ALERT_CATEGORY_LABELS_TH[event.category]
+    const person = event.personName ?? 'ไม่ลงทะเบียน'
+    const categoryValue = totals.get(category) ?? { count: 0, durationMs: 0 }
+    categoryValue.count += 1; categoryValue.durationMs += durationMs; totals.set(category, categoryValue)
+    const personValue = people.get(person) ?? { count: 0, durationMs: 0, riskScore: 0 }
+    personValue.count += 1; personValue.durationMs += durationMs; people.set(person, personValue)
+    const minutes = durationMs / 60000
+    const weight = event.category === 'posture' ? 2 : event.category === 'distance' ? 1.5 : event.category === 'fatigue' ? 1 : 3
+    personValue.riskScore = Math.min(100, personValue.riskScore + weight * Math.max(1, minutes))
+  }
+  const formatDuration = (ms: number) => {
+    const seconds = Math.round(ms / 1000)
+    return `${Math.floor(seconds / 60)} นาที ${seconds % 60} วิ`
+  }
+  const riskLabel = (score: number) => score >= 20 ? 'สูง' : score >= 8 ? 'เฝ้าระวัง' : 'ต่ำ'
+  const topType = events.reduce<string | null>((best, event) => {
+    const count = events.filter((item) => item.type === event.type).length
+    const bestCount = best ? events.filter((item) => item.type === best).length : 0
+    return count > bestCount ? event.type : best
+  }, null)
+  return (
+    <main className="daily-summary-page">
+      <div className="summary-cards">
+        <div className="panel"><h2>เหตุการณ์ทั้งหมด</h2><strong>{events.length}</strong><p className="panel-note">ใน session นี้</p></div>
+        <div className="panel"><h2>เวลาที่อยู่ในท่าผิด</h2><strong>{formatDuration(events.reduce((sum, e) => sum + Math.max(0, (e.endedAt ?? Date.now()) - e.startedAt), 0))}</strong></div>
+        <div className="panel"><h2>ปัญหาที่พบบ่อยที่สุด</h2><strong>{topType ? ALERT_LABELS_TH[topType as keyof typeof ALERT_LABELS_TH] : '-'}</strong></div>
+      </div>
+      <div className="panel"><h2>สรุปตามประเภท</h2>{[...totals].map(([name, value]) => <p key={name}>{name}: <strong>{value.count}</strong> ครั้ง · {formatDuration(value.durationMs)}</p>)}</div>
+      <div className="panel">
+        <h2>ประเมินความเสี่ยงรายคน</h2>
+        <p className="panel-note">เป็นการคัดกรองจากพฤติกรรมการนั่ง ไม่ใช่การวินิจฉัย Office Syndrome</p>
+        {[...people].map(([name, value]) => (
+          <p key={name}>
+            <strong>{name}</strong> — ความเสี่ยง: <strong>{riskLabel(value.riskScore)}</strong> ({Math.round(value.riskScore)}/100)
+            · {value.count} เหตุการณ์ · {formatDuration(value.durationMs)}
+          </p>
+        ))}
+        {people.size > 0 && <p className="panel-warning">หากมีอาการปวด ชา อ่อนแรง หรืออาการต่อเนื่อง ควรหยุดพักและปรึกษาแพทย์หรือผู้เชี่ยวชาญ</p>}
+      </div>
+      {events.length === 0 && <p className="empty-state">วันนี้ยังไม่มีเหตุการณ์แจ้งเตือน</p>}
+    </main>
+  )
+}
+
 export default function App() {
+  const [activeTab, setActiveTab] = useState<'detection' | 'reports' | 'daily'>('detection')
   const [postureThresholds, setPostureThresholds] = useState<PostureThresholds>(DEFAULT_THRESHOLDS)
   const [fatigueThresholds, setFatigueThresholds] = useState<FatigueThresholds>(DEFAULT_FATIGUE_THRESHOLDS)
   const [distanceThresholds, setDistanceThresholds] = useState<DistanceThresholds>(DEFAULT_DISTANCE_THRESHOLDS)
@@ -38,6 +89,7 @@ export default function App() {
   const [fallThresholds, setFallThresholds] = useState<FallThresholds>(DEFAULT_FALL_THRESHOLDS)
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [faceFeaturesEnabled, setFaceFeaturesEnabled] = useState(true)
+  const [poseModel, setPoseModel] = useState<PoseModel>('lite')
 
   const [events, setEvents] = useState<AlertEvent[]>([])
   // (Phase 2) รายชื่อพนักงานที่ลงทะเบียนใบหน้าไว้ย้ายมาเก็บที่ camwell-backend แล้ว — ดึงมาตอน mount ด้วย
@@ -183,6 +235,30 @@ export default function App() {
         <p>Phase 1 (MVP): ตรวจจับแบบ client-side ล้วน ด้วย MediaPipe Pose Landmarker + @vladmandic/face-api รันในเบราว์เซอร์</p>
       </header>
 
+      <nav className="app-tabs" aria-label="เมนูหลัก">
+        <button
+          type="button"
+          className={activeTab === 'detection' ? 'app-tab active' : 'app-tab'}
+          onClick={() => setActiveTab('detection')}
+        >
+          ตรวจจับ
+        </button>
+        <button
+          type="button"
+          className={activeTab === 'reports' ? 'app-tab active' : 'app-tab'}
+          onClick={() => setActiveTab('reports')}
+        >
+          รายงาน <span className="tab-count">{events.length}</span>
+        </button>
+        <button
+          type="button"
+          className={activeTab === 'daily' ? 'app-tab active' : 'app-tab'}
+          onClick={() => setActiveTab('daily')}
+        >
+          สรุปผลของวัน
+        </button>
+      </nav>
+
       {fallAlerts.map((alert) => (
         <div key={alert.id} className="fall-alert-banner">
           <span>🚨 {alert.message}</span>
@@ -201,8 +277,9 @@ export default function App() {
         </div>
       )}
 
-      <main className="app-grid">
-        <section className="camera-column">
+      {activeTab === 'detection' ? (
+        <main className="app-grid">
+          <section className="camera-column">
           <div className="camera-grid">
             {cameraSlots.map((slot) => {
               const people = peopleBySlot[slot.id] ?? []
@@ -228,6 +305,7 @@ export default function App() {
                     fallThresholds={fallThresholds}
                     soundEnabled={soundEnabled}
                     faceFeaturesEnabled={faceFeaturesEnabled}
+                    poseModel={poseModel}
                     enrolledPeople={enrolledPeople}
                     baselineFaceWidthPx={baselineFaceWidthPx}
                     cameraSource={slot.source}
@@ -264,9 +342,9 @@ export default function App() {
               + เพิ่มกล้อง (สูงสุด {MAX_CAMERA_SLOTS} ตัวพร้อมกัน)
             </button>
           )}
-        </section>
+          </section>
 
-        <section className="side-column">
+          <section className="side-column">
           <SettingsPanel
             postureThresholds={postureThresholds}
             onPostureChange={setPostureThresholds}
@@ -282,12 +360,43 @@ export default function App() {
             onSoundEnabledChange={setSoundEnabled}
             faceFeaturesEnabled={faceFeaturesEnabled}
             onFaceFeaturesEnabledChange={setFaceFeaturesEnabled}
+            poseModel={poseModel}
+            onPoseModelChange={setPoseModel}
           />
           {faceFeaturesEnabled && enrolledPeopleError && <p className="panel-note panel-warning">{enrolledPeopleError}</p>}
           {faceFeaturesEnabled && <EnrollmentPanel people={enrolledPeople} onRemove={handleRemovePerson} />}
           <EventLog events={events} />
-        </section>
-      </main>
+          </section>
+        </main>
+      ) : activeTab === 'reports' ? (
+        <main className="reports-page">
+          <div className="panel live-status-panel">
+            <h2>สถานะการตรวจจับแบบเรียลไทม์</h2>
+            {Object.values(peopleBySlot).flat().length === 0 ? (
+              <p className="empty-state">ยังไม่พบคนในเฟรม</p>
+            ) : (
+              <ul className="people-list">
+                {Object.values(peopleBySlot).flat().map((person) => (
+                  <li key={person.trackId}>
+                    <strong>{person.label}</strong> — {person.postureStatus}
+                    {person.fatigueActive && ' · ⚠ เหนื่อยล้า/หาว'}
+                    {person.distanceActive && ' · ⚠ ใกล้จอเกินไป'}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="panel-note">สถานะนี้มาจากการตรวจจับล่าสุด ส่วนประวัติด้านล่างจะแสดงเมื่อปัญหาค้างเกินเวลาที่ตั้งไว้</p>
+          </div>
+          <div className="reports-summary panel">
+            <h2>สรุปการแจ้งเตือน</h2>
+            <p>เหตุการณ์ทั้งหมดที่เกิดขึ้นในเซสชันนี้: <strong>{events.length}</strong> รายการ</p>
+            <p className="panel-note">ข้อมูลรายงานยังเก็บอยู่ในหน่วยความจำของเบราว์เซอร์ และจะหายเมื่อรีโหลดหน้าเว็บ</p>
+          </div>
+          <EventLog events={events} />
+        </main>
+      ) : (
+        <DailySummary events={events} />
+      )}
 
       <footer className="app-footer">
         <p>

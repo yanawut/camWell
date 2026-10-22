@@ -23,13 +23,12 @@ const root = join(__dirname, '..')
 const wasmSrcDir = join(root, 'node_modules', '@mediapipe', 'tasks-vision', 'wasm')
 const wasmDestDir = join(root, 'public', 'wasm')
 const modelsDir = join(root, 'public', 'models')
-const poseModelPath = join(modelsDir, 'pose_landmarker_lite.task')
+const poseModels = ['lite', 'full', 'heavy']
 const faceApiDir = join(modelsDir, 'face-api')
 
 // URL ทางการของ Google สำหรับโมเดล Pose Landmarker (lite = เร็ว/เบาที่สุด เหมาะ real-time)
 // รุ่นอื่น: pose_landmarker_full, pose_landmarker_heavy (แม่นยำขึ้นแต่ช้าลง) - แก้ URL ด้านล่างได้ตามต้องการ
-const POSE_MODEL_URL =
-  'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task'
+const POSE_MODEL_BASE_URL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker'
 
 // ไฟล์โมเดลของ @vladmandic/face-api (MIT License) - ใช้สำหรับ fatigue / distance / face recognition
 const FACE_API_BASE = 'https://raw.githubusercontent.com/vladmandic/face-api/master/model'
@@ -77,7 +76,11 @@ async function downloadFile(url, destPath, label) {
 
 async function downloadPoseModel() {
   mkdirSync(modelsDir, { recursive: true })
-  await downloadFile(POSE_MODEL_URL, poseModelPath, 'pose_landmarker_lite.task (ตรวจจับท่านั่ง)')
+  for (const model of poseModels) {
+    const filename = `pose_landmarker_${model}.task`
+    const url = `${POSE_MODEL_BASE_URL}/pose_landmarker_${model}/float16/latest/${filename}`
+    await downloadFile(url, join(modelsDir, filename), `${filename} (ตรวจจับท่านั่ง)`)
+  }
 }
 
 async function downloadFaceApiModels() {

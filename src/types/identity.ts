@@ -20,6 +20,8 @@ export interface EnrolledPerson {
   enrolledAt: number
   /** เวลาที่ยืนยันว่าขอความยินยอมจากพนักงานแล้ว (null = ไม่มีบันทึกไว้ — ไม่ควรเกิดขึ้นถ้าลงทะเบียนผ่าน UI นี้) */
   consentGivenAt: number | null
+  consentVersion?: string
+  descriptor?: number[]
 }
 
 export interface IdentityReading {

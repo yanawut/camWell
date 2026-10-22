@@ -1,6 +1,7 @@
 import type { PostureThresholds } from '../types/posture'
 import type { BreakThresholds, DistanceThresholds, FatigueThresholds } from '../types/wellbeing'
 import type { FallThresholds } from '../types/fall'
+import type { PoseModel } from '../hooks/usePoseLandmarker'
 
 interface Props {
   postureThresholds: PostureThresholds
@@ -17,6 +18,8 @@ interface Props {
   onSoundEnabledChange: (enabled: boolean) => void
   faceFeaturesEnabled: boolean
   onFaceFeaturesEnabledChange: (enabled: boolean) => void
+  poseModel: PoseModel
+  onPoseModelChange: (model: PoseModel) => void
 }
 
 function Slider({
@@ -61,6 +64,8 @@ export default function SettingsPanel({
   onSoundEnabledChange,
   faceFeaturesEnabled,
   onFaceFeaturesEnabledChange,
+  poseModel,
+  onPoseModelChange,
 }: Props) {
   const setPosture = <K extends keyof PostureThresholds>(key: K, value: PostureThresholds[K]) => {
     onPostureChange({ ...postureThresholds, [key]: value })
@@ -92,6 +97,15 @@ export default function SettingsPanel({
       </label>
 
       <h3>ท่านั่ง</h3>
+      <label className="settings-row">
+        <span>โมเดลตรวจจับท่าทาง</span>
+        <select value={poseModel} onChange={(e) => onPoseModelChange(e.target.value as PoseModel)}>
+          <option value="lite">Lite — เร็วที่สุด</option>
+          <option value="full">Full — สมดุลความแม่นยำ/ความเร็ว</option>
+          <option value="heavy">Heavy — แม่นยำสูงสุด แต่ใช้ทรัพยากรมาก</option>
+        </select>
+      </label>
+      <p className="panel-note">การเปลี่ยนโมเดลจะโหลดโมเดลใหม่ และต้องมีไฟล์โมเดลอยู่ใน public/models</p>
       <Slider
         label="มุมคอที่ยอมรับได้ (forward head)"
         unit="°"

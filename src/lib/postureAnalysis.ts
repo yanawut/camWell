@@ -75,10 +75,28 @@ export function analyzePosture(
   const leftHip = landmarks[LM.LEFT_HIP]
   const rightHip = landmarks[LM.RIGHT_HIP]
 
-  const shoulderMid = midOrVisible(leftShoulder, rightShoulder, thresholds.minVisibility)
-  const hipMid = midOrVisible(leftHip, rightHip, thresholds.minVisibility)
-  // หัว: ใช้หูถ้าเห็น (แม่นกว่าเวลานั่งหันข้าง) ไม่งั้น fallback ไปจมูก
-  const headPoint = midOrVisible(leftEar, rightEar, thresholds.minVisibility) ?? (isVisible(nose, thresholds.minVisibility) ? nose : undefined)
+  const leftSideVisible = isVisible(leftShoulder, thresholds.minVisibility) && isVisible(leftHip, thresholds.minVisibility)
+  const rightSideVisible = isVisible(rightShoulder, thresholds.minVisibility) && isVisible(rightHip, thresholds.minVisibility)
+  // ถ้ามองด้านข้าง ให้ใช้ไหล่และสะโพกฝั่งเดียวกัน ห้ามผสมไหล่ซ้ายกับสะโพกขวา
+  // เพราะจะทำให้มุมลำตัวเพี้ยนเมื่ออีกฝั่งถูกบัง
+  const shoulderMid = leftSideVisible && !rightSideVisible
+    ? leftShoulder
+    : rightSideVisible && !leftSideVisible
+      ? rightShoulder
+      : midOrVisible(leftShoulder, rightShoulder, thresholds.minVisibility)
+  const hipMid = leftSideVisible && !rightSideVisible
+    ? leftHip
+    : rightSideVisible && !leftSideVisible
+      ? rightHip
+      : midOrVisible(leftHip, rightHip, thresholds.minVisibility)
+  // หัว: ถ้าเป็นมุมด้านข้าง ให้ใช้หูฝั่งเดียวกับไหล่/สะโพกที่มองเห็น
+  // เพื่อไม่ผสม landmark คนละฝั่ง ซึ่งทำให้มุมคอผิดเมื่อใบหน้า/ลำตัวถูกบัง
+  const sideHead = leftSideVisible && !rightSideVisible
+    ? (isVisible(leftEar, thresholds.minVisibility) ? leftEar : undefined)
+    : rightSideVisible && !leftSideVisible
+      ? (isVisible(rightEar, thresholds.minVisibility) ? rightEar : undefined)
+      : undefined
+  const headPoint = sideHead ?? midOrVisible(leftEar, rightEar, thresholds.minVisibility) ?? (isVisible(nose, thresholds.minVisibility) ? nose : undefined)
 
   if (!shoulderMid || !hipMid || !headPoint) {
     return { issue: 'no_person', neckAngleDeg: 0, torsoAngleDeg: 0, shoulderTiltDeg: 0 }
@@ -90,17 +108,24 @@ export function analyzePosture(
     isVisible(leftShoulder, thresholds.minVisibility) && isVisible(rightShoulder, thresholds.minVisibility)
       ? shoulderTilt(leftShoulder, rightShoulder)
       : 0
+  // ตรวจการเอียงคอ/ศีรษะด้านข้างจากแนวหูซ้าย-ขวาเพิ่มเติม
+  // ใช้ threshold เดียวกับไหล่เพื่อให้ผู้ใช้ปรับความไวจาก Settings ได้จุดเดียว
+  const headTiltDeg =
+    isVisible(leftEar, thresholds.minVisibility) && isVisible(rightEar, thresholds.minVisibility)
+      ? shoulderTilt(leftEar, rightEar)
+      : 0
+  const effectiveTiltDeg = Math.max(shoulderTiltDeg, headTiltDeg)
 
   let issue: PostureIssueType = 'good'
   if (torsoAngleDeg >= thresholds.torsoAngleThresholdDeg) {
     issue = 'slouching'
   } else if (neckAngleDeg >= thresholds.neckAngleThresholdDeg) {
     issue = 'forward_head'
-  } else if (shoulderTiltDeg >= thresholds.shoulderTiltThresholdDeg) {
+  } else if (effectiveTiltDeg >= thresholds.shoulderTiltThresholdDeg) {
     issue = 'leaning'
   }
 
-  return { issue, neckAngleDeg, torsoAngleDeg, shoulderTiltDeg }
+  return { issue, neckAngleDeg, torsoAngleDeg, shoulderTiltDeg: effectiveTiltDeg }
 }
 
 export const POSTURE_LABELS_TH: Record<PostureIssueType, string> = {
