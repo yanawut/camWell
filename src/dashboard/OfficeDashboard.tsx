@@ -1,6 +1,7 @@
-import { useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import OfficeRoom from './OfficeRoom'
 import { useDemoPeople } from './useDemoPeople'
+import { useTodayAlertCounts } from './useTodayAlertCounts'
 import type { CameraSlot } from '../types/cameraSource'
 import type { PersonSummary } from '../types/person'
 import { MAX_TRACKED_PEOPLE, type DetectionMode } from '../lib/multiPerson'
@@ -15,6 +16,8 @@ interface Props {
   renderCameraStage: (slot: CameraSlot) => ReactNode
   detectionMode: DetectionMode
   onDetectionModeChange: (mode: DetectionMode) => void
+  /** จำนวนเหตุการณ์แจ้งเตือนที่เกิดในหน้านี้ — เปลี่ยนเมื่อไหร่ดึงจำนวน "วันนี้" จาก backend ใหม่ทันที */
+  alertEventCount: number
 }
 
 const NO_PEOPLE: PersonSummary[] = []
@@ -26,10 +29,22 @@ export default function OfficeDashboard({
   renderCameraStage,
   detectionMode,
   onDetectionModeChange,
+  alertEventCount,
 }: Props) {
   const [showCameras, setShowCameras] = useState(false)
   const demoPeople = useDemoPeople(IS_DEMO, cameraSlots)
   const roomPeople = demoPeople ?? peopleBySlot
+  const todayCounts = useTodayAlertCounts(!IS_DEMO, alertEventCount)
+  // โหมดสาธิต: ตัวเลขจำลองคงที่ต่อคน (ไม่ดึงจาก backend)
+  const demoCounts = useMemo(() => {
+    if (!demoPeople) return null
+    const counts = new Map<string, number>()
+    for (const people of Object.values(demoPeople)) {
+      for (const p of people) if (p.employeeId) counts.set(p.employeeId, (p.label.length * 7) % 6)
+    }
+    return counts
+  }, [demoPeople])
+  const alertCounts = demoCounts ?? todayCounts
   const total = cameraSlots.reduce((sum, slot) => sum + (roomPeople[slot.id]?.length ?? 0), 0)
 
   return (
@@ -76,7 +91,11 @@ export default function OfficeDashboard({
       <main className="dash-rooms">
         {cameraSlots.map((slot) => (
           <div key={slot.id} className="dash-room-column">
-            <OfficeRoom title={`ห้อง · ${slot.label}`} people={roomPeople[slot.id] ?? NO_PEOPLE} />
+            <OfficeRoom
+              title={`ห้อง · ${slot.label}`}
+              people={roomPeople[slot.id] ?? NO_PEOPLE}
+              alertCounts={alertCounts}
+            />
             {/* ซ่อนด้วย hidden ไม่ใช่ unmount — CameraStage ต้องทำงานต่อเบื้องหลังเพื่ออัปเดตตัวละคร */}
             <div className="dash-camera" hidden={!showCameras}>
               {renderCameraStage(slot)}
@@ -91,6 +110,9 @@ export default function OfficeDashboard({
         </span>
         <span>
           <span className="dash-bubble is-tired">Zz</span> ง่วง / เหนื่อยล้า
+        </span>
+        <span>
+          <span className="dash-count has-alerts">3</span> จำนวนครั้งที่ถูกแจ้งเตือนวันนี้ (รวมทุกกล้อง)
         </span>
         <span>ตัวละครคนเดิมหน้าตาเหมือนเดิมทุกครั้ง (ผูกกับตัวตนที่ระบบจำได้)</span>
       </footer>

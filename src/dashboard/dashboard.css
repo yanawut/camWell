@@ -188,7 +188,9 @@
 }
 
 .dash-name {
-  padding: 1px 6px;
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 3px 1px 6px;
   border-radius: 4px;
   background: rgba(31, 36, 48, 0.82);
   color: #fff;
@@ -198,6 +200,25 @@
   max-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* จำนวนครั้งที่ถูกแจ้งเตือนวันนี้ — ต่อท้ายในป้ายชื่อ */
+.dash-count {
+  display: inline-block;
+  min-width: 16px;
+  margin-left: 4px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: #16a34a;
+  color: #fff;
+  font-size: 0.92em;
+  font-weight: 800;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.dash-count.has-alerts {
+  background: #dc2626;
 }
 
 .dash-bubble {
@@ -229,6 +250,11 @@
   50% {
     transform: translateY(-2px);
   }
+}
+
+.dash-legend .dash-count {
+  margin: 0 6px 0 0;
+  font-size: 12px;
 }
 
 .dash-legend .dash-bubble {

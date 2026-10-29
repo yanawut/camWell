@@ -253,6 +253,7 @@ export default function App() {
           renderCameraStage={renderCameraStage}
           detectionMode={detectionMode}
           onDetectionModeChange={setDetectionMode}
+          alertEventCount={events.length}
         />
       </>
     )

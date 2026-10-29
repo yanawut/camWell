@@ -32,6 +32,7 @@ export async function listAlertRecords(options: { employeeId?: string; limit?: n
   return apiFetch<AlertRecord[]>(`/api/alerts?${params}`)
 }
 
-export async function getAlertSummary(): Promise<AlertSummary[]> {
-  return apiFetch<AlertSummary[]>('/api/alerts/summary')
+/** สรุปจำนวนแจ้งเตือนรายคน — since (epoch ms) = นับเฉพาะเหตุการณ์ที่เริ่มหลังเวลานั้น ไม่ส่ง = ทั้งหมด */
+export async function getAlertSummary(since?: number): Promise<AlertSummary[]> {
+  return apiFetch<AlertSummary[]>(`/api/alerts/summary${since === undefined ? '' : `?since=${since}`}`)
 }

@@ -60,15 +60,17 @@ alertsRouter.get('/', (req: Request, res: Response) => {
 })
 
 // GET /api/alerts/summary — สรุปจำนวนการแจ้งเตือนรายคน (นับแยกหมวด + เวลาล่าสุด) สำหรับหน้ารายชื่อ
-// เฉพาะเหตุการณ์ที่ผูกกับพนักงานได้ (employee_id ไม่เป็น NULL)
-alertsRouter.get('/summary', (_req: Request, res: Response) => {
+// เฉพาะเหตุการณ์ที่ผูกกับพนักงานได้ (employee_id ไม่เป็น NULL) — ?since=<epoch ms> นับเฉพาะที่เริ่มหลังเวลานั้น
+// (Dashboard ส่งเวลาเที่ยงคืนตามเวลาเครื่องมา เพื่อนับเฉพาะ "วันนี้")
+alertsRouter.get('/summary', (req: Request, res: Response) => {
+  const since = Number(req.query.since)
   const rows = getDb()
     .prepare(
       `SELECT employee_id, category, COUNT(*) as count, MAX(started_at) as last_at
-       FROM alert_events WHERE employee_id IS NOT NULL
+       FROM alert_events WHERE employee_id IS NOT NULL AND started_at >= ?
        GROUP BY employee_id, category`,
     )
-    .all() as unknown as { employee_id: string; category: string; count: number; last_at: number }[]
+    .all(Number.isFinite(since) ? since : 0) as unknown as { employee_id: string; category: string; count: number; last_at: number }[]
 
   const byEmployee = new Map<string, { employeeId: string; total: number; byCategory: Record<string, number>; lastAt: number }>()
   for (const r of rows) {

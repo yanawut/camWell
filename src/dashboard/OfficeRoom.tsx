@@ -144,7 +144,14 @@ function Desk({ cx, top }: Seat) {
   )
 }
 
-export default function OfficeRoom({ title, people }: { title: string; people: PersonSummary[] }) {
+interface Props {
+  title: string
+  people: PersonSummary[]
+  /** จำนวนครั้งที่ถูกแจ้งเตือนวันนี้ของแต่ละคน (key = employeeId) — คนที่ยังระบุตัวตนไม่ได้จะไม่มีตัวเลข */
+  alertCounts: Map<string, number>
+}
+
+export default function OfficeRoom({ title, people, alertCounts }: Props) {
   const [state, setState] = useState<SeatingState>({ prevPeople: null, seated: [] })
 
   // ปรับที่นั่งระหว่าง render เมื่อรายชื่อคนเปลี่ยน (รูปแบบ "adjust state on prop change" ของ React) แทนการใช้
@@ -209,6 +216,7 @@ export default function OfficeRoom({ title, people }: { title: string; people: P
         {seated.map(({ person, seat, leaving }) => {
           const { cx, top } = SEATS[seat]
           const bubble = statusBubble(person)
+          const todayCount = person.employeeId ? (alertCounts.get(person.employeeId) ?? 0) : null
           return (
             <div
               key={person.trackId}
@@ -222,6 +230,14 @@ export default function OfficeRoom({ title, people }: { title: string; people: P
               )}
               <span className="dash-name" title={person.postureStatus}>
                 {person.label}
+                {todayCount !== null && (
+                  <span
+                    className={`dash-count ${todayCount > 0 ? 'has-alerts' : ''}`}
+                    title={`ถูกแจ้งเตือนวันนี้ ${todayCount} ครั้ง`}
+                  >
+                    {todayCount}
+                  </span>
+                )}
               </span>
             </div>
           )
