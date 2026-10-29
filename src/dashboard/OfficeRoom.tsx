@@ -68,6 +68,12 @@ function statusBubble(person: PersonSummary): { text: string; title: string; ton
   return null
 }
 
+/** ระดับสีของป้ายจำนวนแจ้งเตือนวันนี้: 0 = เขียว (ว่าง ไม่มีตัวเลข), 1–10 = ส้ม, เกิน 10 = แดง */
+function countLevel(count: number): 'none' | 'some' | 'many' {
+  if (count === 0) return 'none'
+  return count <= 10 ? 'some' : 'many'
+}
+
 function Px({ x, y, w, h, fill }: { x: number; y: number; w: number; h: number; fill: string }) {
   return <rect x={x} y={y} width={w} height={h} fill={fill} />
 }
@@ -232,10 +238,10 @@ export default function OfficeRoom({ title, people, alertCounts }: Props) {
                 {person.label}
                 {todayCount !== null && (
                   <span
-                    className={`dash-count ${todayCount > 0 ? 'has-alerts' : ''}`}
-                    title={`ถูกแจ้งเตือนวันนี้ ${todayCount} ครั้ง`}
+                    className={`dash-count is-${countLevel(todayCount)}`}
+                    title={todayCount === 0 ? 'วันนี้ยังไม่ถูกแจ้งเตือน' : `ถูกแจ้งเตือนวันนี้ ${todayCount} ครั้ง`}
                   >
-                    {todayCount}
+                    {todayCount > 0 ? todayCount : ''}
                   </span>
                 )}
               </span>

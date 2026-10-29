@@ -30,8 +30,9 @@ import './App.css'
 
 // ponytail: เปิด Dev Console ได้ทุก build ผ่าน /?console — กำหนดสิทธิ์ใหม่เมื่อออกจากช่วง dev
 const IS_DEV_CONSOLE = new URLSearchParams(window.location.search).has('console')
-// /?dashboard = ห้องทำงาน pixel art แสดงตัวละครตามจำนวนคนในเฟรมแต่ละกล้อง
-const IS_DASHBOARD = new URLSearchParams(window.location.search).has('dashboard')
+// หน้าแรก (/) = Dashboard ห้องทำงาน pixel art เสมอ — หน้ากล้อง/ตั้งค่าเดิมย้ายไปที่ /?camera
+// (/?dashboard ยังใช้ได้เหมือนเดิม เพราะไม่มี camera/console ใน URL)
+const IS_DASHBOARD = !IS_DEV_CONSOLE && !new URLSearchParams(window.location.search).has('camera')
 
 const BASELINE_STORAGE_KEY = 'camwell:distance-baseline-px:v1'
 const CAMERA_SLOTS_STORAGE_KEY = 'camwell:camera-slots:v1'
@@ -50,7 +51,8 @@ export default function App() {
   const [fallThresholds, setFallThresholds] = useState<FallThresholds>(DEFAULT_FALL_THRESHOLDS)
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [faceFeaturesEnabled, setFaceFeaturesEnabled] = useState(DEFAULT_FACE_FEATURES_ENABLED)
-  const [detectionMode, setDetectionMode] = useState<DetectionMode>('workstation')
+  // Dashboard เริ่มที่โหมดหลายคนเสมอ (ต้องเห็นทุกคนในห้อง) — หน้ากล้อง/console เริ่มที่ 1 คนต่อกล้องเหมือนเดิม
+  const [detectionMode, setDetectionMode] = useState<DetectionMode>(IS_DASHBOARD ? 'multi' : 'workstation')
   // ลงทะเบียนใบหน้าที่ไม่รู้จักอัตโนมัติเป็น "คนที่ N" — เปิดไว้เป็นค่าเริ่มต้น จำค่าที่ผู้ใช้ปิด/เปิดไว้ใน localStorage
   const [autoEnrollEnabled, setAutoEnrollEnabled] = useState(() => localStorage.getItem(AUTO_ENROLL_STORAGE_KEY) !== 'false')
 
@@ -341,7 +343,7 @@ export default function App() {
           <a className="app-header-link" href="?alerts">
             ผลการแจ้งเตือนในฐานข้อมูล →
           </a>
-          <a className="app-header-link" href="?dashboard">
+          <a className="app-header-link" href="./">
             Dashboard ห้องทำงาน →
           </a>
         </nav>

@@ -1,6 +1,6 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import OfficeRoom from './OfficeRoom'
-import { useDemoPeople } from './useDemoPeople'
+import { DEMO_ALERT_COUNTS, useDemoPeople } from './useDemoPeople'
 import { useTodayAlertCounts } from './useTodayAlertCounts'
 import type { CameraSlot } from '../types/cameraSource'
 import type { PersonSummary } from '../types/person'
@@ -31,20 +31,13 @@ export default function OfficeDashboard({
   onDetectionModeChange,
   alertEventCount,
 }: Props) {
-  const [showCameras, setShowCameras] = useState(false)
+  // แสดงภาพกล้องไว้ตั้งแต่แรกเสมอ (ปิดได้จากช่องติ๊กด้านบน)
+  const [showCameras, setShowCameras] = useState(true)
   const demoPeople = useDemoPeople(IS_DEMO, cameraSlots)
   const roomPeople = demoPeople ?? peopleBySlot
   const todayCounts = useTodayAlertCounts(!IS_DEMO, alertEventCount)
   // โหมดสาธิต: ตัวเลขจำลองคงที่ต่อคน (ไม่ดึงจาก backend)
-  const demoCounts = useMemo(() => {
-    if (!demoPeople) return null
-    const counts = new Map<string, number>()
-    for (const people of Object.values(demoPeople)) {
-      for (const p of people) if (p.employeeId) counts.set(p.employeeId, (p.label.length * 7) % 6)
-    }
-    return counts
-  }, [demoPeople])
-  const alertCounts = demoCounts ?? todayCounts
+  const alertCounts = IS_DEMO ? DEMO_ALERT_COUNTS : todayCounts
   const total = cameraSlots.reduce((sum, slot) => sum + (roomPeople[slot.id]?.length ?? 0), 0)
 
   return (
@@ -70,11 +63,14 @@ export default function OfficeDashboard({
             <input type="checkbox" checked={showCameras} onChange={(e) => setShowCameras(e.target.checked)} />
             แสดงภาพกล้อง
           </label>
+          <a className="dash-link" href="?people">
+            รายชื่อบุคคล
+          </a>
           <a className="dash-link" href="?alerts">
             ผลการแจ้งเตือน
           </a>
-          <a className="dash-link" href="./">
-            ← หน้ากล้อง
+          <a className="dash-link" href="?camera">
+            หน้ากล้อง / ตั้งค่า
           </a>
         </nav>
       </header>
@@ -112,7 +108,10 @@ export default function OfficeDashboard({
           <span className="dash-bubble is-tired">Zz</span> ง่วง / เหนื่อยล้า
         </span>
         <span>
-          <span className="dash-count has-alerts">3</span> จำนวนครั้งที่ถูกแจ้งเตือนวันนี้ (รวมทุกกล้อง)
+          จำนวนครั้งที่ถูกแจ้งเตือนวันนี้ (รวมทุกกล้อง):
+          <span className="dash-count is-none" /> ไม่มี
+          <span className="dash-count is-some">3</span> 1–10 ครั้ง
+          <span className="dash-count is-many">12</span> เกิน 10 ครั้ง
         </span>
         <span>ตัวละครคนเดิมหน้าตาเหมือนเดิมทุกครั้ง (ผูกกับตัวตนที่ระบบจำได้)</span>
       </footer>

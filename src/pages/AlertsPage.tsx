@@ -146,7 +146,7 @@ export default function AlertsPage() {
             รายชื่อบุคคล
           </a>
           <a className="secondary-button people-back" href="./">
-            ← กลับหน้ากล้อง
+            ← กลับ Dashboard
           </a>
         </nav>
       </header>

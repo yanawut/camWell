@@ -11,6 +11,11 @@ const DEMO_NAMES = ['สมชาย', 'สุดา', 'คนที่ 7', 'ว
 
 let demoCounter = 0
 
+/** จำนวนแจ้งเตือน "วันนี้" จำลองต่อคน (คงที่ตามชื่อ ครอบคลุมทั้ง 0, 1–10 และเกิน 10) — key = employeeId ของคนจำลอง */
+export const DEMO_ALERT_COUNTS = new Map(
+  DEMO_NAMES.map((name, i) => [`demo-employee-${name}`, [0, 3, 12, 0, 7, 15, 1, 0][i % 8]]),
+)
+
 function makeDemoPerson(): PersonSummary {
   demoCounter += 1
   const name = DEMO_NAMES[demoCounter % DEMO_NAMES.length]

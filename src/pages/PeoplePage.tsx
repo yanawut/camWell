@@ -96,7 +96,7 @@ export default function PeoplePage() {
           <p>ข้อมูลจาก camwell-backend ({API_BASE_URL}) — รวมทุกกล้อง/ทุกเครื่องที่ต่อ backend ตัวนี้</p>
         </div>
         <a className="secondary-button people-back" href="./">
-          ← กลับหน้ากล้อง
+            ← กลับ Dashboard
         </a>
       </header>
 
