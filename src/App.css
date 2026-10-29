@@ -17,6 +17,18 @@
   color: var(--text-muted);
 }
 
+.app-header-link {
+  display: inline-block;
+  margin-top: 6px;
+  color: var(--accent);
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.app-header-link:hover {
+  text-decoration: underline;
+}
+
 .app-grid {
   display: grid;
   grid-template-columns: minmax(360px, 640px) minmax(280px, 380px);
