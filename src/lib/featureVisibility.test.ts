@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { DEFAULT_FACE_FEATURES_ENABLED, getCameraPeopleVisibility } from './featureVisibility'
 
 describe('DEFAULT_FACE_FEATURES_ENABLED', () => {
-  it('starts face-dependent features disabled', () => {
-    expect(DEFAULT_FACE_FEATURES_ENABLED).toBe(false)
+  it('starts face-dependent features enabled', () => {
+    expect(DEFAULT_FACE_FEATURES_ENABLED).toBe(true)
   })
 })
 
