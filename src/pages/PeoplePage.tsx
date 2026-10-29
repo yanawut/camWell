@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { EnrolledPerson } from '../types/identity'
 import { listEnrolledPeople, removePerson, renamePerson } from '../services/faceEnrollment'
 import { API_BASE_URL } from '../services/apiConfig'
+import { getAlertSummary, type AlertSummary } from '../services/alertHistory'
+import { ALERT_CATEGORY_LABELS_TH, type AlertCategory } from '../types/alerts'
 import '../App.css'
 import './PeoplePage.css'
 
@@ -12,17 +14,32 @@ function formatDateTime(epochMs: number) {
   return new Date(epochMs).toLocaleString('th-TH', { hour12: false, dateStyle: 'medium', timeStyle: 'short' })
 }
 
+function AlertCountCell({ summary, employeeId }: { summary: AlertSummary | undefined; employeeId: string }) {
+  if (!summary) return <span className="people-muted">0</span>
+  const detail = (Object.entries(summary.byCategory) as [AlertCategory, number][])
+    .map(([category, count]) => `${ALERT_CATEGORY_LABELS_TH[category] ?? category} ${count}`)
+    .join(' · ')
+  return (
+    <a className="people-alert-link" href={`?alerts&employee=${encodeURIComponent(employeeId)}`} title={detail}>
+      {summary.total} รายการ →
+    </a>
+  )
+}
+
 export default function PeoplePage() {
   const [people, setPeople] = useState<EnrolledPerson[]>([])
+  // จำนวนการแจ้งเตือนรายคนจาก DB (key = employeeId) — คนที่ไม่เคยถูกแจ้งเตือนจะไม่มีใน map
+  const [alertSummary, setAlertSummary] = useState<Map<string, AlertSummary>>(new Map())
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [removingId, setRemovingId] = useState<string | null>(null)
 
   const fetchPeople = useCallback(() => {
-    listEnrolledPeople()
-      .then((rows) => {
+    Promise.all([listEnrolledPeople(), getAlertSummary()])
+      .then(([rows, summary]) => {
         setPeople(rows)
+        setAlertSummary(new Map(summary.map((s) => [s.employeeId, s])))
         setError(null)
         setStatus('ready')
       })
@@ -126,6 +143,7 @@ export default function PeoplePage() {
                   <th>ชื่อ</th>
                   <th>ลงทะเบียนเมื่อ</th>
                   <th>ความยินยอม (PDPA)</th>
+                  <th>การแจ้งเตือน</th>
                   <th>ID</th>
                   <th />
                 </tr>
@@ -141,6 +159,9 @@ export default function PeoplePage() {
                     <td>{formatDateTime(p.enrolledAt)}</td>
                     <td className={p.consentGivenAt ? 'people-good' : 'people-warn'}>
                       {p.consentGivenAt ? `✓ ${formatDateTime(p.consentGivenAt)}` : 'ไม่มีบันทึก'}
+                    </td>
+                    <td>
+                      <AlertCountCell summary={alertSummary.get(p.id)} employeeId={p.id} />
                     </td>
                     <td className="metrics-cell" title={p.id}>
                       {p.id.slice(0, 8)}

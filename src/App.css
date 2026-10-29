@@ -17,6 +17,12 @@
   color: var(--text-muted);
 }
 
+.app-header-links {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
 .app-header-link {
   display: inline-block;
   margin-top: 6px;

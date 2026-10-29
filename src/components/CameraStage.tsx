@@ -47,8 +47,8 @@ const AUTO_ENROLL_MIN_FACE_WIDTH_PX = 80
 type FaceResult = faceapi.WithFaceDescriptor<faceapi.WithFaceLandmarks<{ detection: faceapi.FaceDetection }>>
 
 /** แปะ employeeId + cameraId ให้เหตุการณ์ก่อนส่งออกไปที่ App/backend เพื่อผูกเหตุการณ์กับพนักงานที่ระบุตัวได้ */
-function tagEvent(event: AlertEvent, person: PersonState, cameraId: string): AlertEvent {
-  return { ...event, employeeId: event.employeeId ?? person.identityId ?? undefined, cameraId }
+function tagEvent(event: AlertEvent, person: PersonState, cameraId: string, cameraLabel: string): AlertEvent {
+  return { ...event, employeeId: event.employeeId ?? person.identityId ?? undefined, cameraId, cameraLabel }
 }
 
 /** ปิดช่วงเข้า-ออกที่เปิดอยู่ของคนนี้ (ถ้ามี) — fire-and-forget backend ล่มแค่ log เตือน */
@@ -498,10 +498,10 @@ export default function CameraStage({
         )
         person.fatigueState = fatigueStep.state
         if (fatigueStep.startedEvent) {
-          p.onAlertStart(tagEvent(fatigueStep.startedEvent, person, p.cameraId))
+          p.onAlertStart(tagEvent(fatigueStep.startedEvent, person, p.cameraId, p.cameraLabel))
           if (p.soundEnabled) playAlertBeep()
         }
-        if (fatigueStep.endedEvent) p.onAlertEnd(tagEvent(fatigueStep.endedEvent, person, p.cameraId))
+        if (fatigueStep.endedEvent) p.onAlertEnd(tagEvent(fatigueStep.endedEvent, person, p.cameraId, p.cameraLabel))
 
         // --- Distance (ใช้ baseline เดียวกันทุกคน — ยังไม่รองรับ calibrate แยกรายคน) ---
         const distance = analyzeDistanceFrame(face.detection.box.width, p.baselineFaceWidthPx, p.distanceThresholds)
@@ -516,10 +516,10 @@ export default function CameraStage({
         )
         person.distanceState = distStep.state
         if (distStep.startedEvent) {
-          p.onAlertStart(tagEvent(distStep.startedEvent, person, p.cameraId))
+          p.onAlertStart(tagEvent(distStep.startedEvent, person, p.cameraId, p.cameraLabel))
           if (p.soundEnabled) playAlertBeep()
         }
-        if (distStep.endedEvent) p.onAlertEnd(tagEvent(distStep.endedEvent, person, p.cameraId))
+        if (distStep.endedEvent) p.onAlertEnd(tagEvent(distStep.endedEvent, person, p.cameraId, p.cameraLabel))
 
         // --- Identity (เช็คไม่ถี่เท่า fatigue/distance ต่อคน) — ถาม camwell-backend ให้จับคู่ให้ (Phase 2)
         // เป็น fire-and-forget ไม่ await ในลูปนี้ กันไม่ให้ network request ไปบล็อกการตรวจจับคนอื่นในเฟรมเดียวกัน
@@ -580,8 +580,8 @@ export default function CameraStage({
         const fatigueStep = stepSustainedAlert(person.fatigueState, { issue: 'no_signal', metrics: {} }, now, 'fatigue', p.fatigueThresholds.drowsySustainedMs)
         const distStep = stepSustainedAlert(person.distanceState, { issue: 'no_signal', metrics: {} }, now, 'distance', p.distanceThresholds.sustainedMs)
         personStatesRef.current.set(trackId, { ...person, fatigueState: fatigueStep.state, distanceState: distStep.state })
-        if (fatigueStep.endedEvent) p.onAlertEnd(tagEvent(fatigueStep.endedEvent, person, p.cameraId))
-        if (distStep.endedEvent) p.onAlertEnd(tagEvent(distStep.endedEvent, person, p.cameraId))
+        if (fatigueStep.endedEvent) p.onAlertEnd(tagEvent(fatigueStep.endedEvent, person, p.cameraId, p.cameraLabel))
+        if (distStep.endedEvent) p.onAlertEnd(tagEvent(distStep.endedEvent, person, p.cameraId, p.cameraLabel))
       }
 
       recomputeAlertUi()
@@ -769,7 +769,9 @@ export default function CameraStage({
       // ผูกเหตุการณ์จาก PostureEngine กับพนักงานที่ระบุตัวได้ของ track นั้น (employeeId + cameraId)
       const tagByTrack = (trackId: string, event: AlertEvent): AlertEvent => {
         const person = personStatesRef.current.get(trackId)
-        return person ? tagEvent(event, person, p.cameraId) : { ...event, cameraId: p.cameraId }
+        return person
+          ? tagEvent(event, person, p.cameraId, p.cameraLabel)
+          : { ...event, cameraId: p.cameraId, cameraLabel: p.cameraLabel }
       }
 
       for (const item of engineResult.startedEvents) {
@@ -800,10 +802,10 @@ export default function CameraStage({
         const person = personStatesRef.current.get(trackId)
         if (!person) continue
         if (person.fatigueState.activeEvent) {
-          p.onAlertEnd(tagEvent({ ...person.fatigueState.activeEvent, endedAt: now }, person, p.cameraId))
+          p.onAlertEnd(tagEvent({ ...person.fatigueState.activeEvent, endedAt: now }, person, p.cameraId, p.cameraLabel))
         }
         if (person.distanceState.activeEvent) {
-          p.onAlertEnd(tagEvent({ ...person.distanceState.activeEvent, endedAt: now }, person, p.cameraId))
+          p.onAlertEnd(tagEvent({ ...person.distanceState.activeEvent, endedAt: now }, person, p.cameraId, p.cameraLabel))
         }
         closePresence(person, now)
         personStatesRef.current.delete(trackId)
@@ -894,12 +896,22 @@ export default function CameraStage({
     const id = window.setInterval(emit, STATS_INTERVAL_MS)
     return () => window.clearInterval(id)
   }, [hasStatsListener, poseStatus, faceStatus, poseDelegate, cameraError, poseModel])
-  // ลบกล้องตัวนี้ออก / ปิดแท็บ — ปิดช่วงเข้า-ออกของทุกคนที่ยังเปิดค้างอยู่ (endPresence ใช้ keepalive ส่งต่อได้แม้หน้าปิด)
+  // ลบกล้องตัวนี้ออก / ปิดแท็บ — ปิดช่วงเข้า-ออก + การแจ้งเตือนที่ยังค้างอยู่ของทุกคน ให้ DB มีเวลาจบครบทุกรายการ
+  // (endPresence / reportEnd ใช้ keepalive ส่งต่อได้แม้หน้าปิด)
   useEffect(() => {
     const people = personStatesRef.current
     const closeAll = () => {
       const now = Date.now()
-      for (const person of people.values()) closePresence(person, now)
+      const p = propsRef.current
+      for (const person of people.values()) {
+        closePresence(person, now)
+        for (const active of [person.postureActiveEvent, person.fatigueState.activeEvent, person.distanceState.activeEvent]) {
+          if (active) p.onAlertEnd(tagEvent({ ...active, endedAt: now }, person, p.cameraId, p.cameraLabel))
+        }
+        person.postureActiveEvent = null
+        person.fatigueState = { ...person.fatigueState, activeEvent: null }
+        person.distanceState = { ...person.distanceState, activeEvent: null }
+      }
     }
     window.addEventListener('pagehide', closeAll)
     return () => {

@@ -280,9 +280,14 @@ export default function App() {
       <header className="app-header">
         <h1>Camwell — ระบบตรวจจับท่านั่งและความเหนื่อยล้าของพนักงาน</h1>
         <p>Phase 1 (MVP): ตรวจจับแบบ client-side ล้วน ด้วย MediaPipe Pose Landmarker + @vladmandic/face-api รันในเบราว์เซอร์</p>
-        <a className="app-header-link" href="?people">
-          รายชื่อบุคคลที่บันทึกในระบบ ({enrolledPeople.length}) →
-        </a>
+        <nav className="app-header-links">
+          <a className="app-header-link" href="?people">
+            รายชื่อบุคคลที่บันทึกในระบบ ({enrolledPeople.length}) →
+          </a>
+          <a className="app-header-link" href="?alerts">
+            ผลการแจ้งเตือนในฐานข้อมูล →
+          </a>
+        </nav>
       </header>
 
       {fallAlerts.map((alert) => (

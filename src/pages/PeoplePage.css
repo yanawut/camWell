@@ -91,6 +91,16 @@
   color: var(--accent);
 }
 
+.people-alert-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.people-alert-link:hover {
+  text-decoration: underline;
+}
+
 .people-tag {
   margin-left: 6px;
   padding: 1px 6px;

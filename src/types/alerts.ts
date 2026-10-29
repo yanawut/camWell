@@ -25,6 +25,8 @@ export interface AlertEvent {
   employeeId?: string
   /** รหัสกล้องที่ตรวจพบเหตุการณ์นี้ (CameraSlot.id) */
   cameraId?: string
+  /** ชื่อกล้องที่แสดงผล เช่น "กล้อง 1" (CameraSlot.label) — เก็บลง DB ให้ตารางประวัติอ่านออก */
+  cameraLabel?: string
   /** ค่าตัวเลขที่แย่ที่สุด (สูงสุด) ที่วัดได้ระหว่างเกิดเหตุการณ์นี้ — ทุกหมวดออกแบบให้ "ค่ายิ่งสูง = ยิ่งแย่" เสมอ */
   metrics: Record<string, number>
 }
