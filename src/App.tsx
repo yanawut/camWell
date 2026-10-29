@@ -5,6 +5,7 @@ import SettingsPanel from './components/SettingsPanel'
 import EventLog from './components/EventLog'
 import EnrollmentPanel from './components/EnrollmentPanel'
 import DatasetRecorderPanel from './components/DatasetRecorderPanel'
+import AttendancePanel from './components/AttendancePanel'
 import { DEFAULT_THRESHOLDS, type PostureThresholds } from './types/posture'
 import { MAX_CAMERA_SLOTS, createCameraSlot, type CameraSlot, type CameraSource } from './types/cameraSource'
 import {
@@ -20,10 +21,10 @@ import type { AlertEvent } from './types/alerts'
 import type { EnrolledPerson } from './types/identity'
 import type { PersonSummary } from './types/person'
 import type { DetectionMode } from './lib/multiPerson'
-import { consoleAlertReporter } from './services/alertReporter'
-import { listEnrolledPeople, removePerson } from './services/faceEnrollment'
 import { DEFAULT_FACE_FEATURES_ENABLED, getCameraPeopleVisibility } from './lib/featureVisibility'
 import DevConsole, { type CameraStageExtras } from './console/DevConsole'
+import { backendAlertReporter } from './services/alertReporter'
+import { listEnrolledPeople, removePerson, renamePerson } from './services/faceEnrollment'
 import './App.css'
 
 // ponytail: เปิด Dev Console ได้ทุก build ผ่าน /?console — กำหนดสิทธิ์ใหม่เมื่อออกจากช่วง dev
@@ -31,6 +32,7 @@ const IS_DEV_CONSOLE = new URLSearchParams(window.location.search).has('console'
 
 const BASELINE_STORAGE_KEY = 'camwell:distance-baseline-px:v1'
 const CAMERA_SLOTS_STORAGE_KEY = 'camwell:camera-slots:v1'
+const AUTO_ENROLL_STORAGE_KEY = 'camwell:auto-enroll:v1'
 
 interface FallAlertItem {
   id: string
@@ -46,6 +48,8 @@ export default function App() {
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [faceFeaturesEnabled, setFaceFeaturesEnabled] = useState(DEFAULT_FACE_FEATURES_ENABLED)
   const [detectionMode, setDetectionMode] = useState<DetectionMode>('workstation')
+  // ลงทะเบียนใบหน้าที่ไม่รู้จักอัตโนมัติเป็น "คนที่ N" — เปิดไว้เป็นค่าเริ่มต้น จำค่าที่ผู้ใช้ปิด/เปิดไว้ใน localStorage
+  const [autoEnrollEnabled, setAutoEnrollEnabled] = useState(() => localStorage.getItem(AUTO_ENROLL_STORAGE_KEY) !== 'false')
 
   const [events, setEvents] = useState<AlertEvent[]>([])
   // (Phase 2) รายชื่อพนักงานที่ลงทะเบียนใบหน้าไว้ย้ายมาเก็บที่ camwell-backend แล้ว — ดึงมาตอน mount ด้วย
@@ -140,12 +144,12 @@ export default function App() {
 
   const handleAlertStart = useCallback((event: AlertEvent) => {
     setEvents((prev) => [...prev, event])
-    consoleAlertReporter.reportStart(event)
+    backendAlertReporter.reportStart(event)
   }, [])
 
   const handleAlertEnd = useCallback((event: AlertEvent) => {
     setEvents((prev) => prev.map((e) => (e.id === event.id ? event : e)))
-    consoleAlertReporter.reportEnd(event)
+    backendAlertReporter.reportEnd(event)
   }, [])
 
   const handleCalibrateDistance = useCallback((widthPx: number) => {
@@ -171,7 +175,24 @@ export default function App() {
   }, [])
 
   const handlePersonEnrolled = useCallback((person: EnrolledPerson) => {
-    setEnrolledPeople((prev) => [...prev, person])
+    // กล้องหลายตัวอาจรายงานคนเดียวกันซ้ำไม่ได้ (backend สร้างแค่ครั้งเดียว) แต่กันไว้เผื่อ id ซ้ำอยู่แล้ว
+    setEnrolledPeople((prev) => (prev.some((p) => p.id === person.id) ? prev : [...prev, person]))
+  }, [])
+
+  const handleAutoEnrollEnabledChange = useCallback((enabled: boolean) => {
+    setAutoEnrollEnabled(enabled)
+    localStorage.setItem(AUTO_ENROLL_STORAGE_KEY, String(enabled))
+  }, [])
+
+  const handleRenamePerson = useCallback(async (id: string, name: string, consentGiven: boolean) => {
+    try {
+      const updated = await renamePerson(id, name, consentGiven)
+      setEnrolledPeople((prev) => prev.map((p) => (p.id === id ? updated : p)))
+      setEnrolledPeopleError(null)
+    } catch (err) {
+      setEnrolledPeopleError(err instanceof Error ? err.message : 'เปลี่ยนชื่อไม่สำเร็จ')
+      throw err
+    }
   }, [])
 
   const handleRemovePerson = useCallback((id: string) => {
@@ -196,6 +217,7 @@ export default function App() {
         soundEnabled={soundEnabled}
         faceFeaturesEnabled={faceFeaturesEnabled}
         detectionMode={detectionMode}
+        autoEnrollEnabled={autoEnrollEnabled}
         enrolledPeople={enrolledPeople}
         baselineFaceWidthPx={baselineFaceWidthPx}
         cameraSource={slot.source}
@@ -245,6 +267,8 @@ export default function App() {
         onSoundEnabledChange={setSoundEnabled}
         faceFeaturesEnabled={faceFeaturesEnabled}
         onFaceFeaturesEnabledChange={setFaceFeaturesEnabled}
+        autoEnrollEnabled={autoEnrollEnabled}
+        onAutoEnrollEnabledChange={handleAutoEnrollEnabledChange}
         detectionMode={detectionMode}
         onDetectionModeChange={setDetectionMode}
       />
@@ -308,6 +332,7 @@ export default function App() {
                     soundEnabled={soundEnabled}
                     faceFeaturesEnabled={faceFeaturesEnabled}
                     detectionMode={detectionMode}
+                    autoEnrollEnabled={autoEnrollEnabled}
                     enrolledPeople={enrolledPeople}
                     baselineFaceWidthPx={baselineFaceWidthPx}
                     cameraSource={slot.source}
@@ -364,9 +389,14 @@ export default function App() {
             onFaceFeaturesEnabledChange={setFaceFeaturesEnabled}
             detectionMode={detectionMode}
             onDetectionModeChange={setDetectionMode}
+            autoEnrollEnabled={autoEnrollEnabled}
+            onAutoEnrollEnabledChange={handleAutoEnrollEnabledChange}
           />
           {faceFeaturesEnabled && enrolledPeopleError && <p className="panel-note panel-warning">{enrolledPeopleError}</p>}
-          {faceFeaturesEnabled && <EnrollmentPanel people={enrolledPeople} onRemove={handleRemovePerson} />}
+          {faceFeaturesEnabled && (
+            <EnrollmentPanel people={enrolledPeople} onRemove={handleRemovePerson} onRename={handleRenamePerson} />
+          )}
+          {faceFeaturesEnabled && <AttendancePanel />}
           <EventLog events={events} />
           {import.meta.env.DEV && <DatasetRecorderPanel postureThresholds={postureThresholds} />}
         </section>
@@ -376,9 +406,8 @@ export default function App() {
         <p>
           ระบบจดจำใบหน้า/ระบุตัวตนพนักงาน เชื่อมกับ backend (camwell-backend) + ฐานข้อมูล SQLite แล้ว ทำให้พนักงาน
           คนเดียวกันถูกจำได้ทุกเครื่อง/ทุกกล้องในออฟฟิศ — ส่วนการตรวจจับท่านั่ง/ความเหนื่อยล้า/ระยะห่างจอ/หกล้ม
-          ยังเป็น local AI ในเบราว์เซอร์ล้วนเหมือนเดิม ขั้นต่อไป: ส่ง log เหตุการณ์แจ้งเตือนไปที่ backend ด้วย เพื่อทำ
-          dashboard ของ HR/หัวหน้างาน และแจ้งเตือนผ่าน LINE Messaging API — ดู <code>src/services/alertReporter.ts</code>{' '}
-          สำหรับสัญญาที่เตรียมไว้ให้เชื่อมต่อ
+          ยังเป็น local AI ในเบราว์เซอร์ล้วนเหมือนเดิม บันทึกการเข้า-ออกและเหตุการณ์แจ้งเตือน (ผูกกับพนักงานที่ระบุตัวได้)
+          ถูกส่งไปเก็บที่ backend แล้ว ขั้นต่อไป: dashboard ของ HR/หัวหน้างาน และแจ้งเตือนผ่าน LINE Messaging API
         </p>
         <p className="pdpa-note">
           ⚠️ ฟีเจอร์ face recognition เก็บข้อมูลชีวภาพ (biometric) ไว้ที่ backend/ฐานข้อมูลของระบบนี้เท่านั้น (ดู

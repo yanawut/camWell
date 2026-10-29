@@ -26,6 +26,7 @@ import { updateInferenceEma } from '../lib/inferenceTiming'
 import { enrollPerson, identifyFace } from '../services/faceEnrollment'
 import { loadPostureBaseline, savePostureBaseline } from '../services/postureBaselineStore'
 import { datasetRecorder } from '../services/datasetRecorder'
+import { endPresence, startPresence } from '../services/presence'
 import { playAlertBeep, playFallAlarm } from '../services/beep'
 import type { Point, PostureBaseline, PostureFeatures, PostureThresholds } from '../types/posture'
 import type { BreakThresholds, DistanceThresholds, FatigueThresholds } from '../types/wellbeing'
@@ -40,8 +41,25 @@ const FACE_DETECT_INTERVAL_MS = 400 // ตรวจใบหน้า (fatigue/d
 const POSTURE_CALIBRATION_MS = 3000
 const IDENTITY_RECHECK_INTERVAL_MS = 3000 // identity ไม่ต้องเช็คถี่เท่า fatigue/distance
 const PEOPLE_SUMMARY_INTERVAL_MS = 500 // ส่งสรุปสถานะ "ใครอยู่บ้าง" ขึ้นไปแสดงผลไม่ต้องทุกเฟรม กัน re-render ถี่เกิน
+// ลงทะเบียนอัตโนมัติ ("คนที่ N") เฉพาะใบหน้าที่ใหญ่พอ — หน้าเล็ก/ไกลกล้อง descriptor ไม่แม่น เสี่ยงได้คนเดิมซ้ำเป็นหลายคน
+const AUTO_ENROLL_MIN_FACE_WIDTH_PX = 80
 
 type FaceResult = faceapi.WithFaceDescriptor<faceapi.WithFaceLandmarks<{ detection: faceapi.FaceDetection }>>
+
+/** แปะ employeeId + cameraId ให้เหตุการณ์ก่อนส่งออกไปที่ App/backend เพื่อผูกเหตุการณ์กับพนักงานที่ระบุตัวได้ */
+function tagEvent(event: AlertEvent, person: PersonState, cameraId: string): AlertEvent {
+  return { ...event, employeeId: event.employeeId ?? person.identityId ?? undefined, cameraId }
+}
+
+/** ปิดช่วงเข้า-ออกที่เปิดอยู่ของคนนี้ (ถ้ามี) — fire-and-forget backend ล่มแค่ log เตือน */
+function closePresence(person: PersonState, endedAt: number) {
+  const pending = person.presenceId
+  person.presenceId = null
+  if (!pending) return
+  pending
+    .then((id) => (id ? endPresence(id, endedAt) : undefined))
+    .catch((err: unknown) => console.warn('[CameraStage] ปิดบันทึกเข้า-ออกไม่สำเร็จ:', err))
+}
 
 // กล้อง IP ที่อยู่คนละ origin กับเว็บแอป (คนละโดเมน/พอร์ต/IP) แล้วไม่ได้ส่ง CORS header มาด้วย จะทำให้
 // เบราว์เซอร์ถือว่า canvas/WebGL ที่วาดภาพนั้นไป "tainted" อ่านพิกเซลออกมาประมวลผล AI ต่อไม่ได้ (โยน SecurityError)
@@ -59,6 +77,13 @@ interface PersonState {
   yawnOpenSince: number | null
   yawnTimestamps: number[]
   identityName: string | null
+  /** id พนักงานใน backend ที่ระบุได้ล่าสุด (null = ยังไม่รู้ว่าใคร) */
+  identityId: string | null
+  /** กำลังรอผล identify จาก backend อยู่ — กันยิงซ้อนตอน backend ตอบช้า (ซึ่งอาจทำให้ลงทะเบียนอัตโนมัติซ้ำ) */
+  identifyPending: boolean
+  /** ช่วงเข้า-ออกที่เปิดอยู่ของคนนี้ (Promise ของ id จาก backend; null = ยังไม่ได้เปิด) — เก็บเป็น Promise เพื่อให้
+   * สั่งปิดได้ทันทีแม้ request เปิดยังไม่ตอบกลับ */
+  presenceId: Promise<string | null> | null
   postureStatusLabel: string
   /** มุมคอดิบจากเฟรมล่าสุด (ยังไม่ลบ baseline / ยังไม่ smoothing) เก็บไว้ให้ scoring เช่น RULA ใช้มุมสัมบูรณ์ */
   neckAngleDeg: number
@@ -91,6 +116,8 @@ interface Props {
   soundEnabled: boolean
   faceFeaturesEnabled: boolean
   detectionMode: DetectionMode
+  /** เจอหน้าที่ไม่รู้จัก -> ลงทะเบียนให้อัตโนมัติเป็น "คนที่ N" (เลขรันจาก backend) */
+  autoEnrollEnabled: boolean
   enrolledPeople: EnrolledPerson[]
   baselineFaceWidthPx: number | null
   cameraSource: CameraSource
@@ -127,6 +154,7 @@ export default function CameraStage({
   soundEnabled,
   faceFeaturesEnabled,
   detectionMode,
+  autoEnrollEnabled,
   enrolledPeople,
   baselineFaceWidthPx,
   cameraSource,
@@ -210,6 +238,7 @@ export default function CameraStage({
     soundEnabled,
     faceFeaturesEnabled,
     detectionMode,
+    autoEnrollEnabled,
     enrolledPeople,
     baselineFaceWidthPx,
     cameraSource,
@@ -224,6 +253,7 @@ export default function CameraStage({
     onBreakDue,
     onFallDetected,
     onPeopleUpdate,
+    onPersonEnrolled,
   })
   useEffect(() => {
     propsRef.current = {
@@ -235,6 +265,7 @@ export default function CameraStage({
       soundEnabled,
       faceFeaturesEnabled,
       detectionMode,
+      autoEnrollEnabled,
       enrolledPeople,
       baselineFaceWidthPx,
       cameraSource,
@@ -249,6 +280,7 @@ export default function CameraStage({
       onBreakDue,
       onFallDetected,
       onPeopleUpdate,
+      onPersonEnrolled,
     }
   })
 
@@ -466,10 +498,10 @@ export default function CameraStage({
         )
         person.fatigueState = fatigueStep.state
         if (fatigueStep.startedEvent) {
-          p.onAlertStart(fatigueStep.startedEvent)
+          p.onAlertStart(tagEvent(fatigueStep.startedEvent, person, p.cameraId))
           if (p.soundEnabled) playAlertBeep()
         }
-        if (fatigueStep.endedEvent) p.onAlertEnd(fatigueStep.endedEvent)
+        if (fatigueStep.endedEvent) p.onAlertEnd(tagEvent(fatigueStep.endedEvent, person, p.cameraId))
 
         // --- Distance (ใช้ baseline เดียวกันทุกคน — ยังไม่รองรับ calibrate แยกรายคน) ---
         const distance = analyzeDistanceFrame(face.detection.box.width, p.baselineFaceWidthPx, p.distanceThresholds)
@@ -484,24 +516,56 @@ export default function CameraStage({
         )
         person.distanceState = distStep.state
         if (distStep.startedEvent) {
-          p.onAlertStart(distStep.startedEvent)
+          p.onAlertStart(tagEvent(distStep.startedEvent, person, p.cameraId))
           if (p.soundEnabled) playAlertBeep()
         }
-        if (distStep.endedEvent) p.onAlertEnd(distStep.endedEvent)
+        if (distStep.endedEvent) p.onAlertEnd(tagEvent(distStep.endedEvent, person, p.cameraId))
 
         // --- Identity (เช็คไม่ถี่เท่า fatigue/distance ต่อคน) — ถาม camwell-backend ให้จับคู่ให้ (Phase 2)
         // เป็น fire-and-forget ไม่ await ในลูปนี้ กันไม่ให้ network request ไปบล็อกการตรวจจับคนอื่นในเฟรมเดียวกัน
         // เช็ค personStatesRef อีกครั้งตอนผลลัพธ์กลับมา เผื่อ track นี้หายไปจากเฟรมแล้วระหว่างรอ response
+        // ลงทะเบียนอัตโนมัติ: ถ้าเปิดไว้และหน้าใหญ่พอ ให้ backend เพิ่มเป็น "คนที่ N" ทันทีที่ไม่ตรงกับใครเลย
         const lastCheck = identityLastCheckRef.current.get(trackId) ?? 0
-        if (p.enrolledPeople.length > 0 && now - lastCheck >= IDENTITY_RECHECK_INTERVAL_MS) {
+        const canAutoEnroll = p.autoEnrollEnabled && face.detection.box.width >= AUTO_ENROLL_MIN_FACE_WIDTH_PX
+        if (
+          (p.enrolledPeople.length > 0 || canAutoEnroll) &&
+          !person.identifyPending &&
+          now - lastCheck >= IDENTITY_RECHECK_INTERVAL_MS
+        ) {
           identityLastCheckRef.current.set(trackId, now)
-          identifyFace(face.descriptor)
+          person.identifyPending = true
+          identifyFace(face.descriptor, canAutoEnroll)
             .then((match) => {
+              if (match?.created) propsRef.current.onPersonEnrolled(match.created)
               const current = personStatesRef.current.get(trackId)
               if (!current) return
-              current.identityName = match ? match.name : null
+              current.identifyPending = false
+              // ไม่ตรงกับใคร — คงตัวตนเดิมไว้ถ้าเคยระบุได้แล้ว (track เดียวกันถือว่ายังเป็นคนเดิม แค่มุมหน้า/แสง
+              // รอบนี้ไม่ดีพอ) กันชื่อกับบันทึกเข้า-ออกกระพริบเปิด-ปิดไปมา
+              if (!match) return
+              current.identityName = match.name
+              if (current.identityId === match.employeeId) return
+              // ระบุได้เป็นคนใหม่ (ครั้งแรก หรือ track สลับคน) — ปิดช่วงของคนเดิม แล้วเปิดช่วงใหม่ให้คนนี้
+              const at = Date.now()
+              closePresence(current, at)
+              current.identityId = match.employeeId
+              const cp = propsRef.current
+              current.presenceId = startPresence({
+                employeeId: match.employeeId,
+                personName: match.name,
+                cameraId: cp.cameraId,
+                cameraLabel: cp.cameraLabel,
+                startedAt: at,
+              })
+                .then((session) => session.id)
+                .catch((err: unknown) => {
+                  console.warn('[CameraStage] เปิดบันทึกเข้า-ออกไม่สำเร็จ:', err)
+                  return null
+                })
             })
             .catch((err) => {
+              const current = personStatesRef.current.get(trackId)
+              if (current) current.identifyPending = false
               // เครือข่าย/เซิร์ฟเวอร์มีปัญหาชั่วคราว — คงชื่อเดิมที่เคยระบุไว้ ไม่ reset เป็น null ให้กระพริบ
               console.warn('[CameraStage] ระบุตัวตนผ่าน backend ไม่สำเร็จ:', err)
             })
@@ -516,8 +580,8 @@ export default function CameraStage({
         const fatigueStep = stepSustainedAlert(person.fatigueState, { issue: 'no_signal', metrics: {} }, now, 'fatigue', p.fatigueThresholds.drowsySustainedMs)
         const distStep = stepSustainedAlert(person.distanceState, { issue: 'no_signal', metrics: {} }, now, 'distance', p.distanceThresholds.sustainedMs)
         personStatesRef.current.set(trackId, { ...person, fatigueState: fatigueStep.state, distanceState: distStep.state })
-        if (fatigueStep.endedEvent) p.onAlertEnd(fatigueStep.endedEvent)
-        if (distStep.endedEvent) p.onAlertEnd(distStep.endedEvent)
+        if (fatigueStep.endedEvent) p.onAlertEnd(tagEvent(fatigueStep.endedEvent, person, p.cameraId))
+        if (distStep.endedEvent) p.onAlertEnd(tagEvent(distStep.endedEvent, person, p.cameraId))
       }
 
       recomputeAlertUi()
@@ -643,6 +707,9 @@ export default function CameraStage({
             yawnOpenSince: null,
             yawnTimestamps: [],
             identityName: null,
+            identityId: null,
+            identifyPending: false,
+            presenceId: null,
             postureStatusLabel:
               POSTURE_LABELS_TH[enginePerson.postureIssue] +
               (enginePerson.smoothedFeatures.quality === 'upper_body' ? ' (เห็นแค่ช่วงบน)' : ''),
@@ -699,12 +766,18 @@ export default function CameraStage({
         }
       }
 
+      // ผูกเหตุการณ์จาก PostureEngine กับพนักงานที่ระบุตัวได้ของ track นั้น (employeeId + cameraId)
+      const tagByTrack = (trackId: string, event: AlertEvent): AlertEvent => {
+        const person = personStatesRef.current.get(trackId)
+        return person ? tagEvent(event, person, p.cameraId) : { ...event, cameraId: p.cameraId }
+      }
+
       for (const item of engineResult.startedEvents) {
         const startedEvent = addPersonName(item.trackId, item.event)
         if (startedEvent.personName) {
           postureEventPersonNameRef.current.set(startedEvent.id, startedEvent.personName)
         }
-        p.onAlertStart(startedEvent)
+        p.onAlertStart(tagByTrack(item.trackId, startedEvent))
         if (p.soundEnabled) playAlertBeep()
       }
       for (const item of engineResult.endedEvents) {
@@ -713,11 +786,11 @@ export default function CameraStage({
           ? { ...item.event, personName: rememberedName }
           : addPersonName(item.trackId, item.event)
         postureEventPersonNameRef.current.delete(item.event.id)
-        p.onAlertEnd(endedEvent)
+        p.onAlertEnd(tagByTrack(item.trackId, endedEvent))
       }
       for (const item of engineResult.fallEvents) {
         const fallEvent = addPersonName(item.trackId, item.event)
-        p.onAlertStart(fallEvent)
+        p.onAlertStart(tagByTrack(item.trackId, fallEvent))
         p.onFallDetected(fallEvent)
         if (p.soundEnabled) playFallAlarm()
       }
@@ -727,11 +800,12 @@ export default function CameraStage({
         const person = personStatesRef.current.get(trackId)
         if (!person) continue
         if (person.fatigueState.activeEvent) {
-          p.onAlertEnd({ ...person.fatigueState.activeEvent, endedAt: now })
+          p.onAlertEnd(tagEvent({ ...person.fatigueState.activeEvent, endedAt: now }, person, p.cameraId))
         }
         if (person.distanceState.activeEvent) {
-          p.onAlertEnd({ ...person.distanceState.activeEvent, endedAt: now })
+          p.onAlertEnd(tagEvent({ ...person.distanceState.activeEvent, endedAt: now }, person, p.cameraId))
         }
+        closePresence(person, now)
         personStatesRef.current.delete(trackId)
       }
 
@@ -820,6 +894,19 @@ export default function CameraStage({
     const id = window.setInterval(emit, STATS_INTERVAL_MS)
     return () => window.clearInterval(id)
   }, [hasStatsListener, poseStatus, faceStatus, poseDelegate, cameraError, poseModel])
+  // ลบกล้องตัวนี้ออก / ปิดแท็บ — ปิดช่วงเข้า-ออกของทุกคนที่ยังเปิดค้างอยู่ (endPresence ใช้ keepalive ส่งต่อได้แม้หน้าปิด)
+  useEffect(() => {
+    const people = personStatesRef.current
+    const closeAll = () => {
+      const now = Date.now()
+      for (const person of people.values()) closePresence(person, now)
+    }
+    window.addEventListener('pagehide', closeAll)
+    return () => {
+      window.removeEventListener('pagehide', closeAll)
+      closeAll()
+    }
+  }, [])
 
   // ปุ่ม Calibrate/ลงทะเบียน ทำงานกับ "ใบหน้าที่ใหญ่สุดในเฟรม ณ ขณะนี้" (คนที่นั่งใกล้กล้องที่สุด) —
   // ยังไม่มี UI ให้เลือกว่าจะ calibrate/ลงทะเบียนให้คนไหนเจาะจงเมื่อมีหลายคนพร้อมกัน

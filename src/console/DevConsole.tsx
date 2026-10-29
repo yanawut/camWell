@@ -55,6 +55,8 @@ export interface DevConsoleProps {
   onSoundEnabledChange: (enabled: boolean) => void
   faceFeaturesEnabled: boolean
   onFaceFeaturesEnabledChange: (enabled: boolean) => void
+  autoEnrollEnabled: boolean
+  onAutoEnrollEnabledChange: (enabled: boolean) => void
   detectionMode: DetectionMode
   onDetectionModeChange: (mode: DetectionMode) => void
 }
@@ -100,6 +102,8 @@ export default function DevConsole(props: DevConsoleProps) {
     onSoundEnabledChange,
     faceFeaturesEnabled,
     onFaceFeaturesEnabledChange,
+    autoEnrollEnabled,
+    onAutoEnrollEnabledChange,
     detectionMode,
     onDetectionModeChange,
   } = props
@@ -305,6 +309,19 @@ export default function DevConsole(props: DevConsoleProps) {
                 onChange={(e) => onFaceFeaturesEnabledChange(e.target.checked)}
               />
               ฟีเจอร์ใบหน้า
+            </label>
+            <label
+              className="dc-check"
+              title='เจอใบหน้าที่ไม่รู้จัก → ลงทะเบียนให้อัตโนมัติเป็น "คนที่ N" (ต้องเปิดฟีเจอร์ใบหน้าก่อน)'
+              style={{ opacity: faceFeaturesEnabled ? 1 : 0.5 }}
+            >
+              <input
+                type="checkbox"
+                checked={autoEnrollEnabled}
+                disabled={!faceFeaturesEnabled}
+                onChange={(e) => onAutoEnrollEnabledChange(e.target.checked)}
+              />
+              ลงทะเบียนอัตโนมัติ
             </label>
             <label
               className="dc-check dc-check-divider"

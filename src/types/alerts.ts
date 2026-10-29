@@ -21,6 +21,10 @@ export interface AlertEvent {
   endedAt?: number
   /** ระบุตัวตนพนักงาน (ถ้าเปิดใช้ face recognition และรู้จักหน้า) ตอนเริ่มเหตุการณ์ */
   personName?: string
+  /** id พนักงานใน camwell-backend ที่ระบุตัวตนได้ (ใส่ตอนส่งออกจาก CameraStage) ใช้ผูกเหตุการณ์กับคนในฐานข้อมูล */
+  employeeId?: string
+  /** รหัสกล้องที่ตรวจพบเหตุการณ์นี้ (CameraSlot.id) */
+  cameraId?: string
   /** ค่าตัวเลขที่แย่ที่สุด (สูงสุด) ที่วัดได้ระหว่างเกิดเหตุการณ์นี้ — ทุกหมวดออกแบบให้ "ค่ายิ่งสูง = ยิ่งแย่" เสมอ */
   metrics: Record<string, number>
 }

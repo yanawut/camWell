@@ -11,6 +11,7 @@
 //     สะสมเกิน N ครั้ง/วัน)
 
 import type { AlertEvent } from '../types/alerts'
+import { apiFetch } from './apiConfig'
 
 export interface AlertReporter {
   reportStart(event: AlertEvent): void
@@ -28,7 +29,27 @@ export const consoleAlertReporter: AlertReporter = {
 }
 
 /**
- * ตัวอย่าง reporter สำหรับ Phase 2 — ยังไม่ได้ใช้งานจริง เตรียมโครงไว้ให้แก้ URL แล้วสลับมาใช้ได้เลย
+ * Reporter ที่ใช้อยู่ตอนนี้ (Phase 2): ส่งเหตุการณ์ไปเก็บที่ camwell-backend (POST /api/alerts) พร้อม employeeId
+ * ของคนที่ระบุตัวตนได้ — ส่งทั้งตอนเริ่มและตอนจบด้วย id เดิม backend จะ upsert แถวเดียวกัน
+ * backend ล่ม/เชื่อมต่อไม่ได้แค่ log เตือนไว้ ไม่ให้กระทบการตรวจจับ/แจ้งเตือนบนหน้าจอ
+ */
+export const backendAlertReporter: AlertReporter = {
+  reportStart(event) {
+    sendToBackend(event)
+  },
+  reportEnd(event) {
+    sendToBackend(event)
+  },
+}
+
+function sendToBackend(event: AlertEvent) {
+  apiFetch<void>('/api/alerts', { method: 'POST', body: JSON.stringify(event) }).catch((err: unknown) => {
+    console.warn('[alertReporter] ส่งเหตุการณ์แจ้งเตือนไป backend ไม่สำเร็จ:', err)
+  })
+}
+
+/**
+ * ตัวอย่าง reporter แบบ WebSocket — ยังไม่ได้ใช้งานจริง เตรียมโครงไว้ให้แก้ URL แล้วสลับมาใช้ได้เลย
  * ตัวอย่างการใช้: setActiveReporter(createWebSocketAlertReporter('wss://camwell-backend.example.com/ws/alerts'))
  */
 export function createWebSocketAlertReporter(wsUrl: string, meta: { employeeId?: string; cameraId?: string } = {}): AlertReporter {

@@ -21,6 +21,8 @@ interface Props {
   onFaceFeaturesEnabledChange: (enabled: boolean) => void
   detectionMode: DetectionMode
   onDetectionModeChange: (mode: DetectionMode) => void
+  autoEnrollEnabled: boolean
+  onAutoEnrollEnabledChange: (enabled: boolean) => void
 }
 
 function Slider({
@@ -67,6 +69,8 @@ export default function SettingsPanel({
   onFaceFeaturesEnabledChange,
   detectionMode,
   onDetectionModeChange,
+  autoEnrollEnabled,
+  onAutoEnrollEnabledChange,
 }: Props) {
   const setPosture = <K extends keyof PostureThresholds>(key: K, value: PostureThresholds[K]) => {
     onPostureChange({ ...postureThresholds, [key]: value })
@@ -97,6 +101,12 @@ export default function SettingsPanel({
         <span>เปิดฟีเจอร์เกี่ยวกับใบหน้า (ความเหนื่อยล้า/ระยะห่างจอ/face recognition)</span>
         <input type="checkbox" checked={faceFeaturesEnabled} onChange={(e) => onFaceFeaturesEnabledChange(e.target.checked)} />
       </label>
+      {faceFeaturesEnabled && (
+        <label className="settings-row settings-checkbox">
+          <span>ลงทะเบียนใบหน้าที่ไม่รู้จักอัตโนมัติ (ตั้งชื่อเป็น "คนที่ N" เปลี่ยนชื่อทีหลังได้)</span>
+          <input type="checkbox" checked={autoEnrollEnabled} onChange={(e) => onAutoEnrollEnabledChange(e.target.checked)} />
+        </label>
+      )}
 
       <h3>โหมดการตรวจจับ</h3>
       <label className="settings-row settings-checkbox">

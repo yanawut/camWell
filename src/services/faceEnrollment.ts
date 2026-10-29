@@ -26,18 +26,37 @@ export async function removePerson(id: string): Promise<void> {
   await apiFetch<void>(`/api/employees/${encodeURIComponent(id)}`, { method: 'DELETE' })
 }
 
+/** เปลี่ยนชื่อ (เช่น "คนที่ 3" -> ชื่อจริง) — consentGiven: true บันทึกว่าขอความยินยอมแล้ว (ใช้กับคนที่ลงทะเบียนอัตโนมัติ) */
+export async function renamePerson(id: string, name: string, consentGiven: boolean): Promise<EnrolledPerson> {
+  return apiFetch<EnrolledPerson>(`/api/employees/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name: name.trim(), consentGiven }),
+  })
+}
+
 export interface IdentifyMatch {
   employeeId: string
   name: string
   distance: number
+  /** มีค่าเมื่อ backend เพิ่งลงทะเบียนหน้านี้ให้อัตโนมัติเป็น "คนที่ N" (ส่ง autoEnroll: true และไม่ตรงกับใครเลย) */
+  created?: EnrolledPerson
 }
 
-/** ถามว่า descriptor ที่ตรวจพบตอนนี้ตรงกับใครที่ลงทะเบียนไว้ไหม — backend เป็นคนเทียบให้ทั้งหมด คืน null ถ้าไม่ตรงกับใคร */
-export async function identifyFace(descriptor: Float32Array): Promise<IdentifyMatch | null> {
-  const result = await apiFetch<{ matched: boolean; employeeId?: string; name?: string; distance?: number }>(
-    '/api/employees/identify',
-    { method: 'POST', body: JSON.stringify({ descriptor: Array.from(descriptor) }) },
-  )
+/**
+ * ถามว่า descriptor ที่ตรวจพบตอนนี้ตรงกับใครที่ลงทะเบียนไว้ไหม — backend เป็นคนเทียบให้ทั้งหมด คืน null ถ้าไม่ตรงกับใคร
+ * autoEnroll: true = ถ้าไม่ตรงกับใครเลย ให้ backend ลงทะเบียนเป็นคนใหม่ "คนที่ N" แล้วคืนคนนั้นกลับมาแทน null
+ */
+export async function identifyFace(descriptor: Float32Array, autoEnroll = false): Promise<IdentifyMatch | null> {
+  const result = await apiFetch<{
+    matched: boolean
+    employeeId?: string
+    name?: string
+    distance?: number
+    created?: EnrolledPerson
+  }>('/api/employees/identify', {
+    method: 'POST',
+    body: JSON.stringify({ descriptor: Array.from(descriptor), autoEnroll }),
+  })
   if (!result.matched || !result.employeeId || !result.name || result.distance === undefined) return null
-  return { employeeId: result.employeeId, name: result.name, distance: result.distance }
+  return { employeeId: result.employeeId, name: result.name, distance: result.distance, created: result.created }
 }

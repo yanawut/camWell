@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { EnrolledPerson } from '../types/identity'
-import { listEnrolledPeople, removePerson } from '../services/faceEnrollment'
+import { listEnrolledPeople, removePerson, renamePerson } from '../services/faceEnrollment'
 import { API_BASE_URL } from '../services/apiConfig'
 import '../App.css'
 import './PeoplePage.css'
@@ -50,6 +50,17 @@ export default function PeoplePage() {
       .then(() => setPeople((prev) => prev.filter((p) => p.id !== person.id)))
       .catch((err: unknown) => setError(err instanceof Error ? err.message : 'ลบไม่สำเร็จ'))
       .finally(() => setRemovingId(null))
+  }, [])
+
+  const handleRename = useCallback((person: EnrolledPerson) => {
+    const name = window.prompt(`เปลี่ยนชื่อ "${person.name}" เป็น`, person.name)?.trim()
+    if (!name || name === person.name) return
+    // คนที่ลงทะเบียนอัตโนมัติยังไม่มีบันทึกความยินยอม — ถามไปพร้อมกันตอนตั้งชื่อจริง
+    const consentGiven =
+      person.consentGivenAt === null && window.confirm(`ได้ขอความยินยอม (PDPA) จาก "${name}" แล้วใช่หรือไม่?`)
+    renamePerson(person.id, name, consentGiven)
+      .then((updated) => setPeople((prev) => prev.map((p) => (p.id === updated.id ? updated : p))))
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'เปลี่ยนชื่อไม่สำเร็จ'))
   }, [])
 
   const filtered = useMemo(() => {
@@ -123,7 +134,10 @@ export default function PeoplePage() {
                 {filtered.map((p, idx) => (
                   <tr key={p.id}>
                     <td className="people-muted">{idx + 1}</td>
-                    <td className="people-name">{p.name}</td>
+                    <td className="people-name">
+                      {p.name}
+                      {p.autoEnrolled && <span className="people-tag">อัตโนมัติ</span>}
+                    </td>
                     <td>{formatDateTime(p.enrolledAt)}</td>
                     <td className={p.consentGivenAt ? 'people-good' : 'people-warn'}>
                       {p.consentGivenAt ? `✓ ${formatDateTime(p.consentGivenAt)}` : 'ไม่มีบันทึก'}
@@ -132,6 +146,9 @@ export default function PeoplePage() {
                       {p.id.slice(0, 8)}
                     </td>
                     <td className="people-actions">
+                      <button type="button" className="link-button people-link-primary" onClick={() => handleRename(p)}>
+                        เปลี่ยนชื่อ
+                      </button>
                       <button
                         type="button"
                         className="link-button"
