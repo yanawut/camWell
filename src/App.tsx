@@ -23,12 +23,15 @@ import type { PersonSummary } from './types/person'
 import type { DetectionMode } from './lib/multiPerson'
 import { DEFAULT_FACE_FEATURES_ENABLED, getCameraPeopleVisibility } from './lib/featureVisibility'
 import DevConsole, { type CameraStageExtras } from './console/DevConsole'
+import OfficeDashboard from './dashboard/OfficeDashboard'
 import { backendAlertReporter } from './services/alertReporter'
 import { listEnrolledPeople, removePerson, renamePerson } from './services/faceEnrollment'
 import './App.css'
 
 // ponytail: เปิด Dev Console ได้ทุก build ผ่าน /?console — กำหนดสิทธิ์ใหม่เมื่อออกจากช่วง dev
 const IS_DEV_CONSOLE = new URLSearchParams(window.location.search).has('console')
+// /?dashboard = ห้องทำงาน pixel art แสดงตัวละครตามจำนวนคนในเฟรมแต่ละกล้อง
+const IS_DASHBOARD = new URLSearchParams(window.location.search).has('dashboard')
 
 const BASELINE_STORAGE_KEY = 'camwell:distance-baseline-px:v1'
 const CAMERA_SLOTS_STORAGE_KEY = 'camwell:camera-slots:v1'
@@ -205,6 +208,56 @@ export default function App() {
       })
   }, [])
 
+  if (IS_DASHBOARD) {
+    // Dashboard ห้องทำงาน: ใช้ state/การตรวจจับชุดเดียวกับหน้าหลักทั้งหมด แค่เปลี่ยนวิธีแสดงผลเป็นห้อง pixel art
+    const renderCameraStage = (slot: CameraSlot) => (
+      <CameraStage
+        postureThresholds={postureThresholds}
+        fatigueThresholds={fatigueThresholds}
+        distanceThresholds={distanceThresholds}
+        breakThresholds={breakThresholds}
+        fallThresholds={fallThresholds}
+        soundEnabled={soundEnabled}
+        faceFeaturesEnabled={faceFeaturesEnabled}
+        detectionMode={detectionMode}
+        autoEnrollEnabled={autoEnrollEnabled}
+        enrolledPeople={enrolledPeople}
+        baselineFaceWidthPx={baselineFaceWidthPx}
+        cameraSource={slot.source}
+        cameraId={slot.id}
+        cameraLabel={slot.label}
+        multiCameraMode={multiCameraMode}
+        onCalibrateDistance={handleCalibrateDistance}
+        onAlertStart={handleAlertStart}
+        onAlertEnd={handleAlertEnd}
+        onBreakDue={handleBreakDue}
+        onFallDetected={handleFallDetected}
+        onPeopleUpdate={(summaries) => handlePeopleUpdate(slot.id, summaries)}
+        onPersonEnrolled={handlePersonEnrolled}
+      />
+    )
+    return (
+      <>
+        {/* แจ้งเตือนหกล้มต้องเห็นเสมอ แม้อยู่หน้า Dashboard */}
+        {fallAlerts.map((alert) => (
+          <div key={alert.id} className="fall-alert-banner">
+            <span>🚨 {alert.message}</span>
+            <button type="button" onClick={() => handleAcknowledgeFall(alert.id)}>
+              รับทราบ
+            </button>
+          </div>
+        ))}
+        <OfficeDashboard
+          cameraSlots={cameraSlots}
+          peopleBySlot={peopleBySlot}
+          renderCameraStage={renderCameraStage}
+          detectionMode={detectionMode}
+          onDetectionModeChange={setDetectionMode}
+        />
+      </>
+    )
+  }
+
   if (IS_DEV_CONSOLE) {
     // ส่ง props ชุดเดียวกับหน้าหลักทุกตัว + ของเสริมสำหรับ console (onStats/overlay)
     const renderCameraStage = (slot: CameraSlot, extras: CameraStageExtras) => (
@@ -286,6 +339,9 @@ export default function App() {
           </a>
           <a className="app-header-link" href="?alerts">
             ผลการแจ้งเตือนในฐานข้อมูล →
+          </a>
+          <a className="app-header-link" href="?dashboard">
+            Dashboard ห้องทำงาน →
           </a>
         </nav>
       </header>

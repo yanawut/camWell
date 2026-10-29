@@ -317,7 +317,9 @@ export default function CameraStage({
       .map((person) => ({
         trackId: person.trackId,
         label: person.identityName ?? `คนที่ ${person.slotNumber}`,
+        employeeId: person.identityId,
         postureStatus: person.postureStatusLabel,
+        postureAlertActive: !!person.postureActiveEvent,
         fatigueActive: !!person.fatigueState.activeEvent,
         distanceActive: !!person.distanceState.activeEvent,
         yawnCount: person.yawnTimestamps.length,
