@@ -1,0 +1,112 @@
+/* --- PeoplePage (/?people) --- */
+.people-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.people-back {
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.people-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.people-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.people-stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.people-stat-value.is-warn {
+  color: var(--warn);
+}
+
+.people-stat-label {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.people-toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.people-toolbar input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 14px;
+}
+
+.people-table-wrap {
+  overflow-x: auto;
+}
+
+.people-table-wrap td {
+  white-space: nowrap;
+}
+
+.people-name {
+  font-weight: 600;
+}
+
+.people-muted {
+  color: var(--text-muted);
+}
+
+.people-good {
+  color: var(--good);
+}
+
+.people-warn {
+  color: var(--warn);
+}
+
+.people-actions {
+  text-align: right;
+}
+
+.people-actions .link-button + .link-button {
+  margin-left: 12px;
+}
+
+.people-link-primary {
+  color: var(--accent);
+}
+
+.people-alert-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.people-alert-link:hover {
+  text-decoration: underline;
+}
+
+.people-tag {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 500;
+}

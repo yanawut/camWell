@@ -25,3 +25,16 @@ export function computeDropRatio(history: TorsoReading[]): number | null {
   }
   return latest.y - minY
 }
+
+/** มองไม่เห็นสะโพก = ยังยืนยันไม่ได้ว่าลำตัวใกล้แนวนอน */
+export function isNearHorizontal(torsoAngleDeg: number | null, thresholdDeg: number): boolean {
+  return torsoAngleDeg !== null && torsoAngleDeg >= thresholdDeg
+}
+
+/**
+ * คนที่เพิ่งร่วงตัวเร็วควรถูกแจ้งเตือนตอน track หลุด เมื่อ "เวลาที่เห็นครั้งสุดท้าย"
+ * อยู่ภายใน grace window หลังสัญญาณ rapid drop โดยไม่ขึ้นกับเวลาที่ tracker ลบ track จริง
+ */
+export function shouldAlertLeftFrame(lastSeenAt: number, lastRapidDropAt: number, disappearGraceMs: number): boolean {
+  return lastRapidDropAt > 0 && lastSeenAt - lastRapidDropAt <= disappearGraceMs
+}

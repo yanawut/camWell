@@ -33,6 +33,7 @@ export interface AlertEventRow {
   employee_id: string | null
   person_name: string | null
   camera_id: string | null
+  camera_label: string | null
   started_at: number
   ended_at: number | null
   metrics: string // JSON object
@@ -120,6 +121,12 @@ export function getDb(): DatabaseSync {
   const employeeColumns = db.prepare('PRAGMA table_info(employees)').all() as unknown as { name: string }[]
   if (!employeeColumns.some((c) => c.name === 'auto_enrolled')) {
     db.exec('ALTER TABLE employees ADD COLUMN auto_enrolled INTEGER NOT NULL DEFAULT 0;')
+  }
+
+  // migration: ชื่อกล้องที่อ่านออก (เช่น "กล้อง 1") — เดิมเก็บแค่ camera_id ภายในซึ่งเป็นรหัสยาวอ่านไม่ออก
+  const alertColumns = db.prepare('PRAGMA table_info(alert_events)').all() as unknown as { name: string }[]
+  if (!alertColumns.some((c) => c.name === 'camera_label')) {
+    db.exec('ALTER TABLE alert_events ADD COLUMN camera_label TEXT;')
   }
 
   // เซิร์ฟเวอร์ปิดไปกลางคัน (เช่น restart) — ช่วงที่ยังเปิดค้างอยู่ปิดไม่ได้แล้ว ปิดให้ ณ ตอนเริ่มเซิร์ฟเวอร์ใหม่

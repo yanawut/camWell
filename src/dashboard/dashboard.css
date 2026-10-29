@@ -1,0 +1,303 @@
+/* --- Dashboard ห้องทำงาน (/?dashboard) --- */
+.dash-shell {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dash-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.dash-header h1 {
+  margin: 0 0 4px;
+  font-size: 26px;
+}
+
+.dash-header p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.dash-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px 14px;
+  flex-wrap: wrap;
+}
+
+.dash-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.dash-link {
+  border: 1px solid var(--border);
+  background: var(--panel-bg);
+  color: var(--text);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.dash-link:hover {
+  border-color: var(--accent);
+}
+
+.dash-hint {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 8%, var(--panel-bg));
+  color: var(--text);
+  font-size: 13px;
+}
+
+.dash-rooms {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: 16px;
+}
+
+.dash-room-column {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dash-room-card {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.dash-room-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.dash-room-header h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.dash-room-count {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.dash-room-count.is-occupied {
+  color: var(--good);
+  font-weight: 600;
+}
+
+.dash-room-foot {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.dash-room {
+  position: relative;
+  aspect-ratio: 160 / 100;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid #9aa8b8;
+}
+
+.dash-room svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* --- ตัวละคร: เด้งขึ้นตอนเข้า, ขยับขึ้นลงเบาๆ ตอนนั่ง, จางหายตอนออก --- */
+.dash-char {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation:
+    dash-pop-in 0.45s steps(4, end) both,
+    dash-idle 1.6s steps(1, end) 0.45s infinite;
+}
+
+.dash-char.is-leaving {
+  animation: dash-fade-out 0.7s steps(5, end) forwards;
+}
+
+@keyframes dash-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scaleY(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes dash-idle {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(0.5px);
+  }
+}
+
+@keyframes dash-fade-out {
+  to {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+
+/* --- ป้ายชื่อ + ฟองสถานะเหนือหัว (HTML ทับบน SVG) --- */
+.dash-tag {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  pointer-events: auto;
+  transition: opacity 0.7s;
+}
+
+.dash-tag.is-leaving {
+  opacity: 0;
+}
+
+.dash-name {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 3px 1px 6px;
+  border-radius: 4px;
+  background: rgba(31, 36, 48, 0.82);
+  color: #fff;
+  font-size: clamp(10px, 1.6vw, 12px);
+  font-weight: 600;
+  white-space: nowrap;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* จำนวนครั้งที่ถูกแจ้งเตือนวันนี้ — ต่อท้ายในป้ายชื่อ */
+.dash-count {
+  display: inline-block;
+  min-width: 16px;
+  min-height: 1.35em;
+  margin-left: 4px;
+  padding: 0 4px;
+  border-radius: 3px;
+  color: #fff;
+  font-size: 0.92em;
+  font-weight: 800;
+  line-height: 1.35;
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* 0 ครั้ง: กล่องเขียวว่างๆ ไม่มีตัวเลข */
+.dash-count.is-none {
+  background: #16a34a;
+  min-width: 12px;
+}
+
+/* 1–10 ครั้ง */
+.dash-count.is-some {
+  background: #f97316;
+}
+
+/* เกิน 10 ครั้ง */
+.dash-count.is-many {
+  background: #dc2626;
+}
+
+.dash-bubble {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  border: 2px solid #1f2430;
+  animation: dash-bubble-bounce 0.8s steps(2, end) infinite;
+}
+
+.dash-bubble.is-alert {
+  background: #fde047;
+  color: #b91c1c;
+}
+
+.dash-bubble.is-tired {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+@keyframes dash-bubble-bounce {
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+.dash-legend .dash-count {
+  margin: 0 4px 0 10px;
+  font-size: 12px;
+}
+
+.dash-legend .dash-bubble {
+  animation: none;
+  margin-right: 4px;
+}
+
+.dash-legend {
+  display: flex;
+  gap: 8px 20px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.dash-legend > span {
+  display: inline-flex;
+  align-items: center;
+}
+
+.dash-camera {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dash-char,
+  .dash-bubble {
+    animation: none;
+  }
+}

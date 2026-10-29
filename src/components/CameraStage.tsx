@@ -1,59 +1,54 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import Webcam from 'react-webcam'
 import * as faceapi from '@vladmandic/face-api'
-import type { NormalizedLandmark, PoseLandmarkerResult } from '@mediapipe/tasks-vision'
-import { usePoseLandmarker } from '../hooks/usePoseLandmarker'
-import { useFaceApiModels } from '../hooks/useFaceApiModels'
-import { analyzePosture, POSTURE_LABELS_TH, type PostureAnalysisResult } from '../lib/postureAnalysis'
+import type { PoseLandmarkerResult } from '@mediapipe/tasks-vision'
+import {
+  DEFAULT_POSE_MODEL,
+  usePoseLandmarker,
+  type LandmarkerStatus,
+  type PoseDelegate,
+  type PoseModelVariant,
+} from '../hooks/usePoseLandmarker'
+import { useFaceApiModels, type FaceApiStatus } from '../hooks/useFaceApiModels'
+import { computeBaseline } from '../lib/postureCalibration'
+import { POSTURE_LABELS_TH } from '../lib/postureAnalysis'
+import { BASIC_SKELETON_EDGES, buildSkeletonSegments, DEFAULT_SKELETON_MODE, type SkeletonMode } from '../lib/skeletonOverlay'
+import { PostureEngine } from '../lib/postureEngine'
 import { analyzeFatigueFrame, FATIGUE_LABELS_TH } from '../lib/fatigueAnalysis'
 import { analyzeDistanceFrame, DISTANCE_LABELS_TH } from '../lib/distanceAnalysis'
-import { stepBreakReminder, initialBreakState } from '../lib/breakReminder'
+import { getBreakReminderLabel } from '../lib/breakReminder'
 import { initialSustainedState, stepSustainedAlert, type SustainedAlertState } from '../lib/sustainedAlertMachine'
-import { PositionTracker, type Point2D } from '../lib/tracker'
-import { MAX_TRACKED_PEOPLE } from '../lib/multiPerson'
-import { pruneHistory, computeDropRatio, type TorsoReading } from '../lib/fallDetection'
+import type { Point2D } from '../lib/tracker'
+import { limitPeopleForMode, maxPeopleFor, type DetectionMode } from '../lib/multiPerson'
+import { nextCachedPoseResult } from '../lib/poseResultCache'
+import { shouldProcessPose } from '../lib/poseThrottle'
+import { updateInferenceEma } from '../lib/inferenceTiming'
 import { enrollPerson, identifyFace } from '../services/faceEnrollment'
+import { loadPostureBaseline, savePostureBaseline } from '../services/postureBaselineStore'
+import { datasetRecorder } from '../services/datasetRecorder'
 import { endPresence, startPresence } from '../services/presence'
 import { playAlertBeep, playFallAlarm } from '../services/beep'
-import type { PostureThresholds } from '../types/posture'
-import type { BreakReminderState, BreakThresholds, DistanceThresholds, FatigueThresholds } from '../types/wellbeing'
+import type { Point, PostureBaseline, PostureFeatures, PostureThresholds } from '../types/posture'
+import type { BreakThresholds, DistanceThresholds, FatigueThresholds } from '../types/wellbeing'
 import type { EnrolledPerson } from '../types/identity'
 import type { AlertEvent } from '../types/alerts'
 import type { FallThresholds } from '../types/fall'
 import type { PersonSummary } from '../types/person'
 import type { CameraSource } from '../types/cameraSource'
 
-// คู่ landmark ของ Pose ที่จะลากเส้นเป็นโครงร่าง (เฉพาะช่วงบนของร่างกาย พอสำหรับดูท่านั่ง)
-const SKELETON_EDGES: [number, number][] = [
-  [11, 12],
-  [23, 24],
-  [11, 23],
-  [12, 24],
-  [11, 13],
-  [13, 15],
-  [12, 14],
-  [14, 16],
-  [7, 11],
-  [8, 12],
-]
 
 const FACE_DETECT_INTERVAL_MS = 400 // ตรวจใบหน้า (fatigue/distance/identity) ไม่ทุกเฟรม กันหน่วง
+const POSTURE_CALIBRATION_MS = 3000
 const IDENTITY_RECHECK_INTERVAL_MS = 3000 // identity ไม่ต้องเช็คถี่เท่า fatigue/distance
 const PEOPLE_SUMMARY_INTERVAL_MS = 500 // ส่งสรุปสถานะ "ใครอยู่บ้าง" ขึ้นไปแสดงผลไม่ต้องทุกเฟรม กัน re-render ถี่เกิน
 // ลงทะเบียนอัตโนมัติ ("คนที่ N") เฉพาะใบหน้าที่ใหญ่พอ — หน้าเล็ก/ไกลกล้อง descriptor ไม่แม่น เสี่ยงได้คนเดิมซ้ำเป็นหลายคน
 const AUTO_ENROLL_MIN_FACE_WIDTH_PX = 80
 
-// Tracker จับคู่ "คนในเฟรมนี้" กับ "คนในเฟรมก่อนหน้า" ด้วยตำแหน่งจุดกึ่งกลางไหล่ (normalized 0-1) —
-// ใช้เป็นตัวตั้งหลักของแต่ละคน (trackId) ส่วน face-api จะถูก "เชื่อม" เข้ากับ track นี้อีกทีตามความใกล้ของตำแหน่ง
-// (ดู linkFaceToPersonId ด้านล่าง) เพื่อให้ fatigue/distance/identity ผูกกับคนคนเดียวกับที่ตรวจท่านั่งอยู่
-const POSE_TRACK_MAX_DISTANCE = 0.3 // สัดส่วนของเฟรม (0-1) ยิ่งมากยิ่งทนต่อการขยับเร็ว แต่เสี่ยงสลับคนผิด
-const POSE_TRACK_STALE_MS = 4000 // หายไปจากเฟรมนานเท่านี้ถือว่าออกไปแล้วจริงๆ (ไม่ใช่แค่หันหน้าหนีชั่วครู่)
-
 type FaceResult = faceapi.WithFaceDescriptor<faceapi.WithFaceLandmarks<{ detection: faceapi.FaceDetection }>>
 
 /** แปะ employeeId + cameraId ให้เหตุการณ์ก่อนส่งออกไปที่ App/backend เพื่อผูกเหตุการณ์กับพนักงานที่ระบุตัวได้ */
-function tagEvent(event: AlertEvent, person: PersonState, cameraId: string): AlertEvent {
-  return { ...event, employeeId: event.employeeId ?? person.identityId ?? undefined, cameraId }
+function tagEvent(event: AlertEvent, person: PersonState, cameraId: string, cameraLabel: string): AlertEvent {
+  return { ...event, employeeId: event.employeeId ?? person.identityId ?? undefined, cameraId, cameraLabel }
 }
 
 /** ปิดช่วงเข้า-ออกที่เปิดอยู่ของคนนี้ (ถ้ามี) — fire-and-forget backend ล่มแค่ log เตือน */
@@ -76,10 +71,9 @@ function isCorsLikeError(err: unknown): boolean {
 interface PersonState {
   trackId: string
   slotNumber: number
-  postureState: SustainedAlertState
+  postureActiveEvent: AlertEvent | null
   fatigueState: SustainedAlertState
   distanceState: SustainedAlertState
-  breakState: BreakReminderState
   yawnOpenSince: number | null
   yawnTimestamps: number[]
   identityName: string | null
@@ -91,16 +85,27 @@ interface PersonState {
    * สั่งปิดได้ทันทีแม้ request เปิดยังไม่ตอบกลับ */
   presenceId: Promise<string | null> | null
   postureStatusLabel: string
+  /** มุมคอดิบจากเฟรมล่าสุด (ยังไม่ลบ baseline / ยังไม่ smoothing) เก็บไว้ให้ scoring เช่น RULA ใช้มุมสัมบูรณ์ */
+  neckAngleDeg: number
+  /** มุมลำตัวดิบจากเฟรมล่าสุด; null เมื่อมองไม่เห็นสะโพก */
+  torsoAngleDeg: number | null
   /** ตำแหน่งจุดกึ่งกลางไหล่ล่าสุด เป็นพิกเซลของเฟรม (ไม่ใช่ normalized) ใช้จับคู่กับใบหน้าที่ตรวจพบ */
   anchorPx: Point2D
-  /** ประวัติตำแหน่ง Y ของจุดกึ่งกลางไหล่ (normalized 0-1) ช่วงสั้นๆ ล่าสุด ใช้ตรวจจับ "ร่วงตัวเร็ว" สำหรับฟีเจอร์หกล้ม */
-  torsoYHistory: TorsoReading[]
-  /** เวลาที่แจ้งเตือนหกล้มครั้งล่าสุดของคนนี้ (ms, Date.now()) ใช้กันแจ้งซ้ำถี่เกิน (cooldown) */
-  lastFallAlertAt: number
-  /** เวลาที่ตรวจพบ "ร่วงตัวเร็ว" ครั้งล่าสุด (ms, Date.now()) ไม่ว่าจะลำตัวราบหรือไม่ — ใช้เชื่อมกับเหตุการณ์
-   * "หายไปจากเฟรมกะทันหัน" ตอน track หลุด (ดูใน removedIds cleanup) เพื่อตรวจกรณีตกจากเก้าอี้จนหลุดมุมกล้อง */
-  lastRapidDropAt: number
 }
+
+/** สถานะเชิงเทคนิคของกล้อง 1 ตัว ส่งออกให้ Dev Console แสดงผล (อ่านอย่างเดียว ไม่มีผลกับการตรวจจับ) */
+export interface CameraStats {
+  inferenceMs: number
+  poseStatus: LandmarkerStatus
+  faceStatus: FaceApiStatus
+  delegate: PoseDelegate | null
+  cameraError: string | null
+  /** raw features ก่อน smoothing เมื่อมีคนเดียวในเฟรม (ค่าเดียวกับที่ Dataset Recorder บันทึก) */
+  rawFeatures: PostureFeatures | null
+  poseModel: PoseModelVariant
+}
+
+const STATS_INTERVAL_MS = 500
 
 interface Props {
   postureThresholds: PostureThresholds
@@ -110,6 +115,7 @@ interface Props {
   fallThresholds: FallThresholds
   soundEnabled: boolean
   faceFeaturesEnabled: boolean
+  detectionMode: DetectionMode
   /** เจอหน้าที่ไม่รู้จัก -> ลงทะเบียนให้อัตโนมัติเป็น "คนที่ N" (เลขรันจาก backend) */
   autoEnrollEnabled: boolean
   enrolledPeople: EnrolledPerson[]
@@ -129,6 +135,14 @@ interface Props {
   onFallDetected: (event: AlertEvent) => void
   onPeopleUpdate: (people: PersonSummary[]) => void
   onPersonEnrolled: (person: EnrolledPerson) => void
+  /** (Dev Console) รับสถานะเชิงเทคนิคทุก 500ms — ไม่ส่ง = ไม่มีอะไรเปลี่ยน */
+  onStats?: (stats: CameraStats) => void
+  /** (Dev Console) element ที่จะวางซ้อนในกรอบวิดีโอ */
+  overlay?: ReactNode
+  /** (Dev Console) รุ่น Pose Landmarker — ไม่ส่ง = lite เหมือนเดิม */
+  poseModel?: PoseModelVariant
+  /** (Dev Console) รูปแบบโครงร่างที่วาด — ไม่ส่ง = basic เหมือนเดิม */
+  skeletonMode?: SkeletonMode
 }
 
 export default function CameraStage({
@@ -139,6 +153,7 @@ export default function CameraStage({
   fallThresholds,
   soundEnabled,
   faceFeaturesEnabled,
+  detectionMode,
   autoEnrollEnabled,
   enrolledPeople,
   baselineFaceWidthPx,
@@ -153,19 +168,33 @@ export default function CameraStage({
   onFallDetected,
   onPeopleUpdate,
   onPersonEnrolled,
+  onStats,
+  poseModel = DEFAULT_POSE_MODEL,
+  skeletonMode = DEFAULT_SKELETON_MODE,
+  overlay,
 }: Props) {
   const webcamRef = useRef<Webcam>(null)
   const imgRef = useRef<HTMLImageElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  const { landmarkerRef, status: poseStatus, error: poseError } = usePoseLandmarker()
+  const { landmarkerRef, status: poseStatus, error: poseError, delegate: poseDelegate } = usePoseLandmarker(
+    maxPeopleFor(detectionMode),
+    poseModel,
+  )
   const { status: faceStatus, error: faceError } = useFaceApiModels()
 
   const lastVideoTimeRef = useRef(-1)
+  const lastPoseRunAtRef = useRef(0)
+  const poseInferenceMsRef = useRef(0)
+  const latestRawFeaturesRef = useRef<PostureFeatures | null>(null)
+  const latestPoseResultRef = useRef<PoseLandmarkerResult | null>(null)
   const lastFaceRunAtRef = useRef(0)
   const lastPeopleUpdateAtRef = useRef(0)
   const faceBusyRef = useRef(false)
   const identityLastCheckRef = useRef<Map<string, number>>(new Map())
+  // Posture AlertEvent เดิมเก็บชื่อ ณ ตอนเริ่ม event; จำไว้เพื่อให้ ended event ใช้ชื่อเดียวกัน
+  // แม้ identity จะ resolve/เปลี่ยนระหว่างที่ alert ยัง active อยู่
+  const postureEventPersonNameRef = useRef<Map<string, string>>(new Map())
   // กล้อง IP ต่างโดเมน/พอร์ตกับเว็บแอป (cross-origin) มักติดข้อจำกัด CORS ของเบราว์เซอร์ ทำให้อ่านพิกเซลภาพ
   // ไปประมวลผล AI ไม่ได้ (ภาพยังแสดงผลได้ปกติ แต่ canvas/WebGL จะโยน SecurityError ตอนอ่านข้อมูล) — ถ้าเจอ
   // ปัญหานี้ครั้งหนึ่งจะหยุดเรียก AI ซ้ำทุกเฟรม (กัน error สแปม) จนกว่าจะเปลี่ยนแหล่งกล้อง
@@ -173,14 +202,7 @@ export default function CameraStage({
 
   // แหล่งความจริงหลักของ "ใครอยู่ในเฟรมบ้าง" — key คือ trackId จาก poseTracker
   const personStatesRef = useRef<Map<string, PersonState>>(new Map())
-  const poseTrackerRef = useRef(
-    // prefix ด้วย cameraId กัน trackId ชนกับกล้องตัวอื่นตอนต่อหลายกล้องพร้อมกัน (grid)
-    new PositionTracker<{ landmarks: NormalizedLandmark[]; analysis: PostureAnalysisResult }>(`pose-${cameraId}`, {
-      maxDistance: POSE_TRACK_MAX_DISTANCE,
-      staleAfterMs: POSE_TRACK_STALE_MS,
-    }),
-  )
-  const nextSlotRef = useRef(1)
+  const postureEngineRef = useRef(new PostureEngine(cameraId))
 
   // ใบหน้าทั้งหมดที่ตรวจพบรอบล่าสุด (สำหรับวาดกรอบ + ปุ่ม Calibrate/ลงทะเบียนใช้ "ใบหน้าใหญ่สุด")
   const latestFaceResultsRef = useRef<FaceResult[]>([])
@@ -190,10 +212,17 @@ export default function CameraStage({
   const [alertBannerText, setAlertBannerText] = useState('')
   const [cameraError, setCameraError] = useState<string | null>(null)
   const [peopleCount, setPeopleCount] = useState(0)
+  const [poseInferenceMs, setPoseInferenceMs] = useState(0)
   // primaryFaceRef อัปเดตทุก throttle tick แต่ ref ไม่ทำให้ re-render — ใช้ state คู่กันแค่สำหรับ
   // เปิด/ปิดปุ่ม Calibrate/ลงทะเบียน ให้ตรงกับความเป็นจริง
   const [hasFaceSignal, setHasFaceSignal] = useState(false)
   const [enrollName, setEnrollName] = useState('')
+  const [postureBaseline, setPostureBaseline] = useState<PostureBaseline | null>(() =>
+    loadPostureBaseline(cameraId),
+  )
+  const calibrationRef = useRef<{ endsAt: number; samples: PostureFeatures[] } | null>(null)
+  const [isCalibratingPosture, setIsCalibratingPosture] = useState(false)
+  const [calibrationMessage, setCalibrationMessage] = useState<string | null>(null)
   // ต้องติ๊กยืนยันว่าขอความยินยอมจากพนักงานแล้ว (PDPA) ก่อนปุ่ม "ลงทะเบียนใบหน้า" จะกดได้ — backend เองก็ปฏิเสธ
   // คำขอที่ไม่มี consentGiven: true อยู่ดี แต่เช็คฝั่ง UI ไว้ด้วยกันลืม/กดพลาด
   const [enrollConsentChecked, setEnrollConsentChecked] = useState(false)
@@ -208,6 +237,7 @@ export default function CameraStage({
     fallThresholds,
     soundEnabled,
     faceFeaturesEnabled,
+    detectionMode,
     autoEnrollEnabled,
     enrolledPeople,
     baselineFaceWidthPx,
@@ -215,6 +245,9 @@ export default function CameraStage({
     cameraId,
     cameraLabel,
     multiCameraMode,
+    postureBaseline,
+    poseModel,
+    skeletonMode,
     onAlertStart,
     onAlertEnd,
     onBreakDue,
@@ -231,6 +264,7 @@ export default function CameraStage({
       fallThresholds,
       soundEnabled,
       faceFeaturesEnabled,
+      detectionMode,
       autoEnrollEnabled,
       enrolledPeople,
       baselineFaceWidthPx,
@@ -238,6 +272,9 @@ export default function CameraStage({
       cameraId,
       cameraLabel,
       multiCameraMode,
+      postureBaseline,
+      poseModel,
+      skeletonMode,
       onAlertStart,
       onAlertEnd,
       onBreakDue,
@@ -257,7 +294,7 @@ export default function CameraStage({
     const labels: string[] = []
     for (const person of personStatesRef.current.values()) {
       const name = person.identityName ?? `คนที่ ${person.slotNumber}`
-      if (person.postureState.activeEvent) labels.push(`${name}: ${person.postureStatusLabel}`)
+      if (person.postureActiveEvent) labels.push(`${name}: ${person.postureStatusLabel}`)
       if (person.fatigueState.activeEvent) {
         const t = person.fatigueState.activeEvent.type
         labels.push(`${name}: ${FATIGUE_LABELS_TH[t as keyof typeof FATIGUE_LABELS_TH] ?? t}`)
@@ -280,12 +317,15 @@ export default function CameraStage({
       .map((person) => ({
         trackId: person.trackId,
         label: person.identityName ?? `คนที่ ${person.slotNumber}`,
+        employeeId: person.identityId,
         postureStatus: person.postureStatusLabel,
+        postureAlertActive: !!person.postureActiveEvent,
         fatigueActive: !!person.fatigueState.activeEvent,
         distanceActive: !!person.distanceState.activeEvent,
         yawnCount: person.yawnTimestamps.length,
       }))
     setPeopleCount(summaries.length)
+    setPoseInferenceMs(Math.round(poseInferenceMsRef.current))
     propsRef.current.onPeopleUpdate(summaries)
   }, [])
 
@@ -293,18 +333,33 @@ export default function CameraStage({
     (ctx: CanvasRenderingContext2D, poseResult: PoseLandmarkerResult | null, width: number, height: number) => {
       ctx.clearRect(0, 0, width, height)
 
+      const line = (p1: Point, p2: Point) => {
+        ctx.beginPath()
+        ctx.moveTo(p1.x * width, p1.y * height)
+        ctx.lineTo(p2.x * width, p2.y * height)
+        ctx.stroke()
+      }
+
       const allLandmarks = poseResult?.landmarks ?? []
+      const { skeletonMode, postureThresholds: thresholds } = propsRef.current
       for (const landmarks of allLandmarks) {
         ctx.lineWidth = 3
         ctx.strokeStyle = '#22d3ee'
-        for (const [a, b] of SKELETON_EDGES) {
-          const p1 = landmarks[a]
-          const p2 = landmarks[b]
-          if (!p1 || !p2) continue
-          ctx.beginPath()
-          ctx.moveTo(p1.x * width, p1.y * height)
-          ctx.lineTo(p2.x * width, p2.y * height)
-          ctx.stroke()
+        if (skeletonMode === 'full') {
+          const { bones, neck, spine } = buildSkeletonSegments(landmarks, thresholds.minVisibility)
+          for (const [p1, p2] of bones) line(p1, p2)
+          // เส้นคอ/กระดูกสันหลัง = เส้นเดียวกับที่ใช้วัด neckAngleDeg / torsoAngleDeg
+          ctx.lineWidth = 4
+          ctx.strokeStyle = '#facc15'
+          if (neck) line(neck[0], neck[1])
+          if (spine) line(spine[0], spine[1])
+        } else {
+          for (const [a, b] of BASIC_SKELETON_EDGES) {
+            const p1 = landmarks[a]
+            const p2 = landmarks[b]
+            if (!p1 || !p2) continue
+            line(p1, p2)
+          }
         }
         ctx.fillStyle = '#f97316'
         for (const idx of [0, 7, 8, 11, 12, 23, 24]) {
@@ -360,14 +415,14 @@ export default function CameraStage({
         .withFaceLandmarks()
         .withFaceDescriptors()
 
-      // จำกัดจำนวนไม่ให้เกิน MAX_TRACKED_PEOPLE โดยเลือกใบหน้าที่ใหญ่สุด (ใกล้กล้องที่สุด) ก่อน
-      const limited = [...results].sort((a, b) => b.detection.box.width - a.detection.box.width).slice(0, MAX_TRACKED_PEOPLE)
+      const p = propsRef.current
+      // จำกัดจำนวนตามโหมดที่เลือก โดยยังเลือกใบหน้าที่ใหญ่สุด (ใกล้กล้องที่สุด) ก่อนเหมือนเดิม
+      const limited = limitPeopleForMode(results, p.detectionMode, (result) => result.detection.box.width)
 
       latestFaceResultsRef.current = limited
       primaryFaceRef.current = limited[0] ?? null
       setHasFaceSignal(!!limited[0])
 
-      const p = propsRef.current
       const canvas = canvasRef.current
       const frameWidth = canvas?.width ?? 640
       const linkDistanceThreshold = frameWidth * 0.3
@@ -445,10 +500,10 @@ export default function CameraStage({
         )
         person.fatigueState = fatigueStep.state
         if (fatigueStep.startedEvent) {
-          p.onAlertStart(tagEvent(fatigueStep.startedEvent, person, p.cameraId))
+          p.onAlertStart(tagEvent(fatigueStep.startedEvent, person, p.cameraId, p.cameraLabel))
           if (p.soundEnabled) playAlertBeep()
         }
-        if (fatigueStep.endedEvent) p.onAlertEnd(tagEvent(fatigueStep.endedEvent, person, p.cameraId))
+        if (fatigueStep.endedEvent) p.onAlertEnd(tagEvent(fatigueStep.endedEvent, person, p.cameraId, p.cameraLabel))
 
         // --- Distance (ใช้ baseline เดียวกันทุกคน — ยังไม่รองรับ calibrate แยกรายคน) ---
         const distance = analyzeDistanceFrame(face.detection.box.width, p.baselineFaceWidthPx, p.distanceThresholds)
@@ -463,10 +518,10 @@ export default function CameraStage({
         )
         person.distanceState = distStep.state
         if (distStep.startedEvent) {
-          p.onAlertStart(tagEvent(distStep.startedEvent, person, p.cameraId))
+          p.onAlertStart(tagEvent(distStep.startedEvent, person, p.cameraId, p.cameraLabel))
           if (p.soundEnabled) playAlertBeep()
         }
-        if (distStep.endedEvent) p.onAlertEnd(tagEvent(distStep.endedEvent, person, p.cameraId))
+        if (distStep.endedEvent) p.onAlertEnd(tagEvent(distStep.endedEvent, person, p.cameraId, p.cameraLabel))
 
         // --- Identity (เช็คไม่ถี่เท่า fatigue/distance ต่อคน) — ถาม camwell-backend ให้จับคู่ให้ (Phase 2)
         // เป็น fire-and-forget ไม่ await ในลูปนี้ กันไม่ให้ network request ไปบล็อกการตรวจจับคนอื่นในเฟรมเดียวกัน
@@ -527,8 +582,8 @@ export default function CameraStage({
         const fatigueStep = stepSustainedAlert(person.fatigueState, { issue: 'no_signal', metrics: {} }, now, 'fatigue', p.fatigueThresholds.drowsySustainedMs)
         const distStep = stepSustainedAlert(person.distanceState, { issue: 'no_signal', metrics: {} }, now, 'distance', p.distanceThresholds.sustainedMs)
         personStatesRef.current.set(trackId, { ...person, fatigueState: fatigueStep.state, distanceState: distStep.state })
-        if (fatigueStep.endedEvent) p.onAlertEnd(tagEvent(fatigueStep.endedEvent, person, p.cameraId))
-        if (distStep.endedEvent) p.onAlertEnd(tagEvent(distStep.endedEvent, person, p.cameraId))
+        if (fatigueStep.endedEvent) p.onAlertEnd(tagEvent(fatigueStep.endedEvent, person, p.cameraId, p.cameraLabel))
+        if (distStep.endedEvent) p.onAlertEnd(tagEvent(distStep.endedEvent, person, p.cameraId, p.cameraLabel))
       }
 
       recomputeAlertUi()
@@ -557,6 +612,11 @@ export default function CameraStage({
     if (cameraSourceKey !== lastCameraSourceKeyRef.current) {
       lastCameraSourceKeyRef.current = cameraSourceKey
       sourceErrorStickyRef.current = false
+      latestPoseResultRef.current = nextCachedPoseResult(latestPoseResultRef.current, null, true)
+      if (canvas) {
+        const ctx = canvas.getContext('2d')
+        if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height)
+      }
       setCameraError(null)
     }
 
@@ -585,15 +645,30 @@ export default function CameraStage({
     let peopleChanged = false
 
     // กล้องในเครื่อง (video): ประมวลผลเฉพาะตอนเฟรมเปลี่ยนจริง (เช็คจาก currentTime) กันประมวลผลซ้ำเฟรมเดิม
-    // กล้อง IP (MJPEG ผ่าน <img>): ไม่มีสัญญาณ "เฟรมใหม่" ที่เชื่อถือได้ เลยประมวลผลทุกรอบไปเลย
+    // กล้อง IP (MJPEG ผ่าน <img>): ไม่มีสัญญาณ "เฟรมใหม่" ที่เชื่อถือได้ จึงใช้ time throttle ด้านล่างเป็นตัวจำกัดหลัก
     // ถ้าเคยเจอปัญหา CORS กับแหล่งภาพนี้มาแล้ว หยุดลองซ้ำทุกเฟรม (กัน error สแปม) จนกว่าจะเปลี่ยนแหล่งกล้อง
-    const shouldProcessPose =
-      !!landmarker && !sourceErrorStickyRef.current && (!isVideoSource || source.currentTime !== lastVideoTimeRef.current)
+    const perfNow = performance.now()
+    const shouldRunPose = shouldProcessPose({
+      hasLandmarker: !!landmarker,
+      sourceErrorSticky: sourceErrorStickyRef.current,
+      perfNow,
+      lastPoseRunAt: lastPoseRunAtRef.current,
+      isVideoSource,
+      videoCurrentTime: isVideoSource ? source.currentTime : null,
+      lastVideoTime: lastVideoTimeRef.current,
+    })
 
-    if (shouldProcessPose && landmarker) {
+    if (shouldRunPose && landmarker) {
       if (isVideoSource) lastVideoTimeRef.current = source.currentTime
+      lastPoseRunAtRef.current = perfNow
       try {
-        poseResult = landmarker.detectForVideo(source, performance.now())
+        const inferenceStartedAt = performance.now()
+        poseResult = landmarker.detectForVideo(source, perfNow)
+        poseInferenceMsRef.current = updateInferenceEma(
+          poseInferenceMsRef.current,
+          performance.now() - inferenceStartedAt,
+        )
+        latestPoseResultRef.current = nextCachedPoseResult(latestPoseResultRef.current, poseResult)
       } catch (err) {
         console.error('[CameraStage] ตรวจจับท่านั่งล้มเหลว:', err)
         if (isCorsLikeError(err)) {
@@ -605,161 +680,171 @@ export default function CameraStage({
         return
       }
 
-      // คำนวณตำแหน่ง anchor (จุดกึ่งกลางไหล่ซ้าย-ขวา) ของแต่ละคนที่ตรวจพบ สำหรับส่งเข้า tracker
-      const detections = (poseResult.landmarks ?? [])
-        .map((landmarks) => {
-          const analysis = analyzePosture(landmarks, p.postureThresholds)
-          if (analysis.issue === 'no_person') return null
-          const left = landmarks[11]
-          const right = landmarks[12]
-          const anchorNorm: Point2D | undefined =
-            left && right ? { x: (left.x + right.x) / 2, y: (left.y + right.y) / 2 } : landmarks[0]
-          if (!anchorNorm) return null
-          return { position: anchorNorm, data: { landmarks, analysis } }
-        })
-        .filter((d): d is NonNullable<typeof d> => d !== null)
-
-      const { matches, removedIds } = poseTrackerRef.current.update(
-        detections.map((d) => ({ position: d.position, data: d.data })),
+      const engineResult = postureEngineRef.current.processPoseFrame(
+        poseResult.landmarks ?? [],
+        poseResult.worldLandmarks ?? [],
+        { width: canvas.width, height: canvas.height },
         now,
+        {
+          postureThresholds: p.postureThresholds,
+          postureBaseline: p.postureBaseline,
+          fallThresholds: p.fallThresholds,
+          breakThresholds: p.breakThresholds,
+        },
       )
 
-      // คนที่หายไปจากเฟรมนานเกิน POSE_TRACK_STALE_MS — ปิด event ค้างของเขา แล้วลบ state ทิ้ง
-      // (ถ้ากลับมาใหม่ทีหลังจะเริ่มนับใหม่หมดด้วย trackId ใหม่ — เทียบเท่า "รีเซ็ต" การเตือนพักของคนนั้น)
-      if (removedIds.length > 0) peopleChanged = true
-      for (const id of removedIds) {
-        const person = personStatesRef.current.get(id)
-        if (!person) continue
-        if (person.postureState.activeEvent) p.onAlertEnd(tagEvent({ ...person.postureState.activeEvent, endedAt: now }, person, p.cameraId))
-        if (person.fatigueState.activeEvent) p.onAlertEnd(tagEvent({ ...person.fatigueState.activeEvent, endedAt: now }, person, p.cameraId))
-        if (person.distanceState.activeEvent) p.onAlertEnd(tagEvent({ ...person.distanceState.activeEvent, endedAt: now }, person, p.cameraId))
+      if (engineResult.peopleChanged) peopleChanged = true
+      latestRawFeaturesRef.current = engineResult.people.length === 1 ? engineResult.people[0].rawFeatures : null
 
-        // เพิ่งร่วงตัวเร็วแล้วหายไปจากเฟรมทันที (ไม่ทันเห็นลำตัวราบเพราะหลุดมุมกล้องไปก่อน) — เข้าข่าย
-        // "หกล้ม/ตกจากเก้าอี้จนหลุดจากเฟรม" เช่น ตกจากเก้าอี้ไปด้านหลัง/ด้านข้างจนกล้องมองไม่เห็นตัวแล้ว
-        if (person.lastRapidDropAt > 0 && now - person.lastRapidDropAt <= p.fallThresholds.disappearGraceMs) {
-          const plainLabel = person.identityName ?? `คนที่ ${person.slotNumber}`
-          const fallEvent: AlertEvent = {
-            id: `fall-left-${id}-${now}`,
-            category: 'fall',
-            type: 'fall_suspected_left_frame',
-            startedAt: now,
-            endedAt: now,
-            personName: p.multiCameraMode ? `${p.cameraLabel} • ${plainLabel}` : plainLabel,
-            metrics: {},
-          }
-          p.onAlertStart(tagEvent(fallEvent, person, p.cameraId))
-          p.onFallDetected(fallEvent)
-          if (p.soundEnabled) playFallAlarm()
-        }
-
-        closePresence(person, now)
-        personStatesRef.current.delete(id)
-      }
-
-      for (const match of matches) {
-        const { landmarks, analysis } = match.data
-
-        let person = personStatesRef.current.get(match.id)
+      // เก็บเฉพาะ state ที่ UI/face pipeline ยังต้องใช้ ส่วน tracker/posture/fall/break อยู่ใน PostureEngine
+      for (const enginePerson of engineResult.people) {
+        let person = personStatesRef.current.get(enginePerson.trackId)
         if (!person) {
-          peopleChanged = true
           person = {
-            trackId: match.id,
-            slotNumber: nextSlotRef.current++,
-            postureState: initialSustainedState,
+            trackId: enginePerson.trackId,
+            slotNumber: enginePerson.slotNumber,
+            postureActiveEvent: enginePerson.postureActiveEvent,
             fatigueState: initialSustainedState,
             distanceState: initialSustainedState,
-            breakState: initialBreakState,
             yawnOpenSince: null,
             yawnTimestamps: [],
             identityName: null,
             identityId: null,
             identifyPending: false,
             presenceId: null,
-            postureStatusLabel: POSTURE_LABELS_TH.no_person,
-            anchorPx: { x: 0, y: 0 },
-            torsoYHistory: [],
-            lastFallAlertAt: 0,
-            lastRapidDropAt: 0,
+            postureStatusLabel:
+              POSTURE_LABELS_TH[enginePerson.postureIssue] +
+              (enginePerson.smoothedFeatures.quality === 'upper_body' ? ' (เห็นแค่ช่วงบน)' : ''),
+            neckAngleDeg: enginePerson.rawFeatures.neckAngleDeg,
+            torsoAngleDeg: enginePerson.rawFeatures.torsoAngleDeg,
+            anchorPx: enginePerson.anchorPx,
           }
-          personStatesRef.current.set(match.id, person)
+          personStatesRef.current.set(enginePerson.trackId, person)
+        } else {
+          person.postureActiveEvent = enginePerson.postureActiveEvent
+          person.postureStatusLabel =
+            POSTURE_LABELS_TH[enginePerson.postureIssue] +
+            (enginePerson.smoothedFeatures.quality === 'upper_body' ? ' (เห็นแค่ช่วงบน)' : '')
+          person.neckAngleDeg = enginePerson.rawFeatures.neckAngleDeg
+          person.torsoAngleDeg = enginePerson.rawFeatures.torsoAngleDeg
+          person.anchorPx = enginePerson.anchorPx
         }
+      }
 
-        const left = landmarks[11]
-        const right = landmarks[12]
-        const normalizedTorsoY = left && right ? (left.y + right.y) / 2 : null
-        if (left && right && normalizedTorsoY !== null) {
-          person.anchorPx = { x: ((left.x + right.x) / 2) * canvas.width, y: normalizedTorsoY * canvas.height }
+      // Dataset Recorder ใช้เงื่อนไขเดียวกับ calibration: บันทึกเมื่อมีคนเดียวในเฟรมเท่านั้น
+      // เพื่อให้ label ที่ผู้ใช้เลือกไม่ปนกับอีกคน และเก็บ raw features ก่อน smoothing ตาม contract ของ dataset
+      if (import.meta.env.DEV && datasetRecorder.isRecording() && engineResult.people.length === 1) {
+        for (const enginePerson of engineResult.people) {
+          datasetRecorder.add({
+            timestamp: now,
+            cameraId: p.cameraId,
+            neckAngleDeg: enginePerson.rawFeatures.neckAngleDeg,
+            torsoAngleDeg: enginePerson.rawFeatures.torsoAngleDeg,
+            shoulderTiltDeg: enginePerson.rawFeatures.shoulderTiltDeg,
+            headHeightRatio: enginePerson.rawFeatures.headHeightRatio,
+            quality: enginePerson.rawFeatures.quality,
+            landmarks: enginePerson.landmarks,
+            worldLandmarks: enginePerson.worldLandmarks,
+            frameWidth: canvas.width,
+            frameHeight: canvas.height,
+            minVisibility: p.postureThresholds.minVisibility,
+            poseModel: p.poseModel,
+          })
         }
+      }
 
-        person.postureStatusLabel = POSTURE_LABELS_TH[analysis.issue]
+      // ระหว่าง calibrate เก็บ raw features เท่านั้น และต้องตรวจพบคนเดียวพอดีเพื่อไม่ให้ตัวอย่างปนกัน
+      if (calibrationRef.current && engineResult.people.length === 1) {
+        calibrationRef.current.samples.push(engineResult.people[0].rawFeatures)
+      }
 
-        // ชื่อที่จะโผล่ใน EventLog/banner หกล้ม/ข้อความเตือนพัก (รวมข้ามกล้อง) — แปะชื่อกล้องนำหน้าด้วยถ้ามี
-        // มากกว่า 1 กล้องเชื่อมต่ออยู่ (กันข้อความรกตอนมีกล้องเดียว)
+      const addPersonName = (trackId: string, event: AlertEvent): AlertEvent => {
+        const person = personStatesRef.current.get(trackId)
+        if (!person) return event
         const plainLabel = person.identityName ?? `คนที่ ${person.slotNumber}`
-        const label = p.multiCameraMode ? `${p.cameraLabel} • ${plainLabel}` : plainLabel
+        return {
+          ...event,
+          personName: p.multiCameraMode ? `${p.cameraLabel} • ${plainLabel}` : plainLabel,
+        }
+      }
 
-        // --- Fall detection: สัญญาณร่วม "ร่วงตัวเร็ว" (normalized Y ไหล่เปลี่ยนเร็วในหน้าต่างเวลาสั้นๆ)
-        // + "ลำตัวใกล้แนวนอน" (torsoAngleDeg จาก analyzePosture) — edge-triggered + cooldown ไม่ใช่ sustained
-        // state เหมือนท่านั่ง/ความเหนื่อยล้า/ระยะห่างจอ เพราะหกล้มต้องแจ้งทันทีที่เกิด ไม่ใช่รอให้ค้างอยู่นาน
-        if (normalizedTorsoY !== null) {
-          person.torsoYHistory = pruneHistory(
-            [...person.torsoYHistory, { t: now, y: normalizedTorsoY }],
-            now,
-            p.fallThresholds.dropWindowMs,
-          )
-          const dropRatio = computeDropRatio(person.torsoYHistory)
-          if (dropRatio !== null && dropRatio >= p.fallThresholds.dropRatioThreshold) {
-            person.lastRapidDropAt = now
-            const isNearHorizontal = analysis.torsoAngleDeg >= p.fallThresholds.fallTorsoAngleDeg
-            if (isNearHorizontal && now - person.lastFallAlertAt >= p.fallThresholds.cooldownMs) {
-              person.lastFallAlertAt = now
-              const fallEvent: AlertEvent = {
-                id: `fall-${match.id}-${now}`,
-                category: 'fall',
-                type: 'fall_detected',
-                startedAt: now,
-                endedAt: now,
-                personName: label,
-                metrics: { dropRatio, torsoAngleDeg: analysis.torsoAngleDeg },
-              }
-              p.onAlertStart(tagEvent(fallEvent, person, p.cameraId))
-              p.onFallDetected(fallEvent)
-              if (p.soundEnabled) playFallAlarm()
-            }
+      // ผูกเหตุการณ์จาก PostureEngine กับพนักงานที่ระบุตัวได้ของ track นั้น (employeeId + cameraId)
+      const tagByTrack = (trackId: string, event: AlertEvent): AlertEvent => {
+        const person = personStatesRef.current.get(trackId)
+        return person
+          ? tagEvent(event, person, p.cameraId, p.cameraLabel)
+          : { ...event, cameraId: p.cameraId, cameraLabel: p.cameraLabel }
+      }
+
+      for (const item of engineResult.startedEvents) {
+        const startedEvent = addPersonName(item.trackId, item.event)
+        if (startedEvent.personName) {
+          postureEventPersonNameRef.current.set(startedEvent.id, startedEvent.personName)
+        }
+        p.onAlertStart(tagByTrack(item.trackId, startedEvent))
+        if (p.soundEnabled) playAlertBeep()
+      }
+      for (const item of engineResult.endedEvents) {
+        const rememberedName = postureEventPersonNameRef.current.get(item.event.id)
+        const endedEvent = rememberedName
+          ? { ...item.event, personName: rememberedName }
+          : addPersonName(item.trackId, item.event)
+        postureEventPersonNameRef.current.delete(item.event.id)
+        p.onAlertEnd(tagByTrack(item.trackId, endedEvent))
+      }
+      for (const item of engineResult.fallEvents) {
+        const fallEvent = addPersonName(item.trackId, item.event)
+        p.onAlertStart(tagByTrack(item.trackId, fallEvent))
+        p.onFallDetected(fallEvent)
+        if (p.soundEnabled) playFallAlarm()
+      }
+
+      // pose track ที่ stale ถูกลบใน engine แล้ว; ปิด state ของ face pipeline ที่ยังผูกกับ track เดิมก่อนลบ UI state
+      for (const trackId of engineResult.removedTrackIds) {
+        const person = personStatesRef.current.get(trackId)
+        if (!person) continue
+        if (person.fatigueState.activeEvent) {
+          p.onAlertEnd(tagEvent({ ...person.fatigueState.activeEvent, endedAt: now }, person, p.cameraId, p.cameraLabel))
+        }
+        if (person.distanceState.activeEvent) {
+          p.onAlertEnd(tagEvent({ ...person.distanceState.activeEvent, endedAt: now }, person, p.cameraId, p.cameraLabel))
+        }
+        closePresence(person, now)
+        personStatesRef.current.delete(trackId)
+      }
+
+      const calibration = calibrationRef.current
+      if (calibration && now >= calibration.endsAt) {
+        calibrationRef.current = null
+        setIsCalibratingPosture(false)
+
+        const baseline = computeBaseline(calibration.samples, now)
+        if (baseline) {
+          try {
+            savePostureBaseline(p.cameraId, baseline)
+            setPostureBaseline(baseline)
+            setCalibrationMessage('Calibrate ท่านั่งสำเร็จ ✓ ระบบจะเทียบกับท่านี้เป็นหลัก')
+          } catch {
+            setCalibrationMessage('Calibrate ไม่สำเร็จ — เบราว์เซอร์ไม่สามารถบันทึก baseline ของกล้องนี้ได้')
           }
+        } else {
+          setCalibrationMessage('Calibrate ไม่สำเร็จ — ต้องมีคนเดียวในเฟรมและเห็นหัว+ไหล่ชัดเจน ลองใหม่อีกครั้ง')
         }
+      }
 
-        const postureIssue = analysis.issue === 'no_person' ? 'no_signal' : analysis.issue
-        const step = stepSustainedAlert(
-          person.postureState,
-          { issue: postureIssue, metrics: { neckAngleDeg: analysis.neckAngleDeg, torsoAngleDeg: analysis.torsoAngleDeg, shoulderTiltDeg: analysis.shoulderTiltDeg } },
-          now,
-          'posture',
-          p.postureThresholds.sustainedMs,
-          label,
+      if (engineResult.breakDue) {
+        p.onBreakDue(
+          getBreakReminderLabel(p.multiCameraMode, p.cameraLabel),
+          engineResult.breakDue.continuousMinutes,
         )
-        person.postureState = step.state
-        if (step.startedEvent) {
-          p.onAlertStart(tagEvent(step.startedEvent, person, p.cameraId))
-          if (p.soundEnabled) playAlertBeep()
-        }
-        if (step.endedEvent) p.onAlertEnd(tagEvent(step.endedEvent, person, p.cameraId))
-
-        // เตือนพัก: ถือว่า "อยู่หน้าจอ" ตราบเท่าที่ track นี้ยังถูกตรวจพบอยู่ในเฟรม — ถ้าหายไปนานพอ
-        // track จะถูกลบไปเองข้างบนแล้ว รอบหน้าที่กลับมาจะเริ่มนับเวลานั่งต่อเนื่องใหม่ (เทียบเท่า "พักแล้ว")
-        const breakStep = stepBreakReminder(person.breakState, true, now, p.breakThresholds)
-        person.breakState = breakStep.state
-        if (breakStep.shouldRemind) {
-          p.onBreakDue(label, breakStep.continuousMinutes)
-          if (p.soundEnabled) playAlertBeep()
-        }
+        if (p.soundEnabled) playAlertBeep()
       }
 
       recomputeAlertUi()
     }
 
     const ctx = canvas.getContext('2d')
-    if (ctx) drawOverlay(ctx, poseResult, canvas.width, canvas.height)
+    if (ctx) drawOverlay(ctx, latestPoseResultRef.current, canvas.width, canvas.height)
 
     maybeEmitPeopleSummary(now, peopleChanged)
 
@@ -791,12 +876,44 @@ export default function CameraStage({
     return () => cancelAnimationFrame(rafId)
   }, [poseStatus])
 
-  // ลบกล้องตัวนี้ออก / ปิดแท็บ — ปิดช่วงเข้า-ออกของทุกคนที่ยังเปิดค้างอยู่ (endPresence ใช้ keepalive ส่งต่อได้แม้หน้าปิด)
+  // (Dev Console) ส่งสถานะออกเป็นระยะ — เก็บ callback ไว้ใน ref กัน effect รีสตาร์ททุกครั้งที่ parent re-render
+  const onStatsRef = useRef(onStats)
+  useEffect(() => {
+    onStatsRef.current = onStats
+  })
+  const hasStatsListener = !!onStats
+  useEffect(() => {
+    if (!hasStatsListener) return
+    const emit = () =>
+      onStatsRef.current?.({
+        inferenceMs: poseInferenceMsRef.current,
+        poseStatus,
+        faceStatus,
+        delegate: poseDelegate,
+        cameraError,
+        rawFeatures: latestRawFeaturesRef.current,
+        poseModel,
+      })
+    emit()
+    const id = window.setInterval(emit, STATS_INTERVAL_MS)
+    return () => window.clearInterval(id)
+  }, [hasStatsListener, poseStatus, faceStatus, poseDelegate, cameraError, poseModel])
+  // ลบกล้องตัวนี้ออก / ปิดแท็บ — ปิดช่วงเข้า-ออก + การแจ้งเตือนที่ยังค้างอยู่ของทุกคน ให้ DB มีเวลาจบครบทุกรายการ
+  // (endPresence / reportEnd ใช้ keepalive ส่งต่อได้แม้หน้าปิด)
   useEffect(() => {
     const people = personStatesRef.current
     const closeAll = () => {
       const now = Date.now()
-      for (const person of people.values()) closePresence(person, now)
+      const p = propsRef.current
+      for (const person of people.values()) {
+        closePresence(person, now)
+        for (const active of [person.postureActiveEvent, person.fatigueState.activeEvent, person.distanceState.activeEvent]) {
+          if (active) p.onAlertEnd(tagEvent({ ...active, endedAt: now }, person, p.cameraId, p.cameraLabel))
+        }
+        person.postureActiveEvent = null
+        person.fatigueState = { ...person.fatigueState, activeEvent: null }
+        person.distanceState = { ...person.distanceState, activeEvent: null }
+      }
     }
     window.addEventListener('pagehide', closeAll)
     return () => {
@@ -811,6 +928,15 @@ export default function CameraStage({
     const face = primaryFaceRef.current
     if (face) onCalibrateDistance(face.detection.box.width)
   }, [onCalibrateDistance])
+
+  const handleCalibratePosture = useCallback(() => {
+    calibrationRef.current = {
+      endsAt: Date.now() + POSTURE_CALIBRATION_MS,
+      samples: [],
+    }
+    setIsCalibratingPosture(true)
+    setCalibrationMessage('กำลัง Calibrate... นั่งท่าที่ดีที่สุดค้างไว้ 3 วินาที')
+  }, [])
 
   const handleEnroll = useCallback(() => {
     const face = primaryFaceRef.current
@@ -876,10 +1002,24 @@ export default function CameraStage({
         {faceStatus === 'error' && <div className="camera-status-banner banner-error">{faceError}</div>}
         {cameraError && <div className="camera-status-banner banner-error">{cameraError}</div>}
         {isAlerting && <div className="camera-status-banner banner-alert">⚠ {alertBannerText}</div>}
+        {overlay}
       </div>
       <p className="current-issue">
-        ตรวจพบในเฟรม: {peopleCount} คน (รองรับสูงสุด {MAX_TRACKED_PEOPLE} คนพร้อมกัน)
+        ตรวจพบในเฟรม: {peopleCount} คน (รองรับสูงสุด {maxPeopleFor(detectionMode)} คน) · Pose ใช้เวลา ~{poseInferenceMs} ms/ครั้ง
       </p>
+      <button
+        type="button"
+        className="secondary-button"
+        onClick={handleCalibratePosture}
+        disabled={isCalibratingPosture}
+      >
+        {isCalibratingPosture
+          ? 'กำลัง Calibrate...'
+          : postureBaseline
+            ? 'Calibrate ท่านั่งดีใหม่'
+            : 'Calibrate ท่านั่งดี (แนะนำให้ทำก่อนใช้งาน)'}
+      </button>
+      {calibrationMessage && <p className="panel-note">{calibrationMessage}</p>}
       {faceFeaturesEnabled && (
         <>
           <button type="button" className="secondary-button" onClick={handleCalibrate} disabled={!hasFaceSignal}>

@@ -17,6 +17,24 @@
   color: var(--text-muted);
 }
 
+.app-header-links {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.app-header-link {
+  display: inline-block;
+  margin-top: 6px;
+  color: var(--accent);
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.app-header-link:hover {
+  text-decoration: underline;
+}
+
 .app-grid {
   display: grid;
   grid-template-columns: minmax(360px, 640px) minmax(280px, 380px);
@@ -54,7 +72,7 @@
   margin: -6px 0 12px;
 }
 
-/* --- PostureMonitor --- */
+/* --- CameraStage (กล้อง + overlay) --- */
 .posture-monitor {
   display: flex;
   flex-direction: column;

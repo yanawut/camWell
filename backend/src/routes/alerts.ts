@@ -14,6 +14,7 @@ interface AlertSummary {
   employeeId: string | null
   personName: string | null
   cameraId: string | null
+  cameraLabel: string | null
   startedAt: number
   endedAt: number | null
   metrics: Record<string, number>
@@ -27,6 +28,7 @@ function toSummary(row: AlertEventRow): AlertSummary {
     employeeId: row.employee_id,
     personName: row.person_name,
     cameraId: row.camera_id,
+    cameraLabel: row.camera_label,
     startedAt: row.started_at,
     endedAt: row.ended_at,
     metrics: JSON.parse(row.metrics) as Record<string, number>,
@@ -47,7 +49,7 @@ alertsRouter.get('/', (req: Request, res: Response) => {
   const employeeId = optionalString(req.query.employeeId)
   const db = getDb()
   const select = `SELECT a.id, a.category, a.type, a.employee_id, COALESCE(e.name, a.person_name) as person_name,
-                         a.camera_id, a.started_at, a.ended_at, a.metrics
+                         a.camera_id, a.camera_label, a.started_at, a.ended_at, a.metrics
                   FROM alert_events a LEFT JOIN employees e ON e.id = a.employee_id`
   const rows = (
     employeeId
@@ -55,6 +57,30 @@ alertsRouter.get('/', (req: Request, res: Response) => {
       : db.prepare(`${select} ORDER BY a.started_at DESC LIMIT ?`).all(limit)
   ) as unknown as AlertEventRow[]
   res.json(rows.map(toSummary))
+})
+
+// GET /api/alerts/summary — สรุปจำนวนการแจ้งเตือนรายคน (นับแยกหมวด + เวลาล่าสุด) สำหรับหน้ารายชื่อ
+// เฉพาะเหตุการณ์ที่ผูกกับพนักงานได้ (employee_id ไม่เป็น NULL) — ?since=<epoch ms> นับเฉพาะที่เริ่มหลังเวลานั้น
+// (Dashboard ส่งเวลาเที่ยงคืนตามเวลาเครื่องมา เพื่อนับเฉพาะ "วันนี้")
+alertsRouter.get('/summary', (req: Request, res: Response) => {
+  const since = Number(req.query.since)
+  const rows = getDb()
+    .prepare(
+      `SELECT employee_id, category, COUNT(*) as count, MAX(started_at) as last_at
+       FROM alert_events WHERE employee_id IS NOT NULL AND started_at >= ?
+       GROUP BY employee_id, category`,
+    )
+    .all(Number.isFinite(since) ? since : 0) as unknown as { employee_id: string; category: string; count: number; last_at: number }[]
+
+  const byEmployee = new Map<string, { employeeId: string; total: number; byCategory: Record<string, number>; lastAt: number }>()
+  for (const r of rows) {
+    const entry = byEmployee.get(r.employee_id) ?? { employeeId: r.employee_id, total: 0, byCategory: {}, lastAt: 0 }
+    entry.total += r.count
+    entry.byCategory[r.category] = r.count
+    entry.lastAt = Math.max(entry.lastAt, r.last_at)
+    byEmployee.set(r.employee_id, entry)
+  }
+  res.json([...byEmployee.values()])
 })
 
 // POST /api/alerts — บันทึก/อัปเดตเหตุการณ์ body: AlertEvent + { employeeId?, cameraId? }
@@ -84,13 +110,15 @@ alertsRouter.post('/', (req: Request, res: Response) => {
   // ON CONFLICT: ตอนจบเหตุการณ์ frontend ส่ง id เดิมมาพร้อม endedAt + metrics ที่แย่ที่สุด — อัปเดตแถวเดิม
   // (COALESCE employee_id กันกรณีส่งครั้งหลังไม่มี employeeId แล้วไปลบการเชื่อมโยงที่บันทึกไว้ตอนเริ่ม)
   db.prepare(
-    `INSERT INTO alert_events (id, category, type, employee_id, person_name, camera_id, started_at, ended_at, metrics)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO alert_events
+       (id, category, type, employee_id, person_name, camera_id, camera_label, started_at, ended_at, metrics)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        ended_at = excluded.ended_at,
        metrics = excluded.metrics,
        employee_id = COALESCE(excluded.employee_id, alert_events.employee_id),
-       person_name = COALESCE(excluded.person_name, alert_events.person_name)`,
+       person_name = COALESCE(excluded.person_name, alert_events.person_name),
+       camera_label = COALESCE(excluded.camera_label, alert_events.camera_label)`,
   ).run(
     id,
     category,
@@ -98,6 +126,7 @@ alertsRouter.post('/', (req: Request, res: Response) => {
     exists ? employeeId : null,
     optionalString(body.personName),
     optionalString(body.cameraId),
+    optionalString(body.cameraLabel),
     startedAt,
     finiteNumber(body.endedAt),
     JSON.stringify(metrics),

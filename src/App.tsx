@@ -4,6 +4,7 @@ import CameraSourceSelector from './components/CameraSourceSelector'
 import SettingsPanel from './components/SettingsPanel'
 import EventLog from './components/EventLog'
 import EnrollmentPanel from './components/EnrollmentPanel'
+import DatasetRecorderPanel from './components/DatasetRecorderPanel'
 import AttendancePanel from './components/AttendancePanel'
 import { DEFAULT_THRESHOLDS, type PostureThresholds } from './types/posture'
 import { MAX_CAMERA_SLOTS, createCameraSlot, type CameraSlot, type CameraSource } from './types/cameraSource'
@@ -19,9 +20,19 @@ import { DEFAULT_FALL_THRESHOLDS, type FallThresholds } from './types/fall'
 import type { AlertEvent } from './types/alerts'
 import type { EnrolledPerson } from './types/identity'
 import type { PersonSummary } from './types/person'
+import type { DetectionMode } from './lib/multiPerson'
+import { DEFAULT_FACE_FEATURES_ENABLED, getCameraPeopleVisibility } from './lib/featureVisibility'
+import DevConsole, { type CameraStageExtras } from './console/DevConsole'
+import OfficeDashboard from './dashboard/OfficeDashboard'
 import { backendAlertReporter } from './services/alertReporter'
 import { listEnrolledPeople, removePerson, renamePerson } from './services/faceEnrollment'
 import './App.css'
+
+// ponytail: เปิด Dev Console ได้ทุก build ผ่าน /?console — กำหนดสิทธิ์ใหม่เมื่อออกจากช่วง dev
+const IS_DEV_CONSOLE = new URLSearchParams(window.location.search).has('console')
+// หน้าแรก (/) = Dashboard ห้องทำงาน pixel art เสมอ — หน้ากล้อง/ตั้งค่าเดิมย้ายไปที่ /?camera
+// (/?dashboard ยังใช้ได้เหมือนเดิม เพราะไม่มี camera/console ใน URL)
+const IS_DASHBOARD = !IS_DEV_CONSOLE && !new URLSearchParams(window.location.search).has('camera')
 
 const BASELINE_STORAGE_KEY = 'camwell:distance-baseline-px:v1'
 const CAMERA_SLOTS_STORAGE_KEY = 'camwell:camera-slots:v1'
@@ -39,7 +50,9 @@ export default function App() {
   const [breakThresholds, setBreakThresholds] = useState<BreakThresholds>(DEFAULT_BREAK_THRESHOLDS)
   const [fallThresholds, setFallThresholds] = useState<FallThresholds>(DEFAULT_FALL_THRESHOLDS)
   const [soundEnabled, setSoundEnabled] = useState(true)
-  const [faceFeaturesEnabled, setFaceFeaturesEnabled] = useState(true)
+  const [faceFeaturesEnabled, setFaceFeaturesEnabled] = useState(DEFAULT_FACE_FEATURES_ENABLED)
+  // Dashboard เริ่มที่โหมดหลายคนเสมอ (ต้องเห็นทุกคนในห้อง) — หน้ากล้อง/console เริ่มที่ 1 คนต่อกล้องเหมือนเดิม
+  const [detectionMode, setDetectionMode] = useState<DetectionMode>(IS_DASHBOARD ? 'multi' : 'workstation')
   // ลงทะเบียนใบหน้าที่ไม่รู้จักอัตโนมัติเป็น "คนที่ N" — เปิดไว้เป็นค่าเริ่มต้น จำค่าที่ผู้ใช้ปิด/เปิดไว้ใน localStorage
   const [autoEnrollEnabled, setAutoEnrollEnabled] = useState(() => localStorage.getItem(AUTO_ENROLL_STORAGE_KEY) !== 'false')
 
@@ -197,11 +210,143 @@ export default function App() {
       })
   }, [])
 
+  if (IS_DASHBOARD) {
+    // Dashboard ห้องทำงาน: ใช้ state/การตรวจจับชุดเดียวกับหน้าหลักทั้งหมด แค่เปลี่ยนวิธีแสดงผลเป็นห้อง pixel art
+    const renderCameraStage = (slot: CameraSlot) => (
+      <CameraStage
+        postureThresholds={postureThresholds}
+        fatigueThresholds={fatigueThresholds}
+        distanceThresholds={distanceThresholds}
+        breakThresholds={breakThresholds}
+        fallThresholds={fallThresholds}
+        soundEnabled={soundEnabled}
+        faceFeaturesEnabled={faceFeaturesEnabled}
+        detectionMode={detectionMode}
+        autoEnrollEnabled={autoEnrollEnabled}
+        enrolledPeople={enrolledPeople}
+        baselineFaceWidthPx={baselineFaceWidthPx}
+        cameraSource={slot.source}
+        cameraId={slot.id}
+        cameraLabel={slot.label}
+        multiCameraMode={multiCameraMode}
+        onCalibrateDistance={handleCalibrateDistance}
+        onAlertStart={handleAlertStart}
+        onAlertEnd={handleAlertEnd}
+        onBreakDue={handleBreakDue}
+        onFallDetected={handleFallDetected}
+        onPeopleUpdate={(summaries) => handlePeopleUpdate(slot.id, summaries)}
+        onPersonEnrolled={handlePersonEnrolled}
+      />
+    )
+    return (
+      <>
+        {/* แจ้งเตือนหกล้มต้องเห็นเสมอ แม้อยู่หน้า Dashboard */}
+        {fallAlerts.map((alert) => (
+          <div key={alert.id} className="fall-alert-banner">
+            <span>🚨 {alert.message}</span>
+            <button type="button" onClick={() => handleAcknowledgeFall(alert.id)}>
+              รับทราบ
+            </button>
+          </div>
+        ))}
+        <OfficeDashboard
+          cameraSlots={cameraSlots}
+          peopleBySlot={peopleBySlot}
+          renderCameraStage={renderCameraStage}
+          detectionMode={detectionMode}
+          onDetectionModeChange={setDetectionMode}
+          alertEventCount={events.length}
+        />
+      </>
+    )
+  }
+
+  if (IS_DEV_CONSOLE) {
+    // ส่ง props ชุดเดียวกับหน้าหลักทุกตัว + ของเสริมสำหรับ console (onStats/overlay)
+    const renderCameraStage = (slot: CameraSlot, extras: CameraStageExtras) => (
+      <CameraStage
+        postureThresholds={postureThresholds}
+        fatigueThresholds={fatigueThresholds}
+        distanceThresholds={distanceThresholds}
+        breakThresholds={breakThresholds}
+        fallThresholds={fallThresholds}
+        soundEnabled={soundEnabled}
+        faceFeaturesEnabled={faceFeaturesEnabled}
+        detectionMode={detectionMode}
+        autoEnrollEnabled={autoEnrollEnabled}
+        enrolledPeople={enrolledPeople}
+        baselineFaceWidthPx={baselineFaceWidthPx}
+        cameraSource={slot.source}
+        cameraId={slot.id}
+        cameraLabel={slot.label}
+        multiCameraMode={multiCameraMode}
+        onCalibrateDistance={handleCalibrateDistance}
+        onAlertStart={handleAlertStart}
+        onAlertEnd={handleAlertEnd}
+        onBreakDue={handleBreakDue}
+        onFallDetected={handleFallDetected}
+        onPeopleUpdate={(summaries) => handlePeopleUpdate(slot.id, summaries)}
+        onPersonEnrolled={handlePersonEnrolled}
+        onStats={extras.onStats}
+        overlay={extras.overlay}
+        poseModel={extras.poseModel}
+        skeletonMode={extras.skeletonMode}
+      />
+    )
+    return (
+      <DevConsole
+        renderCameraStage={renderCameraStage}
+        cameraSlots={cameraSlots}
+        peopleBySlot={peopleBySlot}
+        onAddCameraSlot={handleAddCameraSlot}
+        onRemoveCameraSlot={handleRemoveCameraSlot}
+        onCameraSlotSourceChange={handleCameraSlotSourceChange}
+        events={events}
+        fallAlerts={fallAlerts}
+        onAcknowledgeFall={handleAcknowledgeFall}
+        breakMessage={breakMessage}
+        onDismissBreak={() => setBreakMessage(null)}
+        enrolledPeople={enrolledPeople}
+        enrolledPeopleError={enrolledPeopleError}
+        onRemovePerson={handleRemovePerson}
+        postureThresholds={postureThresholds}
+        onPostureChange={setPostureThresholds}
+        fatigueThresholds={fatigueThresholds}
+        onFatigueChange={setFatigueThresholds}
+        distanceThresholds={distanceThresholds}
+        onDistanceChange={setDistanceThresholds}
+        breakThresholds={breakThresholds}
+        onBreakChange={setBreakThresholds}
+        fallThresholds={fallThresholds}
+        onFallChange={setFallThresholds}
+        soundEnabled={soundEnabled}
+        onSoundEnabledChange={setSoundEnabled}
+        faceFeaturesEnabled={faceFeaturesEnabled}
+        onFaceFeaturesEnabledChange={setFaceFeaturesEnabled}
+        autoEnrollEnabled={autoEnrollEnabled}
+        onAutoEnrollEnabledChange={handleAutoEnrollEnabledChange}
+        detectionMode={detectionMode}
+        onDetectionModeChange={setDetectionMode}
+      />
+    )
+  }
+
   return (
     <div className="app-shell">
       <header className="app-header">
         <h1>Camwell — ระบบตรวจจับท่านั่งและความเหนื่อยล้าของพนักงาน</h1>
         <p>Phase 1 (MVP): ตรวจจับแบบ client-side ล้วน ด้วย MediaPipe Pose Landmarker + @vladmandic/face-api รันในเบราว์เซอร์</p>
+        <nav className="app-header-links">
+          <a className="app-header-link" href="?people">
+            รายชื่อบุคคลที่บันทึกในระบบ ({enrolledPeople.length}) →
+          </a>
+          <a className="app-header-link" href="?alerts">
+            ผลการแจ้งเตือนในฐานข้อมูล →
+          </a>
+          <a className="app-header-link" href="./">
+            Dashboard ห้องทำงาน →
+          </a>
+        </nav>
       </header>
 
       {fallAlerts.map((alert) => (
@@ -227,6 +372,7 @@ export default function App() {
           <div className="camera-grid">
             {cameraSlots.map((slot) => {
               const people = peopleBySlot[slot.id] ?? []
+              const peopleVisibility = getCameraPeopleVisibility(people.length)
               return (
                 <div key={slot.id} className="camera-cell">
                   <CameraSourceSelector
@@ -249,6 +395,7 @@ export default function App() {
                     fallThresholds={fallThresholds}
                     soundEnabled={soundEnabled}
                     faceFeaturesEnabled={faceFeaturesEnabled}
+                    detectionMode={detectionMode}
                     autoEnrollEnabled={autoEnrollEnabled}
                     enrolledPeople={enrolledPeople}
                     baselineFaceWidthPx={baselineFaceWidthPx}
@@ -264,7 +411,7 @@ export default function App() {
                     onPeopleUpdate={(summaries) => handlePeopleUpdate(slot.id, summaries)}
                     onPersonEnrolled={handlePersonEnrolled}
                   />
-                  {faceFeaturesEnabled && people.length > 0 && (
+                  {peopleVisibility.showPeopleList && (
                     <ul className="people-list">
                       {people.map((person) => (
                         <li key={person.trackId}>
@@ -276,7 +423,7 @@ export default function App() {
                       ))}
                     </ul>
                   )}
-                  {faceFeaturesEnabled && people.length === 0 && <p className="identity-line">ยังไม่พบคนในเฟรม</p>}
+                  {peopleVisibility.showEmptyState && <p className="identity-line">ยังไม่พบคนในเฟรม</p>}
                 </div>
               )
             })}
@@ -304,6 +451,8 @@ export default function App() {
             onSoundEnabledChange={setSoundEnabled}
             faceFeaturesEnabled={faceFeaturesEnabled}
             onFaceFeaturesEnabledChange={setFaceFeaturesEnabled}
+            detectionMode={detectionMode}
+            onDetectionModeChange={setDetectionMode}
             autoEnrollEnabled={autoEnrollEnabled}
             onAutoEnrollEnabledChange={handleAutoEnrollEnabledChange}
           />
@@ -313,6 +462,7 @@ export default function App() {
           )}
           {faceFeaturesEnabled && <AttendancePanel />}
           <EventLog events={events} />
+          {import.meta.env.DEV && <DatasetRecorderPanel postureThresholds={postureThresholds} />}
         </section>
       </main>
 

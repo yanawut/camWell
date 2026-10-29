@@ -38,12 +38,13 @@ export const backendAlertReporter: AlertReporter = {
     sendToBackend(event)
   },
   reportEnd(event) {
-    sendToBackend(event)
+    // keepalive: เหตุการณ์ที่ปิดตอนปิดแท็บ/รีเฟรช (CameraStage ปิดให้ตอน pagehide) ต้องส่งถึง backend แม้หน้าถูกปิดไปแล้ว
+    sendToBackend(event, true)
   },
 }
 
-function sendToBackend(event: AlertEvent) {
-  apiFetch<void>('/api/alerts', { method: 'POST', body: JSON.stringify(event) }).catch((err: unknown) => {
+function sendToBackend(event: AlertEvent, keepalive = false) {
+  apiFetch<void>('/api/alerts', { method: 'POST', body: JSON.stringify(event), keepalive }).catch((err: unknown) => {
     console.warn('[alertReporter] ส่งเหตุการณ์แจ้งเตือนไป backend ไม่สำเร็จ:', err)
   })
 }

@@ -1,6 +1,8 @@
 import type { PostureThresholds } from '../types/posture'
 import type { BreakThresholds, DistanceThresholds, FatigueThresholds } from '../types/wellbeing'
 import type { FallThresholds } from '../types/fall'
+import type { DetectionMode } from '../lib/multiPerson'
+import { breakResetMinutesToMs, getBreakResetSliderModel } from '../lib/breakReminderSettings'
 
 interface Props {
   postureThresholds: PostureThresholds
@@ -17,6 +19,8 @@ interface Props {
   onSoundEnabledChange: (enabled: boolean) => void
   faceFeaturesEnabled: boolean
   onFaceFeaturesEnabledChange: (enabled: boolean) => void
+  detectionMode: DetectionMode
+  onDetectionModeChange: (mode: DetectionMode) => void
   autoEnrollEnabled: boolean
   onAutoEnrollEnabledChange: (enabled: boolean) => void
 }
@@ -63,6 +67,8 @@ export default function SettingsPanel({
   onSoundEnabledChange,
   faceFeaturesEnabled,
   onFaceFeaturesEnabledChange,
+  detectionMode,
+  onDetectionModeChange,
   autoEnrollEnabled,
   onAutoEnrollEnabledChange,
 }: Props) {
@@ -81,6 +87,7 @@ export default function SettingsPanel({
   const setFall = <K extends keyof FallThresholds>(key: K, value: FallThresholds[K]) => {
     onFallChange({ ...fallThresholds, [key]: value })
   }
+  const breakResetSlider = getBreakResetSliderModel(breakThresholds.breakResetMs)
 
   return (
     <div className="panel settings-panel">
@@ -100,6 +107,26 @@ export default function SettingsPanel({
           <input type="checkbox" checked={autoEnrollEnabled} onChange={(e) => onAutoEnrollEnabledChange(e.target.checked)} />
         </label>
       )}
+
+      <h3>โหมดการตรวจจับ</h3>
+      <label className="settings-row settings-checkbox">
+        <span>ใช้คนเดียว (Personal Workstation) — แนะนำ</span>
+        <input
+          type="radio"
+          name="detection-mode"
+          checked={detectionMode === 'workstation'}
+          onChange={() => onDetectionModeChange('workstation')}
+        />
+      </label>
+      <label className="settings-row settings-checkbox">
+        <span>กล้องเดียวหลายคน (Multi-person)</span>
+        <input
+          type="radio"
+          name="detection-mode"
+          checked={detectionMode === 'multi'}
+          onChange={() => onDetectionModeChange('multi')}
+        />
+      </label>
 
       <h3>ท่านั่ง</h3>
       <Slider
@@ -128,6 +155,15 @@ export default function SettingsPanel({
         step={1}
         value={postureThresholds.shoulderTiltThresholdDeg}
         onChange={(v) => setPosture('shoulderTiltThresholdDeg', v)}
+      />
+      <Slider
+        label="หัวต่ำลงจากท่าที่ Calibrate ได้ไม่เกิน"
+        unit="%"
+        min={5}
+        max={40}
+        step={1}
+        value={Math.round(postureThresholds.headDropThreshold * 100)}
+        onChange={(v) => setPosture('headDropThreshold', v / 100)}
       />
       <Slider
         label="นั่งท่าไม่ดีต่อเนื่องนานเท่าไหร่ก่อนแจ้งเตือน"
@@ -219,19 +255,28 @@ export default function SettingsPanel({
             value={distanceThresholds.tooCloseRatio}
             onChange={(v) => setDistance('tooCloseRatio', v)}
           />
-
-          <h3>เตือนพัก</h3>
-          <Slider
-            label="นั่งต่อเนื่องกี่นาทีถึงเตือนให้พัก"
-            unit=" นาที"
-            min={15}
-            max={90}
-            step={5}
-            value={breakThresholds.continuousSittingMs / 60000}
-            onChange={(v) => setBreak('continuousSittingMs', v * 60000)}
-          />
         </>
       )}
+
+      <h3>เตือนพัก</h3>
+      <Slider
+        label="นั่งต่อเนื่องกี่นาทีถึงเตือนให้พัก"
+        unit=" นาที"
+        min={15}
+        max={90}
+        step={5}
+        value={breakThresholds.continuousSittingMs / 60000}
+        onChange={(v) => setBreak('continuousSittingMs', v * 60000)}
+      />
+      <Slider
+        label="ลุกไปนานกี่นาทีถึงถือว่าพักแล้ว"
+        unit=" นาที"
+        min={breakResetSlider.min}
+        max={breakResetSlider.max}
+        step={breakResetSlider.step}
+        value={breakResetSlider.value}
+        onChange={(v) => setBreak('breakResetMs', breakResetMinutesToMs(v))}
+      />
     </div>
   )
 }

@@ -12,6 +12,32 @@ export interface Point {
 /** สถานะท่านั่งขณะปัจจุบัน (คำนวณจากเฟรมล่าสุด) */
 export type PostureIssueType = 'forward_head' | 'slouching' | 'leaning' | 'good' | 'no_person'
 
+/** คุณภาพของสัญญาณ pose: เห็นทั้งตัว (มีสะโพก) / เห็นแค่ช่วงบน (หัว+ไหล่) */
+export type PoseQuality = 'full_body' | 'upper_body'
+
+/** ตัวเลขที่วัดได้จากท่านั่ง 1 เฟรม (ยังไม่ตัดสินว่าดี/ไม่ดี) */
+export interface PostureFeatures {
+  quality: PoseQuality
+  neckAngleDeg: number
+  /** null = มองไม่เห็นสะโพก วัดมุมลำตัวไม่ได้ */
+  torsoAngleDeg: number | null
+  shoulderTiltDeg: number
+  /** ความสูงของหัวเหนือไหล่ หารด้วยความกว้างไหล่ — null ถ้าเห็นไหล่ไม่ครบ 2 ข้าง */
+  headHeightRatio: number | null
+}
+
+/**
+ * รูปร่าง baseline ที่ ticket 13 จะนำไปใช้จริง
+ * Ticket 12 เตรียม signature ของ classifyPosture ไว้ล่วงหน้า แต่ยังไม่ทำ calibration/persistence
+ */
+export interface PostureBaseline {
+  neckAngleDeg: number
+  torsoAngleDeg: number | null
+  shoulderTiltDeg: number
+  headHeightRatio: number | null
+  createdAt: number
+}
+
 export interface PostureReading {
   timestamp: number
   issue: PostureIssueType
@@ -32,6 +58,8 @@ export interface PostureThresholds {
   sustainedMs: number
   /** ค่าความมั่นใจขั้นต่ำของ landmark ที่จะนำมาคำนวณ (0-1) */
   minVisibility: number
+  /** หัวต่ำลงจากตอน calibrate เกินสัดส่วนนี้ (0.15 = 15%) ถือว่าเป็น forward head */
+  headDropThreshold: number
 }
 
 export const DEFAULT_THRESHOLDS: PostureThresholds = {
@@ -40,4 +68,5 @@ export const DEFAULT_THRESHOLDS: PostureThresholds = {
   shoulderTiltThresholdDeg: 10,
   sustainedMs: 8000,
   minVisibility: 0.5,
+  headDropThreshold: 0.15,
 }

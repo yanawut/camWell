@@ -62,8 +62,10 @@ export const DEFAULT_DISTANCE_THRESHOLDS: DistanceThresholds = {
 
 /** สถานะตัวจับเวลานั่งต่อเนื่อง สำหรับเตือนพัก */
 export interface BreakReminderState {
-  /** เวลาที่เริ่มนับว่านั่งต่อเนื่อง (epoch ms) — null ถ้าตอนนี้ไม่มีคนอยู่หน้าจอ */
+  /** เวลาที่เริ่มนับว่านั่งต่อเนื่อง (epoch ms) — null เมื่อยังไม่มีรอบนั่งที่กำลังนับ */
   continuousSinceMs: number | null
+  /** เวลาล่าสุดที่ยังเห็นคนอยู่หน้ากล้อง ใช้ตัดสินว่าหายไปนานพอที่จะถือว่าพักแล้วหรือยัง */
+  lastPresentAtMs: number | null
   /** แจ้งเตือนเตือนพักไปแล้วสำหรับรอบปัจจุบันหรือยัง (กันแจ้งซ้ำรัว ๆ) */
   reminderFiredForCurrentSession: boolean
 }

@@ -1,8 +1,19 @@
 // การคำนวณมุมท่านั่งจาก 33 pose landmarks ของ MediaPipe BlazePose
 // อ้างอิง index ของ landmark ตามมาตรฐาน BlazePose:
 // https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker
+//
+// แบ่งเป็น 2 ขั้น:
+//   1) extractPostureFeatures — แปลง landmarks เป็นตัวเลขที่วัดได้ โดยคำนวณ geometry ใน pixel space
+//   2) classifyPosture       — เอาตัวเลขมาเทียบ threshold เพื่อจัดประเภทท่านั่ง
+// แยกกันเพื่อให้แทรก smoothing และ calibration ในขั้นถัดไปได้
 
-import type { Point, PostureIssueType, PostureThresholds } from '../types/posture'
+import type {
+  Point,
+  PostureBaseline,
+  PostureFeatures,
+  PostureIssueType,
+  PostureThresholds,
+} from '../types/posture'
 
 const LM = {
   NOSE: 0,
@@ -14,93 +25,157 @@ const LM = {
   RIGHT_HIP: 24,
 } as const
 
+export interface FrameSize {
+  width: number
+  height: number
+}
+
+function toPixels(point: Point, frame: FrameSize): Point {
+  return {
+    x: point.x * frame.width,
+    y: point.y * frame.height,
+    visibility: point.visibility,
+  }
+}
+
 /** มุม (องศา) ระหว่างเวกเตอร์ p1->p2 กับแนวดิ่ง (0 = ตรงดิ่งพอดี, ยิ่งมากยิ่งเอียง) */
 function angleFromVertical(p1: Point, p2: Point): number {
   const dx = p2.x - p1.x
   const dy = p2.y - p1.y
-  // แกน y ของภาพชี้ลง จึงใช้ -dy แทนทิศ "ขึ้น" ของแนวดิ่งอ้างอิง
   const rad = Math.atan2(dx, -dy)
   return Math.abs((rad * 180) / Math.PI)
 }
 
-/** มุมเอียงของเส้นไหล่ซ้าย-ขวา เทียบแนวนอน */
+/** มุมเอียงของเส้นไหล่ซ้าย-ขวา เทียบแนวนอน (0 = ไหล่ตรง) */
 function shoulderTilt(left: Point, right: Point): number {
-  const dx = right.x - left.x
-  const dy = right.y - left.y
+  const dx = Math.abs(right.x - left.x)
+  const dy = Math.abs(right.y - left.y)
   const rad = Math.atan2(dy, dx)
-  return Math.abs((rad * 180) / Math.PI)
+  return (rad * 180) / Math.PI
 }
 
-function isVisible(p: Point | undefined, min: number): p is Point {
-  return !!p && (p.visibility === undefined || p.visibility >= min)
+export function isVisible(point: Point | undefined, min: number): point is Point {
+  return !!point && (point.visibility === undefined || point.visibility >= min)
 }
 
-/** เลือกจุดกึ่งกลางระหว่างซ้าย-ขวา ถ้าเห็นทั้งคู่ ไม่งั้นใช้ข้างที่เห็น (เผื่อกรณีนั่งหันข้างให้กล้อง) */
-function midOrVisible(left: Point | undefined, right: Point | undefined, min: number): Point | undefined {
-  const l = isVisible(left, min)
-  const r = isVisible(right, min)
-  if (l && r) return { x: (left!.x + right!.x) / 2, y: (left!.y + right!.y) / 2 }
-  if (l) return left
-  if (r) return right
+/** เลือกจุดกึ่งกลางระหว่างซ้าย-ขวา ถ้าเห็นทั้งคู่ ไม่งั้นใช้ข้างที่เห็น */
+export function midOrVisible(left: Point | undefined, right: Point | undefined, min: number): Point | undefined {
+  const leftVisible = isVisible(left, min)
+  const rightVisible = isVisible(right, min)
+
+  if (leftVisible && rightVisible) {
+    return {
+      x: (left.x + right.x) / 2,
+      y: (left.y + right.y) / 2,
+    }
+  }
+  if (leftVisible) return left
+  if (rightVisible) return right
   return undefined
 }
 
-export interface PostureAngles {
-  neckAngleDeg: number
-  torsoAngleDeg: number
-  shoulderTiltDeg: number
-}
+/**
+ * ขั้นที่ 1: landmarks 1 คน -> ตัวเลขที่วัดได้
+ * คืน null ถ้ามองไม่เห็นหัว + ไหล่ชัดพอ ส่วนสะโพกไม่บังคับ
+ */
+export function extractPostureFeatures(
+  landmarks: Point[] | undefined,
+  frame: FrameSize,
+  minVisibility: number,
+): PostureFeatures | null {
+  if (!landmarks || landmarks.length < 25) return null
 
-export interface PostureAnalysisResult extends PostureAngles {
-  issue: PostureIssueType
+  const at = (index: number): Point | undefined => {
+    const point = landmarks[index]
+    return point ? toPixels(point, frame) : undefined
+  }
+
+  const nose = at(LM.NOSE)
+  const leftShoulder = at(LM.LEFT_SHOULDER)
+  const rightShoulder = at(LM.RIGHT_SHOULDER)
+  const shoulderMid = midOrVisible(leftShoulder, rightShoulder, minVisibility)
+  const hipMid = midOrVisible(at(LM.LEFT_HIP), at(LM.RIGHT_HIP), minVisibility)
+  const headPoint =
+    midOrVisible(at(LM.LEFT_EAR), at(LM.RIGHT_EAR), minVisibility) ??
+    (isVisible(nose, minVisibility) ? nose : undefined)
+
+  if (!shoulderMid || !headPoint) return null
+
+  let shoulderTiltDeg = 0
+  let headHeightRatio: number | null = null
+
+  if (isVisible(leftShoulder, minVisibility) && isVisible(rightShoulder, minVisibility)) {
+    shoulderTiltDeg = shoulderTilt(leftShoulder, rightShoulder)
+
+    const shoulderWidthPx = Math.hypot(
+      rightShoulder.x - leftShoulder.x,
+      rightShoulder.y - leftShoulder.y,
+    )
+    if (shoulderWidthPx > 0) {
+      headHeightRatio = (shoulderMid.y - headPoint.y) / shoulderWidthPx
+    }
+  }
+
+  return {
+    quality: hipMid ? 'full_body' : 'upper_body',
+    neckAngleDeg: angleFromVertical(shoulderMid, headPoint),
+    torsoAngleDeg: hipMid ? angleFromVertical(hipMid, shoulderMid) : null,
+    shoulderTiltDeg,
+    headHeightRatio,
+  }
 }
 
 /**
- * วิเคราะห์ landmarks 1 เฟรม -> มุมคอ/มุมลำตัว/มุมเอียงไหล่ + สรุปเป็นสถานะท่านั่ง
- * คืนค่า issue = 'no_person' ถ้ามองไม่เห็น landmark หลักที่จำเป็นชัดเจนพอ
+ * ขั้นที่ 2: ตัวเลข -> ท่านั่ง
+ * ถ้ามี baseline ให้ตัดสินจากส่วนต่างของมุมเทียบกับท่าที่ calibrate และจากสัดส่วนหัวที่ต่ำลง
  */
-export function analyzePosture(
-  landmarks: Point[] | undefined,
+export function classifyPosture(
+  features: PostureFeatures,
   thresholds: PostureThresholds,
-): PostureAnalysisResult {
-  if (!landmarks || landmarks.length < 25) {
-    return { issue: 'no_person', neckAngleDeg: 0, torsoAngleDeg: 0, shoulderTiltDeg: 0 }
+  baseline: PostureBaseline | null,
+): Exclude<PostureIssueType, 'no_person'> {
+  const neckAngleDeg = baseline
+    ? features.neckAngleDeg - baseline.neckAngleDeg
+    : features.neckAngleDeg
+  const shoulderTiltDeg = baseline
+    ? features.shoulderTiltDeg - baseline.shoulderTiltDeg
+    : features.shoulderTiltDeg
+
+  let torsoAngleDeg = features.torsoAngleDeg
+  if (
+    torsoAngleDeg !== null &&
+    baseline?.torsoAngleDeg !== null &&
+    baseline?.torsoAngleDeg !== undefined
+  ) {
+    torsoAngleDeg -= baseline.torsoAngleDeg
   }
 
-  const nose = landmarks[LM.NOSE]
-  const leftEar = landmarks[LM.LEFT_EAR]
-  const rightEar = landmarks[LM.RIGHT_EAR]
-  const leftShoulder = landmarks[LM.LEFT_SHOULDER]
-  const rightShoulder = landmarks[LM.RIGHT_SHOULDER]
-  const leftHip = landmarks[LM.LEFT_HIP]
-  const rightHip = landmarks[LM.RIGHT_HIP]
-
-  const shoulderMid = midOrVisible(leftShoulder, rightShoulder, thresholds.minVisibility)
-  const hipMid = midOrVisible(leftHip, rightHip, thresholds.minVisibility)
-  // หัว: ใช้หูถ้าเห็น (แม่นกว่าเวลานั่งหันข้าง) ไม่งั้น fallback ไปจมูก
-  const headPoint = midOrVisible(leftEar, rightEar, thresholds.minVisibility) ?? (isVisible(nose, thresholds.minVisibility) ? nose : undefined)
-
-  if (!shoulderMid || !hipMid || !headPoint) {
-    return { issue: 'no_person', neckAngleDeg: 0, torsoAngleDeg: 0, shoulderTiltDeg: 0 }
+  let headDrop: number | null = null
+  if (
+    baseline?.headHeightRatio !== null &&
+    baseline?.headHeightRatio !== undefined &&
+    baseline.headHeightRatio > 0 &&
+    features.headHeightRatio !== null
+  ) {
+    headDrop = 1 - features.headHeightRatio / baseline.headHeightRatio
   }
 
-  const neckAngleDeg = angleFromVertical(shoulderMid, headPoint)
-  const torsoAngleDeg = angleFromVertical(hipMid, shoulderMid)
-  const shoulderTiltDeg =
-    isVisible(leftShoulder, thresholds.minVisibility) && isVisible(rightShoulder, thresholds.minVisibility)
-      ? shoulderTilt(leftShoulder, rightShoulder)
-      : 0
-
-  let issue: PostureIssueType = 'good'
-  if (torsoAngleDeg >= thresholds.torsoAngleThresholdDeg) {
-    issue = 'slouching'
-  } else if (neckAngleDeg >= thresholds.neckAngleThresholdDeg) {
-    issue = 'forward_head'
-  } else if (shoulderTiltDeg >= thresholds.shoulderTiltThresholdDeg) {
-    issue = 'leaning'
+  if (
+    torsoAngleDeg !== null &&
+    torsoAngleDeg >= thresholds.torsoAngleThresholdDeg
+  ) {
+    return 'slouching'
   }
-
-  return { issue, neckAngleDeg, torsoAngleDeg, shoulderTiltDeg }
+  if (
+    neckAngleDeg >= thresholds.neckAngleThresholdDeg ||
+    (headDrop !== null && headDrop >= thresholds.headDropThreshold)
+  ) {
+    return 'forward_head'
+  }
+  if (shoulderTiltDeg >= thresholds.shoulderTiltThresholdDeg) {
+    return 'leaning'
+  }
+  return 'good'
 }
 
 export const POSTURE_LABELS_TH: Record<PostureIssueType, string> = {

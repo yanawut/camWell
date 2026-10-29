@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>body{margin:0;background:#f4f5f7;color:#1f2430;font:15px/1.5 system-ui,'Segoe UI',Roboto,'Noto Sans Thai',sans-serif}*{box-sizing:border-box}a{color:#2563eb}a:hover{color:#1d4ed8}</style>
+</helmet>
+<div style="max-width:1200px;margin:0 auto;padding:24px;display:flex;flex-direction:column;gap:20px">
+  <header>
+    <h1 style="margin:0 0 4px;font-size:26px">Camwell — ระบบตรวจจับท่านั่งและความเหนื่อยล้าของพนักงาน</h1>
+    <p style="margin:0;color:#6b7280">Phase 1 (MVP): ตรวจจับแบบ client-side ล้วน ด้วย MediaPipe Pose Landmarker + @vladmandic/face-api รันในเบราว์เซอร์</p>
+  </header>
+  <main style="display:grid;grid-template-columns:minmax(360px,640px) minmax(280px,380px);gap:20px;align-items:start">
+    <section>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px">
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="background:#fff;border:1px solid #e2e4e9;border-radius:12px;padding:18px 20px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><h2 style="margin:0;font-size:16px">แหล่งภาพกล้อง</h2></div>
+            <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:14px;font-size:13px"><label><input type="radio" name="kind" defaultChecked="{{ true }}"></input> กล้องในเครื่อง (USB หรือกล้องในตัวเครื่อง)</label></div>
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:4px 0 12px 22px">
+              <select style="flex:1;min-width:180px;padding:6px 8px;border:1px solid #e2e4e9;border-radius:6px;font-size:13px"><option>ค่าเริ่มต้นของเบราว์เซอร์</option><option>Integrated Camera</option></select>
+              <button type="button" style="align-self:flex-start;border:1px solid #e2e4e9;background:#fff;color:#1f2430;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px">รีเฟรชรายชื่อกล้อง</button>
+              <p style="flex-basis:100%;margin:0;color:#6b7280;font-size:13px">เบราว์เซอร์แยกไม่ออกว่ากล้องไหนเป็น USB หรือกล้องในตัวเครื่อง — ดูจากชื่ออุปกรณ์ในลิสต์แทน (เช่น "Integrated Camera" มักเป็นกล้องในตัวเครื่อง ส่วนชื่อรุ่น USB webcam จะเป็นกล้อง USB)</p>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:14px;font-size:13px"><label><input type="radio" name="kind"></input> กล้องเครือข่าย (IP Camera — สตรีม MJPEG ผ่าน HTTP)</label></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="position:relative;width:100%;aspect-ratio:4/3;background:#0b0d12;border-radius:12px;overflow:hidden;border:3px solid #dc2626">
+              <div style="position:absolute;left:12px;right:12px;top:12px;padding:8px 12px;border-radius:8px;background:#dc2626;color:#fff;font-size:13px;font-weight:600">⚠ คนที่ 1: ก้มคอ/ยื่นคอไปข้างหน้า</div>
+            </div>
+            <p style="font-weight:600">ตรวจพบในเฟรม: 1 คน (รองรับสูงสุด 1 คน) · Pose ใช้เวลา ~18 ms/ครั้ง</p>
+            <button type="button" style="align-self:flex-start;border:1px solid #e2e4e9;background:#fff;color:#1f2430;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px">Calibrate ท่านั่งดีใหม่</button>
+            <button type="button" style="align-self:flex-start;border:1px solid #e2e4e9;background:#fff;color:#1f2430;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px">Calibrate ระยะนั่ง (ของคนที่ใกล้กล้องที่สุด) เป็นค่ามาตรฐาน</button>
+            <div style="display:flex;gap:8px">
+              <input type="text" placeholder="ชื่อพนักงาน (ลงทะเบียนให้คนที่ใกล้กล้องที่สุด)" style="flex:1;padding:6px 8px;border:1px solid #e2e4e9;border-radius:6px;font-size:13px"></input>
+              <button type="button" disabled="{{ true }}" style="border:1px solid #e2e4e9;background:#fff;color:#1f2430;padding:6px 12px;border-radius:6px;font-size:13px;opacity:.5;cursor:not-allowed">ลงทะเบียนใบหน้า</button>
+            </div>
+            <label style="display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:4px;margin-bottom:14px;font-size:13px"><span>ยืนยันว่าได้ขอความยินยอมจากพนักงานคนนี้แล้ว ก่อนเก็บข้อมูลใบหน้า (PDPA)</span><input type="checkbox"></input></label>
+            <p style="color:#6b7280;font-size:12px">วิดีโอทั้งหมดประมวลผลในเบราว์เซอร์นี้เท่านั้น ไม่มีการส่งภาพ/วิดีโอออกจากเครื่อง</p>
+          </div>
+          <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:13px"><li style="border-bottom:1px solid #e2e4e9;padding-bottom:4px"><strong>คนที่ 1</strong> — ก้มคอ/ยื่นคอไปข้างหน้า</li></ul>
+        </div>
+      </div>
+      <button type="button" style="margin-top:20px;border:1px solid #e2e4e9;background:#fff;color:#1f2430;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px">+ เพิ่มกล้อง (สูงสุด 2 ตัวพร้อมกัน)</button>
+    </section>
+    <section style="display:flex;flex-direction:column;gap:20px">
+      <div style="background:#fff;border:1px solid #e2e4e9;border-radius:12px;padding:18px 20px">
+        <h2 style="margin:0 0 12px;font-size:16px">ตั้งค่าความไว</h2>
+        <label style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;font-size:13px"><span>เปิดเสียงแจ้งเตือน</span><input type="checkbox" defaultChecked="{{ true }}"></input></label>
+        <label style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;font-size:13px"><span>เปิดฟีเจอร์เกี่ยวกับใบหน้า (ความเหนื่อยล้า/ระยะห่างจอ/face recognition)</span><input type="checkbox" defaultChecked="{{ true }}"></input></label>
+        <h3 style="margin:16px 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:#6b7280">โหมดการตรวจจับ</h3>
+        <label style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;font-size:13px"><span>ใช้คนเดียว (Personal Workstation) — แนะนำ</span><input type="radio" name="mode" defaultChecked="{{ true }}"></input></label>
+        <label style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;font-size:13px"><span>กล้องเดียวหลายคน (Multi-person)</span><input type="radio" name="mode"></input></label>
+        <h3 style="margin:16px 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:#6b7280">ท่านั่ง</h3>
+        <sc-for list="{{ posture }}" as="s" hint-placeholder-count="5"><label style="display:flex;flex-direction:column;gap:4px;margin-bottom:14px;font-size:13px"><span>{{ s.label }}: <strong>{{ s.display }}</strong></span><input type="range" min="{{ s.min }}" max="{{ s.max }}" step="{{ s.step }}" defaultValue="{{ s.value }}" style="width:100%"></input></label></sc-for>
+        <h3 style="margin:16px 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:#6b7280">หกล้ม / ตกจากเก้าอี้</h3>
+        <p style="color:#6b7280;font-size:13px;margin:-6px 0 12px">ใช้ pose landmarks ที่มีอยู่แล้ว ไม่ต้องเปิดฟีเจอร์ใบหน้า — แจ้งเตือนทันทีที่ตรวจพบ ไม่ต้องรอสะสมเวลา</p>
+        <sc-for list="{{ fall }}" as="s" hint-placeholder-count="5"><label style="display:flex;flex-direction:column;gap:4px;margin-bottom:14px;font-size:13px"><span>{{ s.label }}: <strong>{{ s.display }}</strong></span><input type="range" min="{{ s.min }}" max="{{ s.max }}" step="{{ s.step }}" defaultValue="{{ s.value }}" style="width:100%"></input></label></sc-for>
+        <h3 style="margin:16px 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:#6b7280">ความเหนื่อยล้า</h3>
+        <sc-for list="{{ fatigue }}" as="s" hint-placeholder-count="2"><label style="display:flex;flex-direction:column;gap:4px;margin-bottom:14px;font-size:13px"><span>{{ s.label }}: <strong>{{ s.display }}</strong></span><input type="range" min="{{ s.min }}" max="{{ s.max }}" step="{{ s.step }}" defaultValue="{{ s.value }}" style="width:100%"></input></label></sc-for>
+        <h3 style="margin:16px 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:#6b7280">ระยะห่างจากจอ</h3>
+        <sc-for list="{{ distance }}" as="s" hint-placeholder-count="1"><label style="display:flex;flex-direction:column;gap:4px;margin-bottom:14px;font-size:13px"><span>{{ s.label }}: <strong>{{ s.display }}</strong></span><input type="range" min="{{ s.min }}" max="{{ s.max }}" step="{{ s.step }}" defaultValue="{{ s.value }}" style="width:100%"></input></label></sc-for>
+        <h3 style="margin:16px 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:#6b7280">เตือนพัก</h3>
+        <sc-for list="{{ brk }}" as="s" hint-placeholder-count="2"><label style="display:flex;flex-direction:column;gap:4px;margin-bottom:14px;font-size:13px"><span>{{ s.label }}: <strong>{{ s.display }}</strong></span><input type="range" min="{{ s.min }}" max="{{ s.max }}" step="{{ s.step }}" defaultValue="{{ s.value }}" style="width:100%"></input></label></sc-for>
+      </div>
+      <div style="background:#fff;border:1px solid #e2e4e9;border-radius:12px;padding:18px 20px">
+        <h2 style="margin:0 0 12px;font-size:16px">พนักงานที่ลงทะเบียนใบหน้าไว้ (2)</h2>
+        <p style="color:#6b7280;font-size:13px;margin:-6px 0 12px">ลงทะเบียนได้จากช่องใต้ภาพกล้อง (ต้องเห็นหน้าชัดเจนก่อน) ข้อมูลเก็บไว้ที่ camwell-backend (ฐานข้อมูล SQLite กลาง) ทำให้คนที่ลงทะเบียนแล้วถูกจำได้ทุกเครื่อง/ทุกกล้องในออฟฟิศนี้ — <strong>ต้องขอความยินยอมจากพนักงานก่อนลงทะเบียนจริงเสมอ</strong> (มีช่องให้ติ๊กยืนยันก่อนลงทะเบียน ดูรายละเอียดเรื่อง PDPA ใน camwell-backend/README.md)</p>
+        <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:13px">
+          <li style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e2e4e9;padding-bottom:6px"><span>สมชาย ใจดี</span><button type="button" style="border:none;background:none;color:#dc2626;cursor:pointer;font-size:13px;padding:0">ลบ</button></li>
+          <li style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e2e4e9;padding-bottom:6px"><span>มาลี วงศ์สุข</span><button type="button" style="border:none;background:none;color:#dc2626;cursor:pointer;font-size:13px;padding:0">ลบ</button></li>
+        </ul>
+      </div>
+      <div style="background:#fff;border:1px solid #e2e4e9;border-radius:12px;padding:18px 20px">
+        <h2 style="margin:0 0 12px;font-size:16px">ประวัติการแจ้งเตือนวันนี้ (3)</h2>
+        <p style="color:#6b7280;font-size:13px;margin:-6px 0 12px">รายการนี้เก็บอยู่ในหน่วยความจำของเบราว์เซอร์เท่านั้น (Phase 1) — ใน Phase 2 จะถูกส่งไปเก็บที่ backend เพื่อรวมเป็น dashboard ของ HR/หัวหน้างาน</p>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead><tr><th style="text-align:left;padding:6px 4px;border-bottom:1px solid #e2e4e9">เวลา</th><th style="text-align:left;padding:6px 4px;border-bottom:1px solid #e2e4e9">หมวด</th><th style="text-align:left;padding:6px 4px;border-bottom:1px solid #e2e4e9">ประเภท</th><th style="text-align:left;padding:6px 4px;border-bottom:1px solid #e2e4e9">ระยะเวลา</th><th style="text-align:left;padding:6px 4px;border-bottom:1px solid #e2e4e9">ค่าที่วัดได้</th></tr></thead>
+          <tbody>
+            <tr><td style="padding:6px 4px;border-bottom:1px solid #e2e4e9;color:#dc2626;font-weight:600">14:22:08</td><td style="padding:6px 4px;border-bottom:1px solid #e2e4e9;color:#dc2626;font-weight:600">ท่านั่ง</td><td style="padding:6px 4px;border-bottom:1px solid #e2e4e9;color:#dc2626;font-weight:600">ก้มคอ/ยื่นคอไปข้างหน้า (คนที่ 1)</td><td style="padding:6px 4px;border-bottom:1px solid #e2e4e9;color:#dc2626;font-weight:600">กำลังดำเนินอยู่...</td><td style="padding:6px 4px;border-bottom:1px solid #e2e4e9;font-family:ui-monospace,Consolas,monospace;font-size:11px;color:#dc2626;font-weight:600">neckAngleDeg: 31.40</td></tr>
+            <tr><td style="padding:6px 4px;border-bottom:1px solid #e2e4e9">14:05:51</td><td style="padding:6px 4px;border-bottom:1px solid #e2e4e9">ความเหนื่อยล้า</td><td style="padding:6px 4px;border-bottom:1px solid #e2e4e9">หาวถี่ผิดปกติ (สมชาย ใจดี)</td><td style="padding:6px 4px;border-bottom:1px solid #e2e4e9">12 วิ</td><td style="padding:6px 4px;border-bottom:1px solid #e2e4e9;font-family:ui-monospace,Consolas,monospace;font-size:11px;color:#6b7280">eyeClosedScore: 0.21, mouthAspectRatio: 0.71, yawnCount: 3.00</td></tr>
+            <tr><td style="padding:6px 4px;border-bottom:1px solid #e2e4e9">13:48:02</td><td style="padding:6px 4px;border-bottom:1px solid #e2e4e9">ระยะห่างจากจอ</td><td style="padding:6px 4px;border-bottom:1px solid #e2e4e9">นั่งใกล้จอเกินไป (สมชาย ใจดี)</td><td style="padding:6px 4px;border-bottom:1px solid #e2e4e9">1 นาที 4 วิ</td><td style="padding:6px 4px;border-bottom:1px solid #e2e4e9;font-family:ui-monospace,Consolas,monospace;font-size:11px;color:#6b7280">relativeSize: 1.48</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="background:#fff;border:1px solid #e2e4e9;border-radius:12px;padding:18px 20px">
+        <h2 style="margin:0 0 12px;font-size:16px">Dataset Recorder (สำหรับนักพัฒนา)</h2>
+        <p style="color:#6b7280;font-size:13px;margin:-6px 0 12px">บันทึกเฉพาะตัวเลข landmark/feature ไม่บันทึกภาพหรือวิดีโอ · ต้องมีคนเดียวในเฟรม</p>
+        <label style="display:flex;flex-direction:column;gap:4px;margin-bottom:14px;font-size:13px"><span>Label ท่าที่กำลังจะบันทึก</span><select><option>GOOD</option><option>FORWARD_HEAD</option><option>SLOUCH</option><option>LEAN_LEFT</option><option>LEAN_RIGHT</option></select></label>
+        <button type="button" style="border:1px solid #e2e4e9;background:#fff;color:#1f2430;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px">● เริ่มบันทึก</button>
+        <p>จำนวนตัวอย่างที่เก็บแล้ว: 0</p>
+        <button type="button" disabled="{{ true }}" style="border:1px solid #e2e4e9;background:#fff;color:#1f2430;padding:6px 12px;border-radius:6px;font-size:13px;opacity:.5;cursor:not-allowed">Export เป็น JSON</button>
+        <button type="button" disabled="{{ true }}" style="border:1px solid #e2e4e9;background:#fff;color:#1f2430;padding:6px 12px;border-radius:6px;font-size:13px;opacity:.5;cursor:not-allowed">ล้างข้อมูลทั้งหมด</button>
+      </div>
+    </section>
+  </main>
+  <footer style="color:#6b7280;font-size:12px;border-top:1px solid #e2e4e9;padding-top:12px;display:flex;flex-direction:column;gap:6px">
+    <p style="margin:0">ระบบจดจำใบหน้า/ระบุตัวตนพนักงาน เชื่อมกับ backend (camwell-backend) + ฐานข้อมูล SQLite แล้ว ทำให้พนักงานคนเดียวกันถูกจำได้ทุกเครื่อง/ทุกกล้องในออฟฟิศ — ส่วนการตรวจจับท่านั่ง/ความเหนื่อยล้า/ระยะห่างจอ/หกล้ม ยังเป็น local AI ในเบราว์เซอร์ล้วนเหมือนเดิม ขั้นต่อไป: ส่ง log เหตุการณ์แจ้งเตือนไปที่ backend ด้วย เพื่อทำ dashboard ของ HR/หัวหน้างาน และแจ้งเตือนผ่าน LINE Messaging API — ดู <code>src/services/alertReporter.ts</code> สำหรับสัญญาที่เตรียมไว้ให้เชื่อมต่อ</p>
+    <p style="margin:0;color:#f97316">⚠️ ฟีเจอร์ face recognition เก็บข้อมูลชีวภาพ (biometric) ไว้ที่ backend/ฐานข้อมูลของระบบนี้เท่านั้น (ดู camwell-backend/README.md) การใช้งานจริงกับพนักงานต้องขอความยินยอมตาม พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล (PDPA) ก่อนเสมอ — โปรดปรึกษาฝ่ายกฎหมาย/HR ก่อนนำไปใช้งานจริง</p>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const s = (label, unit, min, max, step, value) => ({ label, min, max, step, value, display: `${value}${unit}` });
+    return {
+      posture: [s('มุมคอที่ยอมรับได้ (forward head)', '°', 10, 45, 1, 25), s('มุมลำตัวที่ยอมรับได้ (หลังค่อม)', '°', 5, 35, 1, 15), s('มุมเอียงไหล่ที่ยอมรับได้', '°', 5, 30, 1, 10), s('หัวต่ำลงจากท่าที่ Calibrate ได้ไม่เกิน', '%', 5, 40, 1, 15), s('นั่งท่าไม่ดีต่อเนื่องนานเท่าไหร่ก่อนแจ้งเตือน', 's', 2, 30, 1, 8)],
+      fall: [s('สัดส่วนร่วงตัวต่อหน้าต่างเวลาที่ถือว่าเร็วผิดปกติ', '', 0.1, 0.4, 0.01, 0.2), s('หน้าต่างเวลาที่ใช้ดูว่าร่วงตัวเร็วแค่ไหน', ' ms', 300, 1500, 100, 700), s('มุมลำตัวที่ถือว่าล้มราบ/ใกล้แนวนอน', '°', 30, 80, 1, 55), s('ห้ามแจ้งเตือนซ้ำสำหรับคนเดิมถี่กว่านี้ (cooldown)', 's', 5, 60, 5, 15), s('ทนรอหลังหายไปจากเฟรม ก่อนสรุปว่าตกจากเก้าอี้จนหลุดมุมกล้อง', 's', 1, 10, 0.5, 2.5)],
+      fatigue: [s('ตาหลับนานเท่าไหร่ถึงเตือนว่าง่วง', 's', 1, 10, 0.5, 2), s('หาวกี่ครั้งถือว่าถี่ผิดปกติ', ' ครั้ง', 2, 8, 1, 3)],
+      distance: [s('นั่งใกล้กว่าค่ามาตรฐานกี่เท่าถึงเตือน', 'x', 1.1, 2, 0.05, 1.35)],
+      brk: [s('นั่งต่อเนื่องกี่นาทีถึงเตือนให้พัก', ' นาที', 15, 90, 5, 45), s('ลุกไปนานกี่นาทีถึงถือว่าพักแล้ว', ' นาที', 1, 10, 1, 3)],
+    };
+  }
+}
+</script>
+</body>
+</html>
