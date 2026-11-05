@@ -794,8 +794,9 @@ export default function CameraStage({
       }
       for (const item of engineResult.fallEvents) {
         const fallEvent = addPersonName(item.trackId, item.event)
-        p.onAlertStart(tagByTrack(item.trackId, fallEvent))
-        p.onFallDetected(fallEvent)
+        const taggedFallEvent = tagByTrack(item.trackId, fallEvent)
+        p.onAlertStart(taggedFallEvent)
+        p.onFallDetected(taggedFallEvent)
         if (p.soundEnabled) playFallAlarm()
       }
 

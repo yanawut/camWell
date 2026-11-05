@@ -90,23 +90,14 @@ export default function SettingsPanel({
   const breakResetSlider = getBreakResetSliderModel(breakThresholds.breakResetMs)
 
   return (
+    <>
     <div className="panel settings-panel">
-      <h2>ตั้งค่าความไว</h2>
+      <h2>การตั้งค่าการตรวจจับ</h2>
 
       <label className="settings-row settings-checkbox">
         <span>เปิดเสียงแจ้งเตือน</span>
         <input type="checkbox" checked={soundEnabled} onChange={(e) => onSoundEnabledChange(e.target.checked)} />
       </label>
-      <label className="settings-row settings-checkbox">
-        <span>เปิดฟีเจอร์เกี่ยวกับใบหน้า (ความเหนื่อยล้า/ระยะห่างจอ/face recognition)</span>
-        <input type="checkbox" checked={faceFeaturesEnabled} onChange={(e) => onFaceFeaturesEnabledChange(e.target.checked)} />
-      </label>
-      {faceFeaturesEnabled && (
-        <label className="settings-row settings-checkbox">
-          <span>ลงทะเบียนใบหน้าที่ไม่รู้จักอัตโนมัติ (ตั้งชื่อเป็น "คนที่ N" เปลี่ยนชื่อทีหลังได้)</span>
-          <input type="checkbox" checked={autoEnrollEnabled} onChange={(e) => onAutoEnrollEnabledChange(e.target.checked)} />
-        </label>
-      )}
 
       <h3>โหมดการตรวจจับ</h3>
       <label className="settings-row settings-checkbox">
@@ -223,6 +214,39 @@ export default function SettingsPanel({
         onChange={(v) => setFall('disappearGraceMs', v * 1000)}
       />
 
+      <h3>เตือนพัก</h3>
+      <Slider
+        label="นั่งต่อเนื่องกี่นาทีถึงเตือนให้พัก"
+        unit=" นาที"
+        min={15}
+        max={90}
+        step={5}
+        value={breakThresholds.continuousSittingMs / 60000}
+        onChange={(v) => setBreak('continuousSittingMs', v * 60000)}
+      />
+      <Slider
+        label="ลุกไปนานกี่นาทีถึงถือว่าพักแล้ว"
+        unit=" นาที"
+        min={breakResetSlider.min}
+        max={breakResetSlider.max}
+        step={breakResetSlider.step}
+        value={breakResetSlider.value}
+        onChange={(v) => setBreak('breakResetMs', breakResetMinutesToMs(v))}
+      />
+    </div>
+
+    <div className="panel settings-panel face-settings-panel">
+      <h2>ฟีเจอร์วิเคราะห์ใบหน้าและความเป็นส่วนตัว</h2>
+      <label className="settings-row settings-checkbox">
+        <span>เปิดใช้ความเหนื่อยล้า, ระยะห่างจากจอ และการระบุตัวตน</span>
+        <input type="checkbox" checked={faceFeaturesEnabled} onChange={(e) => onFaceFeaturesEnabledChange(e.target.checked)} />
+      </label>
+      {faceFeaturesEnabled && (
+        <label className="settings-row settings-checkbox">
+          <span>ลงทะเบียนใบหน้าที่ไม่รู้จักอัตโนมัติ (ตั้งชื่อเป็น "คนที่ N" เปลี่ยนชื่อทีหลังได้)</span>
+          <input type="checkbox" checked={autoEnrollEnabled} onChange={(e) => onAutoEnrollEnabledChange(e.target.checked)} />
+        </label>
+      )}
       {faceFeaturesEnabled && (
         <>
           <h3>ความเหนื่อยล้า</h3>
@@ -257,26 +281,7 @@ export default function SettingsPanel({
           />
         </>
       )}
-
-      <h3>เตือนพัก</h3>
-      <Slider
-        label="นั่งต่อเนื่องกี่นาทีถึงเตือนให้พัก"
-        unit=" นาที"
-        min={15}
-        max={90}
-        step={5}
-        value={breakThresholds.continuousSittingMs / 60000}
-        onChange={(v) => setBreak('continuousSittingMs', v * 60000)}
-      />
-      <Slider
-        label="ลุกไปนานกี่นาทีถึงถือว่าพักแล้ว"
-        unit=" นาที"
-        min={breakResetSlider.min}
-        max={breakResetSlider.max}
-        step={breakResetSlider.step}
-        value={breakResetSlider.value}
-        onChange={(v) => setBreak('breakResetMs', breakResetMinutesToMs(v))}
-      />
     </div>
+    </>
   )
 }

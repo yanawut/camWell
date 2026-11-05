@@ -6,6 +6,7 @@ import { listAlertRecords, type AlertRecord } from '../services/alertHistory'
 import '../App.css'
 import './PeoplePage.css'
 import './AlertsPage.css'
+import AppNavigation from '../components/AppNavigation'
 
 // ตารางผลการแจ้งเตือนที่เก็บใน DB (camwell-backend ตาราง alert_events) — เปิดผ่าน /?alerts
 // กรองรายคนได้ (/?alerts&employee=<id> — หน้ารายชื่อลิงก์มาแบบนี้) และหมวด ไม่โหลดกล้อง/โมเดล AI
@@ -135,20 +136,22 @@ export default function AlertsPage() {
         : (people.find((p) => p.id === personFilter)?.name ?? 'บุคคลที่ถูกลบไปแล้ว')
 
   return (
-    <div className="app-shell people-page">
-      <header className="app-header people-header">
+    <>
+      <AppNavigation active="alerts" />
+      <div className="app-shell people-page">
+      <header className="page-heading people-header">
         <div>
-          <h1>ผลการแจ้งเตือนในฐานข้อมูล{selectedPersonName ? ` — ${selectedPersonName}` : ''}</h1>
-          <p>ทุกเหตุการณ์ที่ระบบแจ้งเตือน บันทึกใน camwell-backend พร้อมบุคคลที่ระบุตัวตนได้ (รวมทุกกล้อง/ทุกเครื่อง)</p>
+          <h1>ประวัติการแจ้งเตือน{selectedPersonName ? ` — ${selectedPersonName}` : ''}</h1>
+          <p>ตรวจสอบเหตุการณ์ย้อนหลัง กรองตามประเภทความรุนแรงและบุคคล</p>
         </div>
-        <nav className="alerts-nav">
-          <a className="secondary-button people-back" href="?people">
-            รายชื่อบุคคล
-          </a>
-          <a className="secondary-button people-back" href="./">
-            ← กลับ Dashboard
-          </a>
-        </nav>
+        <div className="page-heading-actions">
+          <button type="button" className="secondary-button" onClick={() => downloadCsv(filtered)} disabled={filtered.length === 0}>
+            ส่งออกข้อมูล (CSV)
+          </button>
+          <button type="button" className="primary-button" onClick={handleRefresh} disabled={status === 'loading'}>
+            {status === 'loading' ? 'กำลังโหลด...' : 'อัปเดตข้อมูล'}
+          </button>
+        </div>
       </header>
 
       <div className="people-stats">
@@ -199,12 +202,6 @@ export default function AlertsPage() {
             ))}
           </select>
           <span className="alerts-spacer" />
-          <button type="button" className="secondary-button" onClick={() => downloadCsv(filtered)} disabled={filtered.length === 0}>
-            ส่งออก CSV
-          </button>
-          <button type="button" className="secondary-button" onClick={handleRefresh} disabled={status === 'loading'}>
-            {status === 'loading' ? 'กำลังโหลด...' : 'รีเฟรช'}
-          </button>
         </div>
 
         {error && <p className="panel-note panel-warning">{error}</p>}
@@ -256,6 +253,7 @@ export default function AlertsPage() {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </>
   )
 }
