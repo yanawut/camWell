@@ -24,6 +24,9 @@ import type { DetectionMode } from './lib/multiPerson'
 import { DEFAULT_FACE_FEATURES_ENABLED, getCameraPeopleVisibility } from './lib/featureVisibility'
 import DevConsole, { type CameraStageExtras } from './console/DevConsole'
 import OfficeDashboard from './dashboard/OfficeDashboard'
+import AppNavigation from './components/AppNavigation'
+import AlertsPage from './pages/AlertsPage'
+import PeoplePage from './pages/PeoplePage'
 import { backendAlertReporter } from './services/alertReporter'
 import { listEnrolledPeople, removePerson, renamePerson } from './services/faceEnrollment'
 import './App.css'
@@ -41,9 +44,18 @@ const AUTO_ENROLL_STORAGE_KEY = 'camwell:auto-enroll:v1'
 interface FallAlertItem {
   id: string
   message: string
+  cameraId?: string
+  cameraLabel?: string
 }
 
 export default function App() {
+  const page = new URLSearchParams(window.location.search)
+  if (page.has('alerts')) return <AlertsPage />
+  if (page.has('people')) return <PeoplePage />
+  return <CameraApp />
+}
+
+function CameraApp() {
   const [postureThresholds, setPostureThresholds] = useState<PostureThresholds>(DEFAULT_THRESHOLDS)
   const [fatigueThresholds, setFatigueThresholds] = useState<FatigueThresholds>(DEFAULT_FATIGUE_THRESHOLDS)
   const [distanceThresholds, setDistanceThresholds] = useState<DistanceThresholds>(DEFAULT_DISTANCE_THRESHOLDS)
@@ -172,7 +184,10 @@ export default function App() {
       event.type === 'fall_suspected_left_frame'
         ? `สงสัยว่า ${personLabel} หกล้ม/ตกจากเก้าอี้ แล้วหายไปจากมุมกล้องกะทันหัน — กรุณาตรวจสอบด่วน!`
         : `ตรวจพบว่า ${personLabel} อาจหกล้มหรือตกจากเก้าอี้ — กรุณาตรวจสอบด่วน!`
-    setFallAlerts((prev) => [...prev, { id: event.id, message }])
+    setFallAlerts((prev) => [
+      ...prev,
+      { id: event.id, message, cameraId: event.cameraId, cameraLabel: event.cameraLabel },
+    ])
   }, [])
 
   const handleAcknowledgeFall = useCallback((id: string) => {
@@ -240,15 +255,6 @@ export default function App() {
     )
     return (
       <>
-        {/* แจ้งเตือนหกล้มต้องเห็นเสมอ แม้อยู่หน้า Dashboard */}
-        {fallAlerts.map((alert) => (
-          <div key={alert.id} className="fall-alert-banner">
-            <span>🚨 {alert.message}</span>
-            <button type="button" onClick={() => handleAcknowledgeFall(alert.id)}>
-              รับทราบ
-            </button>
-          </div>
-        ))}
         <OfficeDashboard
           cameraSlots={cameraSlots}
           peopleBySlot={peopleBySlot}
@@ -256,6 +262,10 @@ export default function App() {
           detectionMode={detectionMode}
           onDetectionModeChange={setDetectionMode}
           alertEventCount={events.length}
+          fallAlerts={fallAlerts}
+          onAcknowledgeFall={handleAcknowledgeFall}
+          breakMessage={breakMessage}
+          onDismissBreak={() => setBreakMessage(null)}
         />
       </>
     )
@@ -332,21 +342,17 @@ export default function App() {
   }
 
   return (
-    <div className="app-shell">
-      <header className="app-header">
-        <h1>Camwell — ระบบตรวจจับท่านั่งและความเหนื่อยล้าของพนักงาน</h1>
-        <p>Phase 1 (MVP): ตรวจจับแบบ client-side ล้วน ด้วย MediaPipe Pose Landmarker + @vladmandic/face-api รันในเบราว์เซอร์</p>
-        <nav className="app-header-links">
-          <a className="app-header-link" href="?people">
-            รายชื่อบุคคลที่บันทึกในระบบ ({enrolledPeople.length}) →
-          </a>
-          <a className="app-header-link" href="?alerts">
-            ผลการแจ้งเตือนในฐานข้อมูล →
-          </a>
-          <a className="app-header-link" href="./">
-            Dashboard ห้องทำงาน →
-          </a>
-        </nav>
+    <>
+      <div className="camera-status-bar" aria-label="สถานะการตรวจจับ">
+        <span className="camera-status-active"><span aria-hidden="true">●</span> ประมวลผลวิดีโอในเบราว์เซอร์</span>
+        <span>กล้องที่ตั้งค่า {cameraSlots.length}/{MAX_CAMERA_SLOTS} ตัว</span>
+        <span className="camera-status-privacy">วิดีโอไม่ถูกส่งออกจากอุปกรณ์</span>
+      </div>
+      <AppNavigation active="camera" />
+      <div className="app-shell">
+      <header className="page-heading">
+        <h1>ตั้งค่ากล้องและการตรวจสอบ</h1>
+        <p>จัดการแหล่งภาพ ปรับแต่งการตรวจจับ และลงทะเบียนบุคคล</p>
       </header>
 
       {fallAlerts.map((alert) => (
@@ -378,7 +384,7 @@ export default function App() {
                   <CameraSourceSelector
                     value={slot.source}
                     onChange={(source) => handleCameraSlotSourceChange(slot.id, source)}
-                    title={multiCameraMode ? slot.label : 'แหล่งภาพกล้อง'}
+                    title={slot.label}
                     headerExtra={
                       cameraSlots.length > 1 ? (
                         <button type="button" className="link-button" onClick={() => handleRemoveCameraSlot(slot.id)}>
@@ -427,12 +433,15 @@ export default function App() {
                 </div>
               )
             })}
+            {cameraSlots.length < MAX_CAMERA_SLOTS && (
+              <button type="button" className="camera-add-slot" onClick={handleAddCameraSlot}>
+                <span className="camera-add-slot-icon" aria-hidden="true">+</span>
+                <strong>ยังไม่ได้ตั้งค่ากล้องตัวที่ {cameraSlots.length + 1}</strong>
+                <span>รองรับสูงสุด {MAX_CAMERA_SLOTS} กล้อง</span>
+                <span className="camera-add-slot-action">เพิ่มกล้อง</span>
+              </button>
+            )}
           </div>
-          {cameraSlots.length < MAX_CAMERA_SLOTS && (
-            <button type="button" className="secondary-button" onClick={handleAddCameraSlot}>
-              + เพิ่มกล้อง (สูงสุด {MAX_CAMERA_SLOTS} ตัวพร้อมกัน)
-            </button>
-          )}
         </section>
 
         <section className="side-column">
@@ -479,6 +488,7 @@ export default function App() {
           (PDPA) ก่อนเสมอ — โปรดปรึกษาฝ่ายกฎหมาย/HR ก่อนนำไปใช้งานจริง
         </p>
       </footer>
-    </div>
+      </div>
+    </>
   )
 }

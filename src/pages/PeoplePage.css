@@ -110,3 +110,83 @@
   font-size: 11px;
   font-weight: 500;
 }
+
+.people-header {
+  align-items: flex-end;
+}
+
+.people-page .people-stat,
+.people-page .event-log {
+  border: 2px solid #1f2937;
+  border-radius: 16px;
+}
+
+.people-page .event-log {
+  overflow: hidden;
+}
+
+.directory-page .people-stat:nth-child(2) {
+  border-left: 5px solid #10b981;
+}
+
+.directory-page .people-stat:nth-child(3) {
+  border-left: 5px solid #f59e0b;
+}
+
+.people-page .people-toolbar {
+  margin: 0;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.people-page .people-toolbar input {
+  min-height: 48px;
+  border-radius: 10px;
+  padding: 8px 14px;
+  background: #f8fafc;
+}
+
+.people-page .event-log > .panel-note,
+.people-page .event-log > .empty-state {
+  margin: 0;
+  padding: 12px 16px;
+}
+
+.people-page .people-table-wrap th {
+  background: #f9fafc;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.people-page .people-table-wrap th,
+.people-page .people-table-wrap td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #edf0f4;
+}
+
+.people-page .people-table-wrap thead th {
+  border-bottom: 2px solid #1f2937;
+}
+
+.people-page .people-table-wrap tbody tr:hover {
+  background: #fbfcfe;
+}
+
+.people-stats {
+  gap: 16px;
+}
+
+.people-table-wrap td {
+  white-space: normal;
+}
+
+@media (max-width: 760px) {
+  .people-header {
+    align-items: flex-start;
+  }
+
+  .people-table-wrap td {
+    white-space: nowrap;
+  }
+}

@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { EnrolledPerson } from '../types/identity'
 import { listEnrolledPeople, removePerson, renamePerson } from '../services/faceEnrollment'
-import { API_BASE_URL } from '../services/apiConfig'
 import { getAlertSummary, type AlertSummary } from '../services/alertHistory'
 import { ALERT_CATEGORY_LABELS_TH, type AlertCategory } from '../types/alerts'
 import '../App.css'
 import './PeoplePage.css'
+import AppNavigation from '../components/AppNavigation'
 
 // หน้ารายชื่อบุคคลที่ลงทะเบียนใบหน้าไว้ใน DB (camwell-backend) — เปิดผ่าน /?people แยกจากหน้ากล้อง
 // ไม่โหลดโมเดล AI/กล้องเลย จึงเปิดดู/จัดการรายชื่อจากเครื่องไหนก็ได้ที่ต่อ backend ตัวเดียวกัน
@@ -89,15 +89,20 @@ export default function PeoplePage() {
   const withConsent = people.filter((p) => p.consentGivenAt !== null).length
 
   return (
-    <div className="app-shell people-page">
-      <header className="app-header people-header">
+    <>
+      <AppNavigation active="people" />
+      <div className="app-shell people-page directory-page">
+      <header className="page-heading people-header">
         <div>
-          <h1>รายชื่อบุคคลที่บันทึกในระบบ</h1>
-          <p>ข้อมูลจาก camwell-backend ({API_BASE_URL}) — รวมทุกกล้อง/ทุกเครื่องที่ต่อ backend ตัวนี้</p>
+          <h1>ฐานข้อมูลรายชื่อบุคคล</h1>
+          <p>จัดการการลงทะเบียนใบหน้าและความยินยอมในการตรวจสอบ</p>
         </div>
-        <a className="secondary-button people-back" href="./">
-            ← กลับ Dashboard
-        </a>
+        <div className="page-heading-actions">
+          <button type="button" className="secondary-button" onClick={handleRefresh} disabled={status === 'loading'}>
+            {status === 'loading' ? 'กำลังโหลด...' : 'อัปเดตรายชื่อ'}
+          </button>
+          <a className="primary-button people-register-link" href="?camera">ลงทะเบียนใหม่</a>
+        </div>
       </header>
 
       <div className="people-stats">
@@ -125,9 +130,6 @@ export default function PeoplePage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
-          <button type="button" className="secondary-button" onClick={handleRefresh} disabled={status === 'loading'}>
-            {status === 'loading' ? 'กำลังโหลด...' : 'รีเฟรช'}
-          </button>
         </div>
 
         {error && <p className="panel-note panel-warning">{error}</p>}
@@ -191,6 +193,7 @@ export default function PeoplePage() {
         ⚠️ Face descriptor เป็นข้อมูลชีวภาพตาม PDPA — หน้านี้ไม่แสดง descriptor ดิบ (อยู่บน backend ที่เดียว) การลบจะลบ
         ข้อมูลใบหน้าของคนนั้นทั้งหมดถาวร
       </p>
-    </div>
+      </div>
+    </>
   )
 }

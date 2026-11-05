@@ -55,6 +55,20 @@
 }
 .dc-brand .dc-row { gap: 8px; }
 .dc-brand-name { font-size: 17px; letter-spacing: -0.01em; }
+.dc-brand-lockup { display: flex; align-items: center; gap: 12px; }
+.dc-brand-mark {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 10px;
+  background: #2563eb;
+  color: #fff;
+  font-size: 22px;
+  font-weight: 800;
+}
+.dc-brand-copy { display: flex; flex-direction: column; gap: 2px; }
+.dc-brand-copy > span { color: #60a5fa; font-size: 10px; font-weight: 700; letter-spacing: .08em; }
 .dc-nav { padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; }
 .dc-nav-item {
   display: flex;
@@ -107,6 +121,18 @@
   font-size: 12px;
   color: var(--text-muted);
 }
+.dc-back-link {
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  margin-top: 8px;
+  border: 1px solid #34435b;
+  border-radius: 8px;
+  padding: 0 10px;
+  color: #d6deea;
+  text-decoration: none;
+}
+.dc-back-link:hover { background: #1d293e; color: #fff; }
 .dc-kv { display: flex; flex-direction: column; gap: 1px; }
 .dc-kv .dc-mono { overflow-wrap: anywhere; }
 
@@ -493,4 +519,41 @@
   .dc-services { margin-top: 0; }
   .dc-header { position: static; padding: 12px 16px; }
   .dc-main { padding: 16px 16px 32px; }
+}
+
+/* Keep the technical workspace distinct from the everyday monitoring screens. */
+.dc-aside {
+  background: #10182b;
+  border-right-color: #27334a;
+  color: #edf2fb;
+}
+
+.dc-brand,
+.dc-services,
+.dc-aside-footer {
+  border-color: #27334a;
+}
+
+.dc-brand-name,
+.dc-aside .dc-w500,
+.dc-kv .dc-mono {
+  color: #edf2fb;
+}
+
+.dc-aside .dc-muted-12,
+.dc-aside .dc-section-label,
+.dc-service-detail,
+.dc-aside-footer,
+.dc-kv {
+  color: #91a0b8;
+}
+
+.dc-nav-item {
+  color: #aab7cc;
+}
+
+.dc-nav-item:hover,
+.dc-nav-item.active {
+  background: #202c42;
+  color: #6fa3ff;
 }

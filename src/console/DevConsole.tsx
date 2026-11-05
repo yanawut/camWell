@@ -74,10 +74,10 @@ export interface RecorderState {
 type Tab = 'monitor' | 'thresholds' | 'events' | 'people'
 
 const TABS: Record<Tab, [string, string]> = {
-  monitor: ['ภาพรวมระบบ', 'สถานะกล้อง โมเดล และ pipeline แบบเรียลไทม์'],
-  thresholds: ['เกณฑ์การตรวจจับ', 'ค่า threshold ที่ใช้กับทุกกล้อง'],
-  events: ['เหตุการณ์แจ้งเตือน', 'AlertEvent ทุกหมวดของวันนี้'],
-  people: ['ข้อมูลใบหน้า', 'รายชื่อที่ลงทะเบียนใน camwell-backend'],
+  monitor: ['Advanced Metrics: Node Status', 'สถานะกล้อง โมเดล และ pipeline แบบเรียลไทม์'],
+  thresholds: ['Global Threshold Controls', 'ค่า threshold ที่ใช้กับทุกกล้อง'],
+  events: ['Live Event Log', 'AlertEvent ทุกหมวดของวันนี้'],
+  people: ['People Directory', 'รายชื่อที่ลงทะเบียนใน camwell-backend'],
 }
 
 const STATUS_COLOR = { ok: 'var(--good)', warn: 'var(--warn)', error: 'var(--danger)', off: 'var(--text-muted)' }
@@ -171,10 +171,10 @@ export default function DevConsole(props: DevConsoleProps) {
   ]
 
   const nav: [Tab, string, string][] = [
-    ['monitor', 'ภาพรวมระบบ', recorder.recording ? '● REC' : `${cameraSlots.length} cam`],
-    ['thresholds', 'เกณฑ์การตรวจจับ', ''],
-    ['events', 'เหตุการณ์', String(events.length)],
-    ['people', 'ข้อมูลใบหน้า', String(enrolledPeople.length)],
+    ['monitor', 'Monitor', recorder.recording ? '● REC' : `${cameraSlots.length} cam`],
+    ['thresholds', 'Thresholds', ''],
+    ['events', 'Events', String(events.length)],
+    ['people', 'People', String(enrolledPeople.length)],
   ]
 
   const healthOk = health === 200
@@ -183,11 +183,13 @@ export default function DevConsole(props: DevConsoleProps) {
     <div className="dc-root">
       <aside className="dc-aside">
         <div className="dc-brand">
-          <div className="dc-row">
-            <strong className="dc-brand-name">Camwell</strong>
-            <span className="dc-badge">DEV</span>
+          <div className="dc-brand-lockup">
+            <span className="dc-brand-mark" aria-hidden="true">C</span>
+            <span className="dc-brand-copy">
+              <strong className="dc-brand-name">Camwell</strong>
+              <span>DEVELOPER CONSOLE</span>
+            </span>
           </div>
-          <span className="dc-muted-12">คอนโซลผู้ดูแลระบบ</span>
         </div>
         <nav className="dc-nav">
           {nav.map(([id, label, badge]) => (
@@ -226,6 +228,7 @@ export default function DevConsole(props: DevConsoleProps) {
             <span>API_BASE_URL</span>
             <span className="dc-mono dc-text">{API_BASE_URL}</span>
           </div>
+          <a href="./" className="dc-back-link">← Back to Dashboard</a>
         </div>
       </aside>
 
