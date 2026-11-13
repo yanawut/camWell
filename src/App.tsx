@@ -27,6 +27,7 @@ import OfficeDashboard from './dashboard/OfficeDashboard'
 import AppNavigation from './components/AppNavigation'
 import AlertsPage from './pages/AlertsPage'
 import PeoplePage from './pages/PeoplePage'
+import ReportsPage from './pages/ReportsPage'
 import { backendAlertReporter } from './services/alertReporter'
 import { listEnrolledPeople, removePerson, renamePerson } from './services/faceEnrollment'
 import './App.css'
@@ -52,6 +53,7 @@ export default function App() {
   const page = new URLSearchParams(window.location.search)
   if (page.has('alerts')) return <AlertsPage />
   if (page.has('people')) return <PeoplePage />
+  if (page.has('report')) return <ReportsPage />
   return <CameraApp />
 }
 
