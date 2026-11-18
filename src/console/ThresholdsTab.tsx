@@ -1,5 +1,6 @@
 import type { DevConsoleProps } from './DevConsole'
 import { formatNumber } from './format'
+import CameraAnglePresets from '../components/CameraAnglePresets'
 import { DEFAULT_THRESHOLDS } from '../types/posture'
 import { DEFAULT_BREAK_THRESHOLDS, DEFAULT_DISTANCE_THRESHOLDS, DEFAULT_FATIGUE_THRESHOLDS } from '../types/wellbeing'
 import { DEFAULT_FALL_THRESHOLDS } from '../types/fall'
@@ -178,6 +179,17 @@ export default function ThresholdsTab(props: DevConsoleProps) {
         <button type="button" className="dc-btn" onClick={resetAll}>
           คืนค่าเริ่มต้นทั้งหมด
         </button>
+      </div>
+      <div className="dc-card dc-pad" style={{ marginBottom: 14 }}>
+        <CameraAnglePresets
+          postureThresholds={posture}
+          onPostureChange={props.onPostureChange}
+          fallThresholds={fall}
+          onFallChange={props.onFallChange}
+          distanceThresholds={distance}
+          onDistanceChange={props.onDistanceChange}
+          className="is-console"
+        />
       </div>
       <div className="dc-threshold-grid">
         {groups.map((g) => {

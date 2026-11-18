@@ -974,3 +974,98 @@
   background: #ef4444;
   box-shadow: 0 10px 24px rgba(185, 28, 28, 0.18);
 }
+
+/* --- Camera Angle Recommendation Presets --- */
+.angle-presets-section {
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.angle-presets-section.is-console {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.angle-presets-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.angle-presets-head h3 {
+  margin: 0 0 6px;
+}
+
+.angle-preset-custom {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+}
+
+.angle-presets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.angle-preset-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(148, 163, 184, 0.06);
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.angle-preset-card.is-active {
+  border-color: var(--accent);
+  background: rgba(59, 130, 246, 0.06);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.angle-preset-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.angle-preset-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--accent);
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.angle-preset-sub {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.angle-preset-list {
+  margin: 2px 0 6px;
+  padding-left: 16px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-muted);
+  flex: 1;
+}
+
+.angle-preset-btn {
+  width: 100%;
+  min-height: 36px;
+  font-size: 13px;
+}

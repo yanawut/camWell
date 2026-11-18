@@ -3,6 +3,7 @@ import type { BreakThresholds, DistanceThresholds, FatigueThresholds } from '../
 import type { FallThresholds } from '../types/fall'
 import type { DetectionMode } from '../lib/multiPerson'
 import { breakResetMinutesToMs, getBreakResetSliderModel } from '../lib/breakReminderSettings'
+import CameraAnglePresets from './CameraAnglePresets'
 
 interface Props {
   postureThresholds: PostureThresholds
@@ -93,6 +94,15 @@ export default function SettingsPanel({
     <>
     <div className="panel settings-panel">
       <h2>การตั้งค่าการตรวจจับ</h2>
+
+      <CameraAnglePresets
+        postureThresholds={postureThresholds}
+        onPostureChange={onPostureChange}
+        fallThresholds={fallThresholds}
+        onFallChange={onFallChange}
+        distanceThresholds={distanceThresholds}
+        onDistanceChange={onDistanceChange}
+      />
 
       <label className="settings-row settings-checkbox">
         <span>เปิดเสียงแจ้งเตือน</span>
