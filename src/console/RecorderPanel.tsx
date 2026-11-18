@@ -67,8 +67,8 @@ export default function RecorderPanel({
   "shoulderTiltDeg": 1.92,
   "headHeightRatio": 0.71,
   "quality": "full_body",
-  "landmarks": [{ "x", "y", "z", "visibility" } × 33],
-  "worldLandmarks": [ … × 33 ],
+  "landmarks": [{ "x", "y", "z", "visibility" } × 33; YOLO maps COCO points and marks missing points invisible],
+  "worldLandmarks": [ … × 33 for MediaPipe; [] for YOLO ],
   "frameWidth": 640,
   "frameHeight": 480,
   "minVisibility": ${postureThresholds.minVisibility}

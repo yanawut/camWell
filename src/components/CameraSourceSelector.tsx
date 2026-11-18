@@ -1,6 +1,6 @@
-import { useState, type ReactNode } from 'react'
+import { useId, useState, type ReactNode } from 'react'
 import { useCameraDevices } from '../hooks/useCameraDevices'
-import type { CameraSource } from '../types/cameraSource'
+import { normalizeStreamUrl, type CameraSource } from '../types/cameraSource'
 
 interface Props {
   value: CameraSource
@@ -13,10 +13,11 @@ interface Props {
 
 export default function CameraSourceSelector({ value, onChange, title, headerExtra }: Props) {
   const { devices, loading, error, refresh } = useCameraDevices()
+  const sourceName = useId()
   // ช่องกรอก URL กล้อง IP แยกสถานะไว้ต่างหาก เพื่อให้พิมพ์ได้ลื่นๆ ก่อนกด "เชื่อมต่อ" จริง
   const [ipUrlDraft, setIpUrlDraft] = useState(value.ipUrl ?? '')
-
-  const isRtspUrl = /^rtsp:\/\//i.test(ipUrlDraft.trim())
+  const [rtspUrlDraft, setRtspUrlDraft] = useState(value.rtspUrl ?? '')
+  const normalizedRtspUrl = normalizeStreamUrl(rtspUrlDraft)
 
   return (
     <div className="camera-source-selector panel">
@@ -29,7 +30,7 @@ export default function CameraSourceSelector({ value, onChange, title, headerExt
         <label>
           <input
             type="radio"
-            name="camera-source-kind"
+            name={sourceName}
             checked={value.kind === 'local'}
             onChange={() => onChange({ kind: 'local', deviceId: value.deviceId })}
           />
@@ -69,7 +70,7 @@ export default function CameraSourceSelector({ value, onChange, title, headerExt
         <label>
           <input
             type="radio"
-            name="camera-source-kind"
+            name={sourceName}
             checked={value.kind === 'ip-mjpeg'}
             onChange={() => onChange({ kind: 'ip-mjpeg', ipUrl: value.ipUrl })}
           />
@@ -93,17 +94,44 @@ export default function CameraSourceSelector({ value, onChange, title, headerExt
           >
             เชื่อมต่อ
           </button>
-          {isRtspUrl && (
-            <p className="panel-note panel-warning">
-              ⚠️ ลิงก์ที่ใส่เป็น rtsp:// — เบราว์เซอร์เปิดสตรีม RTSP ตรงๆ ไม่ได้ (กล้อง IP/CCTV ส่วนใหญ่ เช่น
-              Hikvision, Dahua ใช้ RTSP เป็นค่าเริ่มต้น) ต้องมีเซิร์ฟเวอร์กลางแปลงสตรีม RTSP เป็น MJPEG หรือ HLS
-              ก่อน (งาน Phase 2 ที่ยังไม่รองรับในเวอร์ชันนี้) ลองหา URL แบบ MJPEG/HTTP ของกล้องรุ่นนี้แทน
-              (มักอยู่ในคู่มือกล้อง หรือหน้าตั้งค่าเว็บของกล้อง)
-            </p>
-          )}
           <p className="panel-note">
             ใช้ได้เฉพาะกล้องที่ส่งภาพแบบ MJPEG ผ่าน HTTP โดยตรง (เช่น ESP32-CAM, mjpg-streamer, กล้อง IP บางรุ่นที่มีโหมดนี้)
           </p>
+        </div>
+      )}
+
+      <div className="settings-row">
+        <label>
+          <input
+            type="radio"
+            name={sourceName}
+            checked={value.kind === 'rtsp'}
+            onChange={() => onChange({ kind: 'rtsp', rtspUrl: value.rtspUrl })}
+          />
+          {' '}กล้องเครือข่าย (RTSP / go2rtc ผ่าน vision service ในเครื่อง)
+        </label>
+      </div>
+
+      {value.kind === 'rtsp' && (
+        <div className="camera-source-ip">
+          <input
+            type="text"
+            autoComplete="off"
+            spellCheck={false}
+            aria-label="RTSP URL"
+            placeholder="rtsp://user:password@192.168.1.50:554/path หรือ http://go2rtc:1984/stream.html?src=cam"
+            value={rtspUrlDraft}
+            onChange={(e) => setRtspUrlDraft(e.target.value)}
+          />
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => normalizedRtspUrl && onChange({ kind: 'rtsp', rtspUrl: normalizedRtspUrl })}
+            disabled={!normalizedRtspUrl}
+          >
+            เชื่อมต่อ
+          </button>
+          <p className="panel-note">รองรับ RTSP กล้องโดยตรง, go2rtc `stream.html?src=...` และ go2rtc MJPEG URL · URL/รหัสผ่านจะถูกเก็บใน browser storage ของเครื่องนี้ โปรดเก็บ URL เป็นความลับและ encode อักขระพิเศษในชื่อผู้ใช้/รหัสผ่าน</p>
         </div>
       )}
     </div>

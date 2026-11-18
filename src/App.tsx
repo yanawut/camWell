@@ -29,6 +29,7 @@ import AlertsPage from './pages/AlertsPage'
 import PeoplePage from './pages/PeoplePage'
 import { backendAlertReporter } from './services/alertReporter'
 import { listEnrolledPeople, removePerson, renamePerson } from './services/faceEnrollment'
+import { usePersistentState } from './hooks/usePersistentState'
 import './App.css'
 
 // ponytail: เปิด Dev Console ได้ทุก build ผ่าน /?console — กำหนดสิทธิ์ใหม่เมื่อออกจากช่วง dev
@@ -56,15 +57,22 @@ export default function App() {
 }
 
 function CameraApp() {
-  const [postureThresholds, setPostureThresholds] = useState<PostureThresholds>(DEFAULT_THRESHOLDS)
-  const [fatigueThresholds, setFatigueThresholds] = useState<FatigueThresholds>(DEFAULT_FATIGUE_THRESHOLDS)
-  const [distanceThresholds, setDistanceThresholds] = useState<DistanceThresholds>(DEFAULT_DISTANCE_THRESHOLDS)
-  const [breakThresholds, setBreakThresholds] = useState<BreakThresholds>(DEFAULT_BREAK_THRESHOLDS)
-  const [fallThresholds, setFallThresholds] = useState<FallThresholds>(DEFAULT_FALL_THRESHOLDS)
-  const [soundEnabled, setSoundEnabled] = useState(true)
-  const [faceFeaturesEnabled, setFaceFeaturesEnabled] = useState(DEFAULT_FACE_FEATURES_ENABLED)
+  const [postureThresholds, setPostureThresholds] = usePersistentState('camwell:settings:posture:v1', DEFAULT_THRESHOLDS)
+  const [fatigueThresholds, setFatigueThresholds] = usePersistentState('camwell:settings:fatigue:v1', DEFAULT_FATIGUE_THRESHOLDS)
+  const [distanceThresholds, setDistanceThresholds] = usePersistentState('camwell:settings:distance:v1', DEFAULT_DISTANCE_THRESHOLDS)
+  const [breakThresholds, setBreakThresholds] = usePersistentState('camwell:settings:break:v1', DEFAULT_BREAK_THRESHOLDS)
+  const [fallThresholds, setFallThresholds] = usePersistentState('camwell:settings:fall:v1', DEFAULT_FALL_THRESHOLDS)
+  const [soundEnabled, setSoundEnabled] = usePersistentState('camwell:settings:sound-enabled:v1', true)
+  const [faceFeaturesEnabled, setFaceFeaturesEnabled] = usePersistentState(
+    'camwell:settings:face-features-enabled:v1',
+    DEFAULT_FACE_FEATURES_ENABLED,
+  )
   // Dashboard เริ่มที่โหมดหลายคนเสมอ (ต้องเห็นทุกคนในห้อง) — หน้ากล้อง/console เริ่มที่ 1 คนต่อกล้องเหมือนเดิม
-  const [detectionMode, setDetectionMode] = useState<DetectionMode>(IS_DASHBOARD ? 'multi' : 'workstation')
+  const [detectionMode, setDetectionMode] = usePersistentState(
+    'camwell:settings:detection-mode:v1',
+    IS_DASHBOARD ? 'multi' : 'workstation',
+    (value): value is DetectionMode => value === 'multi' || value === 'workstation',
+  )
   // ลงทะเบียนใบหน้าที่ไม่รู้จักอัตโนมัติเป็น "คนที่ N" — เปิดไว้เป็นค่าเริ่มต้น จำค่าที่ผู้ใช้ปิด/เปิดไว้ใน localStorage
   const [autoEnrollEnabled, setAutoEnrollEnabled] = useState(() => localStorage.getItem(AUTO_ENROLL_STORAGE_KEY) !== 'false')
 
@@ -344,7 +352,7 @@ function CameraApp() {
   return (
     <>
       <div className="camera-status-bar" aria-label="สถานะการตรวจจับ">
-        <span className="camera-status-active"><span aria-hidden="true">●</span> ประมวลผลวิดีโอในเบราว์เซอร์</span>
+        <span className="camera-status-active"><span aria-hidden="true">●</span> ประมวลผลวิดีโอในเครื่อง</span>
         <span>กล้องที่ตั้งค่า {cameraSlots.length}/{MAX_CAMERA_SLOTS} ตัว</span>
         <span className="camera-status-privacy">วิดีโอไม่ถูกส่งออกจากอุปกรณ์</span>
       </div>

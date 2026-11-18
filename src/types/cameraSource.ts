@@ -5,10 +5,9 @@
 //              เบราว์เซอร์แยกไม่ออกว่าอันไหน USB อันไหนในตัวเครื่อง ต้องดูจากชื่ออุปกรณ์ (label) เอาเอง
 // 'ip-mjpeg' — กล้องเครือข่าย (IP Camera) ที่ส่งภาพแบบ MJPEG ผ่าน HTTP (เช่น http://192.168.1.50:8080/video)
 //              เบราว์เซอร์แสดงผลสตรีมแบบนี้ได้ตรงๆ ผ่าน <img> โดยไม่ต้องมี backend
-//              ⚠️ กล้อง IP/CCTV ส่วนใหญ่ (Hikvision, Dahua ฯลฯ) ใช้ RTSP เป็นค่าเริ่มต้น ซึ่งเบราว์เซอร์
-//              เปิดสตรีม RTSP ตรงๆ ไม่ได้เลย (ไม่มี RTSP client ในเบราว์เซอร์) — ต้องมี backend แปลงสตรีม
-//              (เช่น ffmpeg/go2rtc แปลง RTSP -> MJPEG หรือ HLS) ก่อน ซึ่งเป็นงาน Phase 2 ยังไม่รองรับในเวอร์ชันนี้
-export type CameraSourceKind = 'local' | 'ip-mjpeg'
+//              กล้องที่ไม่มี MJPEG ใช้ชนิด 'rtsp' ด้านล่าง ซึ่ง vision service จะแปลงภาพให้
+// 'rtsp'     — RTSP, go2rtc page, or go2rtc MJPEG URL opened by vision service and exposed as local MJPEG
+export type CameraSourceKind = 'local' | 'ip-mjpeg' | 'rtsp'
 
 export interface CameraSource {
   kind: CameraSourceKind
@@ -16,6 +15,18 @@ export interface CameraSource {
   deviceId?: string
   /** สำหรับ kind='ip-mjpeg' — URL ของสตรีม MJPEG เช่น http://192.168.1.50:8080/video */
   ipUrl?: string
+  // shortcut: RTSP credentials stay in localStorage; upgrade to OS-backed secret storage if camera settings become shared.
+  /** สำหรับ kind='rtsp' — RTSP หรือ go2rtc URL ที่อ่านโดย vision service ในเครื่อง */
+  rtspUrl?: string
+}
+
+export function normalizeStreamUrl(value: string): string | null {
+  try {
+    const url = new URL(value.trim())
+    return ['rtsp:', 'rtsps:', 'http:', 'https:'].includes(url.protocol) && url.hostname ? url.href : null
+  } catch {
+    return null
+  }
 }
 
 export const DEFAULT_CAMERA_SOURCE: CameraSource = { kind: 'local' }
