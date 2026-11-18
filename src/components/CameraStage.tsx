@@ -23,6 +23,16 @@ import { limitPeopleForMode, maxPeopleFor, type DetectionMode } from '../lib/mul
 import { nextCachedPoseResult } from '../lib/poseResultCache'
 import { shouldProcessPose } from '../lib/poseThrottle'
 import { updateInferenceEma } from '../lib/inferenceTiming'
+import { toPoseFrameResult, type PoseFrameResult, type YoloFrameResult } from '../lib/yoloPose'
+import {
+  checkYoloService,
+  closeYoloCamera,
+  closeVisionCamera,
+  inferYoloFrame,
+  rtspStreamUrl,
+  startRtspCamera,
+  stopRtspCamera,
+} from '../services/yoloPoseClient'
 import { enrollPerson, identifyFace } from '../services/faceEnrollment'
 import { loadPostureBaseline, savePostureBaseline } from '../services/postureBaselineStore'
 import { datasetRecorder } from '../services/datasetRecorder'
@@ -45,6 +55,7 @@ const PEOPLE_SUMMARY_INTERVAL_MS = 500 // ส่งสรุปสถานะ "
 const AUTO_ENROLL_MIN_FACE_WIDTH_PX = 80
 
 type FaceResult = faceapi.WithFaceDescriptor<faceapi.WithFaceLandmarks<{ detection: faceapi.FaceDetection }>>
+type OverlayPoseResult = PoseLandmarkerResult & Partial<Pick<PoseFrameResult, 'people' | 'objects'>>
 
 /** แปะ employeeId + cameraId ให้เหตุการณ์ก่อนส่งออกไปที่ App/backend เพื่อผูกเหตุการณ์กับพนักงานที่ระบุตัวได้ */
 function tagEvent(event: AlertEvent, person: PersonState, cameraId: string, cameraLabel: string): AlertEvent {
@@ -176,18 +187,63 @@ export default function CameraStage({
   const webcamRef = useRef<Webcam>(null)
   const imgRef = useRef<HTMLImageElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const sourceEpochRef = useRef(0)
+  const inputCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const yoloFrameRef = useRef<{ frame: YoloFrameResult; sequence: number } | null>(null)
+  const yoloSequenceRef = useRef(0)
+  const processedYoloSequenceRef = useRef(0)
+  const yoloBusyRef = useRef(false)
 
-  const { landmarkerRef, status: poseStatus, error: poseError, delegate: poseDelegate } = usePoseLandmarker(
+  const {
+    landmarkerRef,
+    status: mediaPipeStatus,
+    error: mediaPipeError,
+    delegate: mediaPipeDelegate,
+  } = usePoseLandmarker(
     maxPeopleFor(detectionMode),
-    poseModel,
+    poseModel === 'yolo' ? 'lite' : poseModel,
   )
+  const [yoloStatus, setYoloStatus] = useState<LandmarkerStatus>('loading')
+  const [yoloError, setYoloError] = useState<string | null>(null)
+  const [rtspReady, setRtspReady] = useState(false)
+  const poseStatus = poseModel === 'yolo' ? yoloStatus : mediaPipeStatus
+  const poseError = poseModel === 'yolo' ? yoloError : mediaPipeError
+  const poseDelegate: PoseDelegate | null = poseModel === 'yolo' ? null : mediaPipeDelegate
   const { status: faceStatus, error: faceError } = useFaceApiModels()
+
+  useEffect(() => {
+    let active = true
+    const poll = () => {
+      void checkYoloService().then(() => {
+        if (active) {
+          setYoloStatus('ready')
+          setYoloError(null)
+        }
+      }).catch((err: unknown) => {
+        if (active) {
+          setYoloStatus('error')
+          setYoloError(err instanceof Error ? err.message : 'เชื่อมต่อ YOLO service ไม่สำเร็จ')
+        }
+      })
+    }
+    poll()
+    const timer = window.setInterval(poll, 3000)
+    return () => {
+      active = false
+      window.clearInterval(timer)
+      closeVisionCamera(cameraId)
+    }
+  }, [cameraId])
+
+  useEffect(() => {
+    if (poseModel !== 'yolo') closeYoloCamera(cameraId)
+  }, [cameraId, poseModel])
 
   const lastVideoTimeRef = useRef(-1)
   const lastPoseRunAtRef = useRef(0)
   const poseInferenceMsRef = useRef(0)
   const latestRawFeaturesRef = useRef<PostureFeatures | null>(null)
-  const latestPoseResultRef = useRef<PoseLandmarkerResult | null>(null)
+  const latestPoseResultRef = useRef<OverlayPoseResult | null>(null)
   const lastFaceRunAtRef = useRef(0)
   const lastPeopleUpdateAtRef = useRef(0)
   const faceBusyRef = useRef(false)
@@ -195,9 +251,7 @@ export default function CameraStage({
   // Posture AlertEvent เดิมเก็บชื่อ ณ ตอนเริ่ม event; จำไว้เพื่อให้ ended event ใช้ชื่อเดียวกัน
   // แม้ identity จะ resolve/เปลี่ยนระหว่างที่ alert ยัง active อยู่
   const postureEventPersonNameRef = useRef<Map<string, string>>(new Map())
-  // กล้อง IP ต่างโดเมน/พอร์ตกับเว็บแอป (cross-origin) มักติดข้อจำกัด CORS ของเบราว์เซอร์ ทำให้อ่านพิกเซลภาพ
-  // ไปประมวลผล AI ไม่ได้ (ภาพยังแสดงผลได้ปกติ แต่ canvas/WebGL จะโยน SecurityError ตอนอ่านข้อมูล) — ถ้าเจอ
-  // ปัญหานี้ครั้งหนึ่งจะหยุดเรียก AI ซ้ำทุกเฟรม (กัน error สแปม) จนกว่าจะเปลี่ยนแหล่งกล้อง
+  // ภาพ IP-MJPEG ที่ไม่มี CORS อ่านพิกเซลเข้า AI ไม่ได้ — ถ้าเจอจะหยุดลองซ้ำจนกว่าจะเปลี่ยนแหล่งกล้อง
   const sourceErrorStickyRef = useRef(false)
 
   // แหล่งความจริงหลักของ "ใครอยู่ในเฟรมบ้าง" — key คือ trackId จาก poseTracker
@@ -228,6 +282,25 @@ export default function CameraStage({
   const [enrollConsentChecked, setEnrollConsentChecked] = useState(false)
   const [enrollStatus, setEnrollStatus] = useState<'idle' | 'saving' | 'error'>('idle')
   const [enrollError, setEnrollError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (cameraSource.kind !== 'rtsp' || !cameraSource.rtspUrl) {
+      setRtspReady(false)
+      stopRtspCamera(cameraId)
+      return
+    }
+    let active = true
+    setRtspReady(false)
+    setCameraError(null)
+    void startRtspCamera(cameraId, cameraSource.rtspUrl)
+      .then(() => {
+        if (active) setRtspReady(true)
+      })
+      .catch((err: unknown) => {
+        if (active) setCameraError(`เชื่อมต่อ RTSP/go2rtc ไม่สำเร็จ: ${err instanceof Error ? err.message : 'ตรวจสอบ URL และบัญชีผู้ใช้'}`)
+      })
+    return () => { active = false }
+  }, [cameraId, cameraSource.kind, cameraSource.rtspUrl])
 
   const propsRef = useRef({
     postureThresholds,
@@ -330,8 +403,21 @@ export default function CameraStage({
   }, [])
 
   const drawOverlay = useCallback(
-    (ctx: CanvasRenderingContext2D, poseResult: PoseLandmarkerResult | null, width: number, height: number) => {
+    (ctx: CanvasRenderingContext2D, poseResult: OverlayPoseResult | null, width: number, height: number) => {
       ctx.clearRect(0, 0, width, height)
+
+      for (const person of poseResult?.people ?? []) {
+        const [x1, y1, x2, y2] = person.box
+        ctx.lineWidth = 2
+        ctx.strokeStyle = '#34d399'
+        ctx.strokeRect(x1, y1, x2 - x1, y2 - y1)
+      }
+      for (const object of poseResult?.objects ?? []) {
+        const [x1, y1, x2, y2] = object.box
+        ctx.lineWidth = 2
+        ctx.strokeStyle = object.class === 'chair' ? '#c084fc' : '#facc15'
+        ctx.strokeRect(x1, y1, x2 - x1, y2 - y1)
+      }
 
       const line = (p1: Point, p2: Point) => {
         ctx.beginPath()
@@ -593,7 +679,7 @@ export default function CameraStage({
       if (isCorsLikeError(err)) {
         sourceErrorStickyRef.current = true
         setCameraError(
-          'ประมวลผล AI กับภาพจากกล้องนี้ไม่ได้ เพราะติดข้อจำกัด CORS ของเบราว์เซอร์ (กล้อง IP อยู่คนละ origin กับเว็บแอป) — ภาพจะยังแสดงผลได้ปกติ แต่ตรวจจับท่านั่ง/ใบหน้าไม่ได้ ต้องมี backend ตัวกลางช่วยแปลงสตรีม (Phase 2)',
+            'อ่านภาพกล้อง IP-MJPEG เข้า AI ไม่ได้เพราะ CORS — เปิด CORS ที่กล้อง หรือใช้แหล่งภาพ RTSP ผ่าน vision service ในเครื่อง',
         )
       }
     } finally {
@@ -607,10 +693,11 @@ export default function CameraStage({
     const p = propsRef.current
     const now = Date.now()
 
-    // สลับแหล่งภาพกล้อง (local <-> IP หรือเปลี่ยนอุปกรณ์/URL) — เคลียร์ error ค้างจากกล้องก่อนหน้าทิ้ง
-    const cameraSourceKey = `${p.cameraSource.kind}|${p.cameraSource.deviceId ?? ''}|${p.cameraSource.ipUrl ?? ''}`
+    // สลับแหล่งภาพกล้องหรือ URL — เคลียร์ error ค้างจากกล้องก่อนหน้าทิ้ง
+    const cameraSourceKey = `${p.cameraSource.kind}|${p.cameraSource.deviceId ?? ''}|${p.cameraSource.ipUrl ?? ''}|${p.cameraSource.rtspUrl ?? ''}`
     if (cameraSourceKey !== lastCameraSourceKeyRef.current) {
       lastCameraSourceKeyRef.current = cameraSourceKey
+      sourceEpochRef.current += 1
       sourceErrorStickyRef.current = false
       latestPoseResultRef.current = nextCachedPoseResult(latestPoseResultRef.current, null, true)
       if (canvas) {
@@ -620,7 +707,7 @@ export default function CameraStage({
       setCameraError(null)
     }
 
-    // แหล่งภาพปัจจุบัน: video element (กล้องในเครื่อง) หรือ img element (กล้อง IP แบบ MJPEG)
+    // แหล่งภาพปัจจุบัน: video element หรือ img element (MJPEG จากกล้อง/vision service)
     const source: HTMLVideoElement | HTMLImageElement | null =
       p.cameraSource.kind === 'local' ? (webcamRef.current?.video ?? null) : imgRef.current
     const isVideoSource = source instanceof HTMLVideoElement
@@ -641,7 +728,8 @@ export default function CameraStage({
       canvas.height = frameHeight
     }
 
-    let poseResult: PoseLandmarkerResult | null = null
+    let poseResult: OverlayPoseResult | null = null
+    let externalTrackIds: string[] | undefined
     let peopleChanged = false
 
     // กล้องในเครื่อง (video): ประมวลผลเฉพาะตอนเฟรมเปลี่ยนจริง (เช็คจาก currentTime) กันประมวลผลซ้ำเฟรมเดิม
@@ -649,7 +737,7 @@ export default function CameraStage({
     // ถ้าเคยเจอปัญหา CORS กับแหล่งภาพนี้มาแล้ว หยุดลองซ้ำทุกเฟรม (กัน error สแปม) จนกว่าจะเปลี่ยนแหล่งกล้อง
     const perfNow = performance.now()
     const shouldRunPose = shouldProcessPose({
-      hasLandmarker: !!landmarker,
+      hasLandmarker: !!landmarker || (poseModel === 'yolo' && yoloStatus === 'ready'),
       sourceErrorSticky: sourceErrorStickyRef.current,
       perfNow,
       lastPoseRunAt: lastPoseRunAtRef.current,
@@ -658,28 +746,73 @@ export default function CameraStage({
       lastVideoTime: lastVideoTimeRef.current,
     })
 
-    if (shouldRunPose && landmarker) {
+    if (shouldRunPose) {
       if (isVideoSource) lastVideoTimeRef.current = source.currentTime
       lastPoseRunAtRef.current = perfNow
-      try {
-        const inferenceStartedAt = performance.now()
-        poseResult = landmarker.detectForVideo(source, perfNow)
-        poseInferenceMsRef.current = updateInferenceEma(
-          poseInferenceMsRef.current,
-          performance.now() - inferenceStartedAt,
-        )
-        latestPoseResultRef.current = nextCachedPoseResult(latestPoseResultRef.current, poseResult)
-      } catch (err) {
-        console.error('[CameraStage] ตรวจจับท่านั่งล้มเหลว:', err)
-        if (isCorsLikeError(err)) {
-          sourceErrorStickyRef.current = true
-          setCameraError(
-            'ประมวลผล AI กับภาพจากกล้องนี้ไม่ได้ เพราะติดข้อจำกัด CORS ของเบราว์เซอร์ (กล้อง IP อยู่คนละ origin กับเว็บแอป) — ภาพจะยังแสดงผลได้ปกติ แต่ตรวจจับท่านั่ง/ใบหน้าไม่ได้ ต้องมี backend ตัวกลางช่วยแปลงสตรีม (Phase 2)',
-          )
+      if (poseModel === 'yolo' && yoloStatus === 'ready') {
+        if (!yoloBusyRef.current) {
+          yoloBusyRef.current = true
+          const inputCanvas = inputCanvasRef.current ?? (inputCanvasRef.current = document.createElement('canvas'))
+          inputCanvas.width = frameWidth
+          inputCanvas.height = frameHeight
+          const inputContext = inputCanvas.getContext('2d')
+          try {
+            if (!inputContext) throw new Error('สร้าง canvas สำหรับ YOLO ไม่สำเร็จ')
+            inputContext.drawImage(source, 0, 0, frameWidth, frameHeight)
+            void inferYoloFrame(p.cameraId, inputCanvas).then((frame) => {
+              yoloFrameRef.current = { frame, sequence: ++yoloSequenceRef.current }
+              poseInferenceMsRef.current = updateInferenceEma(
+                poseInferenceMsRef.current,
+                frame.processMs ?? 0,
+              )
+            }).catch((err: unknown) => {
+              console.error('[CameraStage] YOLO inference failed:', err)
+              setYoloStatus('error')
+              setYoloError(err instanceof Error ? err.message : 'YOLO inference ล้มเหลว')
+              if (isCorsLikeError(err)) {
+                sourceErrorStickyRef.current = true
+                setCameraError('อ่านภาพจากกล้องนี้เข้า YOLO ไม่ได้ เพราะติดข้อจำกัด CORS ของเบราว์เซอร์')
+              }
+            }).finally(() => {
+              yoloBusyRef.current = false
+            })
+          } catch (err) {
+            yoloBusyRef.current = false
+            setYoloStatus('error')
+            setYoloError(err instanceof Error ? err.message : 'อ่านเฟรมกล้องไม่สำเร็จ')
+          }
         }
-        return
+        const latest = yoloFrameRef.current
+        if (latest && latest.sequence !== processedYoloSequenceRef.current) {
+          processedYoloSequenceRef.current = latest.sequence
+          const converted = toPoseFrameResult(latest.frame, maxPeopleFor(p.detectionMode))
+          poseResult = converted as unknown as OverlayPoseResult
+          externalTrackIds = converted.trackIds.map((id) => `${sourceEpochRef.current}-${id}`)
+          latestPoseResultRef.current = poseResult
+        }
+      } else if (landmarker) {
+        try {
+          const inferenceStartedAt = performance.now()
+          poseResult = landmarker.detectForVideo(source, perfNow)
+          poseInferenceMsRef.current = updateInferenceEma(
+            poseInferenceMsRef.current,
+            performance.now() - inferenceStartedAt,
+          )
+          latestPoseResultRef.current = nextCachedPoseResult(latestPoseResultRef.current, poseResult)
+        } catch (err) {
+          console.error('[CameraStage] ตรวจจับท่านั่งล้มเหลว:', err)
+          if (isCorsLikeError(err)) {
+            sourceErrorStickyRef.current = true
+            setCameraError(
+              'อ่านภาพกล้อง IP-MJPEG เข้า AI ไม่ได้เพราะ CORS — เปิด CORS ที่กล้อง หรือใช้แหล่งภาพ RTSP ผ่าน vision service ในเครื่อง',
+            )
+          }
+          return
+        }
       }
+    }
 
+    if (poseResult) {
       const engineResult = postureEngineRef.current.processPoseFrame(
         poseResult.landmarks ?? [],
         poseResult.worldLandmarks ?? [],
@@ -691,6 +824,7 @@ export default function CameraStage({
           fallThresholds: p.fallThresholds,
           breakThresholds: p.breakThresholds,
         },
+        externalTrackIds,
       )
 
       if (engineResult.peopleChanged) peopleChanged = true
@@ -859,7 +993,7 @@ export default function CameraStage({
       lastFaceRunAtRef.current = now
       void runFaceDetection(source, now)
     }
-  }, [drawOverlay, faceStatus, landmarkerRef, runFaceDetection, recomputeAlertUi, maybeEmitPeopleSummary])
+  }, [drawOverlay, faceStatus, landmarkerRef, poseModel, yoloStatus, runFaceDetection, recomputeAlertUi, maybeEmitPeopleSummary])
 
   const tickRef = useRef(detectFrame)
   useEffect(() => {
@@ -867,7 +1001,6 @@ export default function CameraStage({
   }, [detectFrame])
 
   useEffect(() => {
-    if (poseStatus !== 'ready') return
     let rafId: number
     const runner = () => {
       tickRef.current()
@@ -875,7 +1008,7 @@ export default function CameraStage({
     }
     rafId = requestAnimationFrame(runner)
     return () => cancelAnimationFrame(rafId)
-  }, [poseStatus])
+  }, [])
 
   // (Dev Console) ส่งสถานะออกเป็นระยะ — เก็บ callback ไว้ใน ref กัน effect รีสตาร์ททุกครั้งที่ parent re-render
   const onStatsRef = useRef(onStats)
@@ -976,15 +1109,19 @@ export default function CameraStage({
             className="camera-video"
           />
         ) : (
-          // กล้อง IP แบบ MJPEG: เบราว์เซอร์แสดงสตรีมนี้ผ่าน <img> ได้ตรงๆ ไม่ต้องมี backend
-          // key={ipUrl} บังคับให้ element ถูกสร้างใหม่ตอนเปลี่ยน URL กันภาพเก่าค้าง
+          // RTSP แสดงผ่าน MJPEG ที่ vision service แปลงให้; MJPEG HTTP ยังเปิดตรงจาก browser ได้
           <img
-            key={cameraSource.ipUrl}
+            key={cameraSource.kind === 'rtsp' ? `${cameraId}:${cameraSource.rtspUrl}` : cameraSource.ipUrl}
             ref={imgRef}
-            src={cameraSource.ipUrl || undefined}
-            alt="ภาพจากกล้อง IP"
+            crossOrigin={cameraSource.kind === 'rtsp' ? 'anonymous' : undefined}
+            src={cameraSource.kind === 'rtsp'
+              ? rtspReady ? rtspStreamUrl(cameraId) : undefined
+              : cameraSource.ipUrl || undefined}
+            alt={cameraSource.kind === 'rtsp' ? 'ภาพจากกล้อง RTSP' : 'ภาพจากกล้อง IP'}
             onError={() =>
-              setCameraError('เชื่อมต่อกล้อง IP ไม่สำเร็จ - ตรวจสอบว่า URL ถูกต้อง กล้องเปิดอยู่ และอยู่ในเครือข่ายเดียวกับเครื่องนี้')
+              setCameraError(cameraSource.kind === 'rtsp'
+                ? 'รับภาพจาก RTSP service ไม่สำเร็จ'
+                : 'เชื่อมต่อกล้อง IP ไม่สำเร็จ - ตรวจสอบว่า URL ถูกต้อง กล้องเปิดอยู่ และอยู่ในเครือข่ายเดียวกับเครื่องนี้')
             }
             className="camera-video"
           />
@@ -997,6 +1134,12 @@ export default function CameraStage({
 
         {cameraSource.kind === 'ip-mjpeg' && !cameraSource.ipUrl && (
           <div className="camera-status-banner">กรอก URL กล้อง IP แล้วกด "เชื่อมต่อ" ในช่อง "แหล่งภาพกล้อง"</div>
+        )}
+        {cameraSource.kind === 'rtsp' && !cameraSource.rtspUrl && (
+          <div className="camera-status-banner">กรอก RTSP URL แล้วกด "เชื่อมต่อ" ในช่อง "แหล่งภาพกล้อง"</div>
+        )}
+        {cameraSource.kind === 'rtsp' && cameraSource.rtspUrl && !rtspReady && !cameraError && (
+          <div className="camera-status-banner">กำลังเชื่อมต่อกล้อง RTSP...</div>
         )}
         {poseStatus === 'loading' && <div className="camera-status-banner">กำลังโหลดโมเดล Pose Landmarker...</div>}
         {poseStatus === 'error' && <div className="camera-status-banner banner-error">{poseError}</div>}

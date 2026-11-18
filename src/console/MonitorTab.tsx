@@ -26,7 +26,20 @@ interface Props extends DevConsoleProps {
 
 function sourceText(slot: CameraSlot) {
   const { source } = slot
-  if (source.kind === 'ip-mjpeg') return `ip-mjpeg · ${source.ipUrl || 'ยังไม่ได้ตั้ง URL'}`
+  if (source.kind === 'rtsp') {
+    if (!source.rtspUrl) return 'rtsp · ยังไม่ได้ตั้ง URL'
+    try {
+      const url = new URL(source.rtspUrl)
+      url.username = ''
+      url.password = ''
+      url.search = ''
+      url.hash = ''
+      return `rtsp · ${url.host}${url.pathname}`
+    } catch {
+      return 'rtsp · URL ไม่ถูกต้อง'
+    }
+  }
+  if (source.kind === 'ip-mjpeg') return `ip-mjpeg · ${source.ipUrl ? 'ตั้ง URL แล้ว' : 'ยังไม่ได้ตั้ง URL'}`
   return `local · ${source.deviceId ? source.deviceId.slice(0, 12) : 'ค่าเริ่มต้นของเบราว์เซอร์'}`
 }
 

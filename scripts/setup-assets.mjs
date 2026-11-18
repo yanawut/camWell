@@ -1,7 +1,7 @@
 // scripts/setup-assets.mjs
 //
 // รันอัตโนมัติหลัง `npm install` (ดู "postinstall" ใน package.json)
-// เตรียมไฟล์ที่ทำให้ AI ทั้งหมดในแอปรันแบบ "local" ล้วนๆ (ไม่พึ่ง CDN ภายนอกตอนรันจริง):
+// เตรียมไฟล์ MediaPipe fallback และ face-api ให้ทำงานในเครื่องโดยไม่พึ่ง CDN ตอนรันจริง:
 //
 //   1. คัดลอกไฟล์ WASM runtime จาก node_modules/@mediapipe/tasks-vision/wasm -> public/wasm
 //   2. ดาวน์โหลดไฟล์โมเดล pose_landmarker_{lite,full,heavy}.task (~44MB รวม) มาเก็บไว้ที่ public/models

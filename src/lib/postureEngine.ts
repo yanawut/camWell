@@ -83,10 +83,12 @@ interface EnginePersonState {
 export class PostureEngine {
   private tracker: PositionTracker<TrackedPoseData>
   private people = new Map<string, EnginePersonState>()
+  private readonly externalIdPrefix: string
   private nextSlotNumber = 1
   private breakState: BreakReminderState = initialBreakState
 
   constructor(cameraId: string) {
+    this.externalIdPrefix = `yolo-${cameraId}-`
     this.tracker = new PositionTracker<TrackedPoseData>(`pose-${cameraId}`, {
       maxDistance: POSE_TRACK_MAX_DISTANCE,
       staleAfterMs: POSE_TRACK_STALE_MS,
@@ -99,6 +101,7 @@ export class PostureEngine {
     frame: FrameSize,
     now: number,
     settings: PostureEngineSettings,
+    externalTrackIds?: string[],
   ): PostureEngineResult {
     const detections = allLandmarks
       .map((landmarks, index) => {
@@ -118,6 +121,7 @@ export class PostureEngine {
         if (!anchorNorm) return null
 
         return {
+          externalTrackId: externalTrackIds?.[index],
           position: anchorNorm,
           data: {
             landmarks,
@@ -129,7 +133,18 @@ export class PostureEngine {
       })
       .filter((d): d is NonNullable<typeof d> => d !== null)
 
-    const { matches, removedIds } = this.tracker.update(detections, now)
+    const { matches, removedIds } = externalTrackIds
+      ? {
+          matches: detections.map((d) => ({
+            id: `${this.externalIdPrefix}${d.externalTrackId}`,
+            data: d.data,
+          })),
+          removedIds: [...this.people.entries()]
+            .filter(([id, person]) => now - person.lastSeenAt > POSE_TRACK_STALE_MS &&
+              !detections.some((d) => `${this.externalIdPrefix}${d.externalTrackId}` === id))
+            .map(([id]) => id),
+        }
+      : this.tracker.update(detections, now)
     const startedEvents: EngineAlertEvent[] = []
     const endedEvents: EngineAlertEvent[] = []
     const fallEvents: EngineAlertEvent[] = []

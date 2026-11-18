@@ -6,6 +6,7 @@ import EventsTab from './EventsTab'
 import PeopleTab from './PeopleTab'
 import { useBackendHealth } from './useBackendHealth'
 import { datasetRecorder, type DatasetLabel } from '../services/datasetRecorder'
+import { usePersistentState } from '../hooks/usePersistentState'
 import { API_BASE_URL } from '../services/apiConfig'
 import { DEFAULT_POSE_MODEL, POSE_MODELS, poseModelFileName, type PoseModelVariant } from '../hooks/usePoseLandmarker'
 import { DEFAULT_SKELETON_MODE, SKELETON_MODES, type SkeletonMode } from '../lib/skeletonOverlay'
@@ -109,8 +110,16 @@ export default function DevConsole(props: DevConsoleProps) {
   } = props
 
   const [tab, setTab] = useState<Tab>('monitor')
-  const [poseModel, setPoseModel] = useState<PoseModelVariant>(DEFAULT_POSE_MODEL)
-  const [skeletonMode, setSkeletonMode] = useState<SkeletonMode>(DEFAULT_SKELETON_MODE)
+  const [poseModel, setPoseModel] = usePersistentState(
+    'camwell:settings:pose-model:v1',
+    DEFAULT_POSE_MODEL,
+    (value): value is PoseModelVariant => typeof value === 'string' && POSE_MODELS.includes(value as PoseModelVariant),
+  )
+  const [skeletonMode, setSkeletonMode] = usePersistentState(
+    'camwell:settings:skeleton-mode:v1',
+    DEFAULT_SKELETON_MODE,
+    (value): value is SkeletonMode => typeof value === 'string' && SKELETON_MODES.includes(value as SkeletonMode),
+  )
   const [statsBySlot, setStatsBySlot] = useState<Record<string, CameraStats>>({})
   const [recorder, setRecorder] = useState<RecorderState>({
     showRecorder: false,
