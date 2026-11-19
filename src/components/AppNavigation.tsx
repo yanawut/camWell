@@ -6,7 +6,7 @@ type Theme = 'light' | 'dark'
 const THEME_STORAGE_KEY = 'camwell:theme'
 
 const LINKS: { page: Page; label: string; href: string }[] = [
-  { page: 'dashboard', label: 'ภาพรวม', href: './' },
+  { page: 'dashboard', label: 'ภาพรวม', href: '?dashboard' },
   { page: 'camera', label: 'ตั้งค่ากล้อง', href: '?camera' },
   { page: 'people', label: 'รายชื่อบุคคล', href: '?people' },
   { page: 'alerts', label: 'ประวัติแจ้งเตือน', href: '?alerts' },
@@ -34,7 +34,7 @@ export default function AppNavigation({ active, dashboardStats }: Props) {
 
   return (
     <header className="app-nav">
-      <a className="app-brand" href="./" aria-label="Camwell - ภาพรวม">
+      <a className="app-brand" href="./" aria-label="Camwell - กลับหน้าแรก">
         <span className="app-brand-mark" aria-hidden="true">C</span>
         <span>CAMWELL</span>
       </a>

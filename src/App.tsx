@@ -35,8 +35,8 @@ import './App.css'
 
 // ponytail: เปิด Dev Console ได้ทุก build ผ่าน /?console — กำหนดสิทธิ์ใหม่เมื่อออกจากช่วง dev
 const IS_DEV_CONSOLE = new URLSearchParams(window.location.search).has('console')
-// หน้าแรก (/) = Dashboard ห้องทำงาน pixel art เสมอ — หน้ากล้อง/ตั้งค่าเดิมย้ายไปที่ /?camera
-// (/?dashboard ยังใช้ได้เหมือนเดิม เพราะไม่มี camera/console ใน URL)
+// หน้าแรก (/) = LandingPage (main.tsx) — Dashboard ห้องทำงาน pixel art อยู่ที่ /?dashboard
+// หน้ากล้อง/ตั้งค่าเดิมอยู่ที่ /?camera
 const IS_DASHBOARD = !IS_DEV_CONSOLE && !new URLSearchParams(window.location.search).has('camera')
 
 const BASELINE_STORAGE_KEY = 'camwell:distance-baseline-px:v1'

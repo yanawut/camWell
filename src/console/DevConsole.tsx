@@ -237,7 +237,7 @@ export default function DevConsole(props: DevConsoleProps) {
             <span>API_BASE_URL</span>
             <span className="dc-mono dc-text">{API_BASE_URL}</span>
           </div>
-          <a href="./" className="dc-back-link">← Back to Dashboard</a>
+          <a href="?dashboard" className="dc-back-link">← Back to Dashboard</a>
         </div>
       </aside>
 
