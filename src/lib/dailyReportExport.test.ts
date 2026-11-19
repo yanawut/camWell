@@ -25,6 +25,7 @@ describe('dailyReportExport', () => {
         totalAlertDurationMs: 90_000,
         byCategory: { posture: 2, fatigue: 1, distance: 1, fall: 0 },
         byType: { slouching: 2, drowsy: 1, too_close: 1 },
+        riskSummary: { high: 0, moderate: 1, low: 0, chronicRiskPeople: 0 },
       },
       hourly: [],
       people: [
@@ -40,6 +41,22 @@ describe('dailyReportExport', () => {
           totalAlerts: 4,
           alertDurationMs: 90_000,
           byCategory: { posture: 2, fatigue: 1, distance: 1, fall: 0 },
+          officeSyndromeRisk: {
+            score: 42,
+            level: 'moderate',
+            breakdown: { sedentary: 10, posture: 20, visualFatigue: 12 },
+            longestSessionMs: 1_800_000,
+            prolongedSessionCount: 0,
+            factors: ['หลังค่อม/โน้มตัว'],
+            recommendations: ['ปรับจอให้อยู่ระดับสายตา'],
+          },
+          riskTrend7d: {
+            activeDays: 3,
+            elevatedRiskDays: 2,
+            highRiskDays: 0,
+            averageScore: 38,
+            chronicPattern: false,
+          },
         },
       ],
       cameras: [],
@@ -49,8 +66,9 @@ describe('dailyReportExport', () => {
     const lines = csv.split('\r\n')
     expect(lines).toHaveLength(2)
     expect(lines[0]).toContain('"วันที่","บุคคล"')
+    expect(lines[0]).toContain('"คะแนนความเสี่ยง Office Syndrome","ระดับความเสี่ยง"')
     expect(lines[1]).toContain('"2026-11-13","สมชาย ""จ๊อบ""","e1","กล้อง 1 / กล้อง 2"')
-    expect(lines[1]).toContain('"60","2","4","2","1","1","0","90"')
+    expect(lines[1]).toContain('"60","2","4","2","1","1","0","90","42","ปานกลาง","2/3","หลังค่อม/โน้มตัว"')
   })
 
   it('shifts and formats YYYY-MM-DD dates', () => {

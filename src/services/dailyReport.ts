@@ -11,6 +11,39 @@ export interface DailyReportHourlyBucket {
   byCategory: DailyReportCategoryCounts
 }
 
+export type OfficeSyndromeRiskLevel = 'low' | 'moderate' | 'high'
+
+export interface OfficeSyndromeRiskBreakdown {
+  sedentary: number
+  posture: number
+  visualFatigue: number
+}
+
+export interface OfficeSyndromeRisk {
+  score: number
+  level: OfficeSyndromeRiskLevel
+  breakdown: OfficeSyndromeRiskBreakdown
+  longestSessionMs: number
+  prolongedSessionCount: number
+  factors: string[]
+  recommendations: string[]
+}
+
+export interface OfficeSyndromeWeeklyTrend {
+  activeDays: number
+  elevatedRiskDays: number
+  highRiskDays: number
+  averageScore: number
+  chronicPattern: boolean
+}
+
+export interface DailyReportRiskSummary {
+  high: number
+  moderate: number
+  low: number
+  chronicRiskPeople: number
+}
+
 export interface DailyReportPerson {
   key: string
   employeeId: string | null
@@ -23,6 +56,8 @@ export interface DailyReportPerson {
   totalAlerts: number
   alertDurationMs: number
   byCategory: DailyReportCategoryCounts
+  officeSyndromeRisk: OfficeSyndromeRisk
+  riskTrend7d: OfficeSyndromeWeeklyTrend
 }
 
 export interface DailyReportCamera {
@@ -46,6 +81,7 @@ export interface DailyReport {
     totalAlertDurationMs: number
     byCategory: DailyReportCategoryCounts
     byType: Record<string, number>
+    riskSummary: DailyReportRiskSummary
   }
   hourly: DailyReportHourlyBucket[]
   people: DailyReportPerson[]
