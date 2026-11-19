@@ -26,6 +26,7 @@ import DevConsole, { type CameraStageExtras } from './console/DevConsole'
 import OfficeDashboard from './dashboard/OfficeDashboard'
 import AppNavigation from './components/AppNavigation'
 import AlertsPage from './pages/AlertsPage'
+import GaitAssessmentPage from './pages/GaitAssessmentPage'
 import PeoplePage from './pages/PeoplePage'
 import ReportsPage from './pages/ReportsPage'
 import { backendAlertReporter } from './services/alertReporter'
@@ -55,6 +56,7 @@ export default function App() {
   if (page.has('alerts')) return <AlertsPage />
   if (page.has('people')) return <PeoplePage />
   if (page.has('report')) return <ReportsPage />
+  if (page.has('gait')) return <GaitAssessmentPage />
   return <CameraApp />
 }
 
