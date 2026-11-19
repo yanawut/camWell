@@ -7,7 +7,12 @@ import {
   formatTimeShort,
   RISK_LEVEL_LABELS_TH,
 } from './dailyReportExport'
-import { extractPersonDailySymptoms, extractPotentialConditions, type ZoneSeverity } from './personSymptoms'
+import {
+  extractPersonDailySymptoms,
+  extractPotentialConditions,
+  NO_SYMPTOMS_TEXT,
+  type ZoneSeverity,
+} from './personSymptoms'
 
 const RISK_THEME: Record<
   OfficeSyndromeRiskLevel,
@@ -53,10 +58,13 @@ export function buildLineSummaryText(person: DailyReportPerson, date: string): s
   const presenceText = `${formatDurationMs(person.presenceDurationMs)} (${person.sessionCount} ช่วง)`
   const chronicNote = trend.chronicPattern ? ' [เสี่ยงสะสมต่อเนื่อง]' : ''
 
-  const symptomLines = symptoms.map((s) => {
-    const dot = s.severity === 'high' ? '🔴' : s.severity === 'moderate' ? '🟡' : s.severity === 'low' ? '🟢' : '⚪'
-    return `${dot} ${s.label}: ${s.valueText}`
-  })
+  const symptomLines =
+    symptoms.length > 0
+      ? symptoms.map((s) => {
+          const dot = s.severity === 'high' ? '🔴' : s.severity === 'moderate' ? '🟡' : s.severity === 'low' ? '🟢' : '⚪'
+          return `${dot} ${s.label}: ${s.valueText}`
+        })
+      : [NO_SYMPTOMS_TEXT]
 
   const conditionLines =
     conditions.length > 0
@@ -350,6 +358,11 @@ export async function renderPersonCardPngBlob(person: DailyReportPerson, date: s
   ctx.fillText('อาการที่ตรวจพบวันนี้', listX, contentY + 20)
 
   let rowY = contentY + 46
+  if (symptoms.length === 0) {
+    ctx.fillStyle = '#64748b'
+    ctx.font = `500 15px ${FONT_FAMILY}`
+    ctx.fillText(NO_SYMPTOMS_TEXT, listX, rowY + 11)
+  }
   symptoms.forEach((item, idx) => {
     const dotColor = ZONE_COLOR[item.severity]
     const textColor =

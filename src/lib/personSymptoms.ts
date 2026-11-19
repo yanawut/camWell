@@ -30,6 +30,8 @@ export interface PotentialCondition {
   severity: Exclude<ZoneSeverity, 'none'>
 }
 
+export const NO_SYMPTOMS_TEXT = 'ไม่พบอาการผิดปกติวันนี้'
+
 const SEVERITY_ORDER: Record<ZoneSeverity, number> = {
   none: 0,
   low: 1,
@@ -78,27 +80,34 @@ export function extractPersonDailySymptoms(person: DailyReportPerson): PersonDai
     prolongedSev,
   )
 
+  // แสดงเฉพาะอาการที่ตรวจพบจริง — รายการที่ปกติ (0 ครั้ง / 0 นาที) ไม่ต้องแสดง
   const symptoms: DailySymptomItem[] = []
 
   if (hasTypeBreakdown || postureTotal === 0) {
-    symptoms.push({
-      key: 'forward_head',
-      label: 'ก้มคอ/ยื่นคอ',
-      valueText: forwardHead > 0 ? `${forwardHead} ครั้ง` : 'ปกติ',
-      severity: severityFromCount(forwardHead, 3, 6),
-    })
-    symptoms.push({
-      key: 'slouching',
-      label: 'หลังค่อม/โน้มตัว',
-      valueText: slouching > 0 ? `${slouching} ครั้ง` : 'ปกติ',
-      severity: severityFromCount(slouching, 3, 6),
-    })
-    symptoms.push({
-      key: 'leaning',
-      label: 'นั่งเอียงข้าง',
-      valueText: leaning > 0 ? `${leaning} ครั้ง` : 'ปกติ',
-      severity: severityFromCount(leaning, 2, 5),
-    })
+    if (forwardHead > 0) {
+      symptoms.push({
+        key: 'forward_head',
+        label: 'ก้มคอ/ยื่นคอ',
+        valueText: `${forwardHead} ครั้ง`,
+        severity: severityFromCount(forwardHead, 3, 6),
+      })
+    }
+    if (slouching > 0) {
+      symptoms.push({
+        key: 'slouching',
+        label: 'หลังค่อม/โน้มตัว',
+        valueText: `${slouching} ครั้ง`,
+        severity: severityFromCount(slouching, 3, 6),
+      })
+    }
+    if (leaning > 0) {
+      symptoms.push({
+        key: 'leaning',
+        label: 'นั่งเอียงข้าง',
+        valueText: `${leaning} ครั้ง`,
+        severity: severityFromCount(leaning, 2, 5),
+      })
+    }
   } else {
     symptoms.push({
       key: 'posture_total',
@@ -109,19 +118,23 @@ export function extractPersonDailySymptoms(person: DailyReportPerson): PersonDai
   }
 
   const eyeTotal = tooClose + fatigue
-  symptoms.push({
-    key: 'eye_fatigue',
-    label: 'ใกล้จอ / ตาล้า',
-    valueText: eyeTotal > 0 ? `${eyeTotal} ครั้ง` : 'ปกติ',
-    severity: headSev,
-  })
+  if (eyeTotal > 0) {
+    symptoms.push({
+      key: 'eye_fatigue',
+      label: 'ใกล้จอ / ตาล้า',
+      valueText: `${eyeTotal} ครั้ง`,
+      severity: headSev,
+    })
+  }
 
-  symptoms.push({
-    key: 'prolonged_sitting',
-    label: 'นั่งต่อเนื่องนานสุด',
-    valueText: longestMin > 0 ? `${longestMin} นาที` : '0 นาที',
-    severity: prolongedSev,
-  })
+  if (longestMin > 0) {
+    symptoms.push({
+      key: 'prolonged_sitting',
+      label: 'นั่งต่อเนื่องนานสุด',
+      valueText: `${longestMin} นาที`,
+      severity: prolongedSev,
+    })
+  }
 
   if (person.byCategory.fall > 0) {
     symptoms.push({

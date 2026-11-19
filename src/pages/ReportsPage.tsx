@@ -30,6 +30,7 @@ import {
 import {
   extractPersonDailySymptoms,
   extractPotentialConditions,
+  NO_SYMPTOMS_TEXT,
   type UpperBodyZones,
   type ZoneSeverity,
 } from '../lib/personSymptoms'
@@ -537,6 +538,7 @@ export default function ReportsPage() {
                         <UpperBodySymptomMap zones={zones} />
                         <div className="reports-symptom-list">
                           <div className="reports-symptom-heading">อาการที่ตรวจพบวันนี้</div>
+                          {symptoms.length === 0 && <p className="reports-conditions-empty">{NO_SYMPTOMS_TEXT}</p>}
                           {symptoms.map((item) => (
                             <div key={item.key} className="reports-symptom-row">
                               <span className="reports-symptom-name">
