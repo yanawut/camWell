@@ -1,5 +1,13 @@
 // ตรรกะคำนวณรายงานประจำวัน (Daily Report) — แยกออกมาเป็น pure function เพื่อให้อ่านง่ายและตรวจสอบได้
 
+import {
+  assessOfficeSyndromeRisk,
+  PROLONGED_SESSION_THRESHOLD_MS,
+  summarizeWeeklyRiskTrend,
+  type OfficeSyndromeRisk,
+  type OfficeSyndromeWeeklyTrend,
+} from './officeSyndromeRisk.js'
+
 export interface DailyReportAlertInput {
   id: string
   category: string
@@ -47,6 +55,15 @@ export interface DailyReportPerson {
   totalAlerts: number
   alertDurationMs: number
   byCategory: CategoryCounts
+  officeSyndromeRisk: OfficeSyndromeRisk
+  riskTrend7d: OfficeSyndromeWeeklyTrend
+}
+
+export interface DailyReportRiskSummary {
+  high: number
+  moderate: number
+  low: number
+  chronicRiskPeople: number
 }
 
 export interface DailyReportCamera {
@@ -70,6 +87,7 @@ export interface DailyReport {
     totalAlertDurationMs: number
     byCategory: CategoryCounts
     byType: Record<string, number>
+    riskSummary: DailyReportRiskSummary
   }
   hourly: DailyReportHourlyBucket[]
   people: DailyReportPerson[]
@@ -152,7 +170,15 @@ export function buildDailyReport(params: {
     byCategory: emptyCategories(),
   }))
 
-  const peopleMap = new Map<string, DailyReportPerson & { cameraSet: Set<string> }>()
+  interface PersonAccumulator extends Omit<DailyReportPerson, 'officeSyndromeRisk' | 'riskTrend7d'> {
+    cameraSet: Set<string>
+    longestSessionMs: number
+    prolongedSessionCount: number
+    durationByCategory: CategoryCounts
+    byType: Record<string, number>
+  }
+
+  const peopleMap = new Map<string, PersonAccumulator>()
   const cameraMap = new Map<string, DailyReportCamera>()
 
   const getPersonEntry = (employeeId: string | null, personName: string | null) => {
@@ -173,6 +199,10 @@ export function buildDailyReport(params: {
         totalAlerts: 0,
         alertDurationMs: 0,
         byCategory: emptyCategories(),
+        longestSessionMs: 0,
+        prolongedSessionCount: 0,
+        durationByCategory: emptyCategories(),
+        byType: {},
       }
       peopleMap.set(key, entry)
     }
@@ -206,6 +236,10 @@ export function buildDailyReport(params: {
     const person = getPersonEntry(session.employeeId, session.personName)
     person.sessionCount += 1
     person.presenceDurationMs += duration
+    person.longestSessionMs = Math.max(person.longestSessionMs, duration)
+    if (duration >= PROLONGED_SESSION_THRESHOLD_MS) {
+      person.prolongedSessionCount += 1
+    }
     person.cameraSet.add(session.cameraLabel || session.cameraId)
 
     const clampedStart = Math.max(session.startedAt, startMs)
@@ -235,6 +269,15 @@ export function buildDailyReport(params: {
     person.totalAlerts += 1
     person.alertDurationMs += alertDuration
     incrementCategory(person.byCategory, alert.category)
+    if (
+      alert.category === 'posture' ||
+      alert.category === 'fatigue' ||
+      alert.category === 'distance' ||
+      alert.category === 'fall'
+    ) {
+      person.durationByCategory[alert.category] += alertDuration
+    }
+    person.byType[alert.type] = (person.byType[alert.type] ?? 0) + 1
     if (alert.cameraLabel || alert.cameraId) {
       person.cameraSet.add(alert.cameraLabel || alert.cameraId || '')
     }
@@ -250,11 +293,29 @@ export function buildDailyReport(params: {
   }
 
   const people: DailyReportPerson[] = [...peopleMap.values()]
-    .map(({ cameraSet, ...rest }) => ({
-      ...rest,
-      cameras: [...cameraSet].filter(Boolean),
-    }))
+    .map(({ cameraSet, longestSessionMs, prolongedSessionCount, durationByCategory, byType: personByType, ...rest }) => {
+      const officeSyndromeRisk = assessOfficeSyndromeRisk({
+        presenceDurationMs: rest.presenceDurationMs,
+        longestSessionMs,
+        prolongedSessionCount,
+        postureCount: rest.byCategory.posture,
+        postureDurationMs: durationByCategory.posture,
+        fatigueCount: rest.byCategory.fatigue,
+        fatigueDurationMs: durationByCategory.fatigue,
+        distanceCount: rest.byCategory.distance,
+        distanceDurationMs: durationByCategory.distance,
+        byType: personByType,
+      })
+      return {
+        ...rest,
+        cameras: [...cameraSet].filter(Boolean),
+        officeSyndromeRisk,
+        riskTrend7d: summarizeWeeklyRiskTrend([{ score: officeSyndromeRisk.score, level: officeSyndromeRisk.level }]),
+      }
+    })
     .sort((a, b) => b.totalAlerts - a.totalAlerts || b.presenceDurationMs - a.presenceDurationMs)
+
+  const riskSummary = summarizeRiskCounts(people)
 
   const cameras: DailyReportCamera[] = [...cameraMap.values()].sort(
     (a, b) => b.totalAlerts - a.totalAlerts || b.sessionCount - a.sessionCount,
@@ -273,9 +334,87 @@ export function buildDailyReport(params: {
       totalAlertDurationMs,
       byCategory: summaryByCategory,
       byType,
+      riskSummary,
     },
     hourly,
     people,
     cameras,
+  }
+}
+
+function summarizeRiskCounts(people: DailyReportPerson[]): DailyReportRiskSummary {
+  const counts: DailyReportRiskSummary = { high: 0, moderate: 0, low: 0, chronicRiskPeople: 0 }
+  for (const person of people) {
+    counts[person.officeSyndromeRisk.level] += 1
+    if (person.riskTrend7d.chronicPattern) {
+      counts.chronicRiskPeople += 1
+    }
+  }
+  return counts
+}
+
+/**
+ * เติมแนวโน้มความเสี่ยง Office Syndrome ย้อนหลัง 7 วัน (รวมวันที่เลือก) ให้กับทุกคนในรายงาน
+ */
+export function attachWeeklyRiskTrends(params: {
+  report: DailyReport
+  alerts: DailyReportAlertInput[]
+  sessions: DailyReportSessionInput[]
+  nowMs?: number
+}): DailyReport {
+  const { report, alerts, sessions, nowMs } = params
+  const perPersonDays = new Map<string, Array<{ score: number; level: OfficeSyndromeRisk['level'] }>>()
+
+  for (let offset = 6; offset >= 0; offset -= 1) {
+    const dayStartMs = report.startMs - offset * MS_PER_DAY
+    const dayEndMs = dayStartMs + MS_PER_DAY
+    const dayReport =
+      offset === 0
+        ? report
+        : buildDailyReport({
+            date: report.date,
+            startMs: dayStartMs,
+            endMs: dayEndMs,
+            nowMs,
+            alerts,
+            sessions,
+          })
+
+    for (const person of dayReport.people) {
+      const list = perPersonDays.get(person.key) ?? []
+      list.push({
+        score: person.officeSyndromeRisk.score,
+        level: person.officeSyndromeRisk.level,
+      })
+      perPersonDays.set(person.key, list)
+    }
+  }
+
+  const people = report.people.map((person) => {
+    const history = perPersonDays.get(person.key) ?? [
+      { score: person.officeSyndromeRisk.score, level: person.officeSyndromeRisk.level },
+    ]
+    const riskTrend7d = summarizeWeeklyRiskTrend(history)
+    const recommendations = [...person.officeSyndromeRisk.recommendations]
+    if (riskTrend7d.chronicPattern && person.officeSyndromeRisk.level !== 'high') {
+      recommendations.push('พบความเสี่ยงต่อเนื่องหลายวันในรอบสัปดาห์ ควรปรับสภาพแวดล้อมการทำงานและยืดเหยียดสม่ำเสมอ')
+    }
+    return {
+      ...person,
+      officeSyndromeRisk: {
+        ...person.officeSyndromeRisk,
+        recommendations,
+      },
+      riskTrend7d,
+    }
+  })
+
+  return {
+    ...report,
+    summary: {
+      ...report.summary,
+      riskSummary: summarizeRiskCounts(people),
+    },
+    people,
   }
 }

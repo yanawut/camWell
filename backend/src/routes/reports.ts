@@ -1,11 +1,14 @@
 import { Router, type Request, type Response } from 'express'
 import { getDb, type AlertEventRow, type PresenceSessionRow } from '../db.js'
-import { buildDailyReport, formatLocalDate, parseLocalDayRange } from '../lib/dailyReport.js'
+import { attachWeeklyRiskTrends, buildDailyReport, formatLocalDate, parseLocalDayRange } from '../lib/dailyReport.js'
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000
 
 export const reportsRouter = Router()
 
 // GET /api/reports/daily?date=YYYY-MM-DD&tzOffset=-420
 // สรุปรายงานประจำวัน: จำนวนคน, เวลาที่อยู่หน้ากล้อง, แจ้งเตือนแยกตามหมวด/ประเภท/ชั่วโมง/บุคคล/กล้อง
+// พร้อมดึงข้อมูลย้อนหลัง 7 วันมาคำนวณแนวโน้มความเสี่ยง Office Syndrome รายบุคคล
 reportsRouter.get('/daily', (req: Request, res: Response) => {
   const rawTz = req.query.tzOffset
   const parsedTz = rawTz !== undefined ? Number(rawTz) : new Date().getTimezoneOffset()
@@ -22,6 +25,7 @@ reportsRouter.get('/daily', (req: Request, res: Response) => {
   }
 
   const db = getDb()
+  const windowStartMs = range.startMs - 6 * MS_PER_DAY
 
   const alertRows = db
     .prepare(
@@ -32,9 +36,9 @@ reportsRouter.get('/daily', (req: Request, res: Response) => {
        WHERE a.started_at >= ? AND a.started_at < ?
        ORDER BY a.started_at ASC`,
     )
-    .all(range.startMs, range.endMs) as unknown as AlertEventRow[]
+    .all(windowStartMs, range.endMs) as unknown as AlertEventRow[]
 
-  // ดึง presence sessions ที่ทับซ้อนกับช่วงวัน [startMs, endMs)
+  // ดึง presence sessions ที่ทับซ้อนกับช่วง 7 วันล่าสุด [windowStartMs, endMs)
   const sessionRows = db
     .prepare(
       `SELECT ps.id, ps.employee_id, COALESCE(e.name, ps.person_name) as person_name,
@@ -44,32 +48,42 @@ reportsRouter.get('/daily', (req: Request, res: Response) => {
        WHERE ps.started_at < ? AND (ps.ended_at IS NULL OR ps.ended_at > ?)
        ORDER BY ps.started_at ASC`,
     )
-    .all(range.endMs, range.startMs) as unknown as PresenceSessionRow[]
+    .all(range.endMs, windowStartMs) as unknown as PresenceSessionRow[]
 
-  const report = buildDailyReport({
+  const alerts = alertRows.map((r) => ({
+    id: r.id,
+    category: r.category,
+    type: r.type,
+    employeeId: r.employee_id,
+    personName: r.person_name,
+    cameraId: r.camera_id,
+    cameraLabel: r.camera_label,
+    startedAt: r.started_at,
+    endedAt: r.ended_at,
+  }))
+
+  const sessions = sessionRows.map((s) => ({
+    id: s.id,
+    employeeId: s.employee_id,
+    personName: s.person_name,
+    cameraId: s.camera_id,
+    cameraLabel: s.camera_label,
+    startedAt: s.started_at,
+    endedAt: s.ended_at,
+  }))
+
+  const dailyReport = buildDailyReport({
     date: range.date,
     startMs: range.startMs,
     endMs: range.endMs,
-    alerts: alertRows.map((r) => ({
-      id: r.id,
-      category: r.category,
-      type: r.type,
-      employeeId: r.employee_id,
-      personName: r.person_name,
-      cameraId: r.camera_id,
-      cameraLabel: r.camera_label,
-      startedAt: r.started_at,
-      endedAt: r.ended_at,
-    })),
-    sessions: sessionRows.map((s) => ({
-      id: s.id,
-      employeeId: s.employee_id,
-      personName: s.person_name,
-      cameraId: s.camera_id,
-      cameraLabel: s.camera_label,
-      startedAt: s.started_at,
-      endedAt: s.ended_at,
-    })),
+    alerts,
+    sessions,
+  })
+
+  const report = attachWeeklyRiskTrends({
+    report: dailyReport,
+    alerts,
+    sessions,
   })
 
   res.json(report)

@@ -1,6 +1,12 @@
 // ตัวช่วยจัดรูปแบบและส่งออกรายงานประจำวัน (CSV / JSON)
 
-import type { DailyReport } from '../services/dailyReport'
+import type { DailyReport, OfficeSyndromeRiskLevel } from '../services/dailyReport'
+
+export const RISK_LEVEL_LABELS_TH: Record<OfficeSyndromeRiskLevel, string> = {
+  low: 'ต่ำ',
+  moderate: 'ปานกลาง',
+  high: 'สูง',
+}
 
 export function formatDurationMs(ms: number): string {
   const totalSeconds = Math.max(0, Math.round(ms / 1000))
@@ -53,6 +59,10 @@ export function buildDailyReportCsv(report: DailyReport): string {
     'ระยะห่างจอ',
     'หกล้ม',
     'เวลารวมที่เกิดแจ้งเตือน(วินาที)',
+    'คะแนนความเสี่ยง Office Syndrome',
+    'ระดับความเสี่ยง',
+    'วันเสี่ยงปานกลาง-สูงใน7วัน',
+    'ปัจจัยเสี่ยงหลัก',
   ]
 
   const rows = report.people.map((person) => [
@@ -70,6 +80,10 @@ export function buildDailyReportCsv(report: DailyReport): string {
     String(person.byCategory.distance),
     String(person.byCategory.fall),
     String(Math.round(person.alertDurationMs / 1000)),
+    String(person.officeSyndromeRisk.score),
+    RISK_LEVEL_LABELS_TH[person.officeSyndromeRisk.level],
+    `${person.riskTrend7d.elevatedRiskDays}/${person.riskTrend7d.activeDays}`,
+    person.officeSyndromeRisk.factors.join(' · '),
   ])
 
   return [header, ...rows].map((cols) => cols.map(escapeCsvCell).join(',')).join('\r\n')

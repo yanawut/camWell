@@ -18,6 +18,7 @@ import {
   formatDateThai,
   formatDurationMs,
   formatTimeShort,
+  RISK_LEVEL_LABELS_TH,
 } from '../lib/dailyReportExport'
 import '../App.css'
 import './PeoplePage.css'
@@ -78,6 +79,13 @@ export default function ReportsPage() {
   const sortedByType = useMemo(() => {
     if (!report) return []
     return Object.entries(report.summary.byType).sort((a, b) => b[1] - a[1])
+  }, [report])
+
+  const elevatedRiskPeople = useMemo(() => {
+    if (!report) return []
+    return report.people
+      .filter((p) => p.officeSyndromeRisk.level !== 'low' || p.riskTrend7d.chronicPattern)
+      .sort((a, b) => b.officeSyndromeRisk.score - a.officeSyndromeRisk.score)
   }, [report])
 
   const handleDateChange = (nextDate: string) => {
@@ -197,6 +205,75 @@ export default function ReportsPage() {
             ))}
           </section>
 
+          <section className="panel reports-risk-panel">
+            <div className="reports-panel-head">
+              <div>
+                <h2>คัดกรองความเสี่ยง Office Syndrome (จากพฤติกรรมหน้ากล้อง)</h2>
+                <p className="reports-risk-note">
+                  ประเมินจากเวลาการนั่งต่อเนื่อง (30%) + ท่านั่งผิดปกติ (45%) + ระยะห่างจอและความล้า (25%) —
+                  เป็นการคัดกรองเบื้องต้น ไม่ใช่การวินิจฉัยโรคทางการแพทย์
+                </p>
+              </div>
+              <div className="reports-risk-pills">
+                <span className="reports-risk-badge is-high">
+                  เสี่ยงสูง {report.summary.riskSummary.high} คน
+                </span>
+                <span className="reports-risk-badge is-moderate">
+                  เสี่ยงปานกลาง {report.summary.riskSummary.moderate} คน
+                </span>
+                <span className="reports-risk-badge is-low">
+                  เสี่ยงต่ำ {report.summary.riskSummary.low} คน
+                </span>
+                {report.summary.riskSummary.chronicRiskPeople > 0 && (
+                  <span className="reports-risk-badge is-chronic">
+                    เสี่ยงต่อเนื่องใน 7 วัน {report.summary.riskSummary.chronicRiskPeople} คน
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {elevatedRiskPeople.length === 0 ? (
+              <p className="people-muted">ยังไม่พบผู้ที่มีความเสี่ยงพฤติกรรมระดับปานกลางขึ้นไปในวันที่เลือก</p>
+            ) : (
+              <div className="reports-risk-cards">
+                {elevatedRiskPeople.map((person) => {
+                  const risk = person.officeSyndromeRisk
+                  return (
+                    <article key={person.key} className={`reports-risk-card is-${risk.level}`}>
+                      <div className="reports-risk-card-head">
+                        <div>
+                          <strong>{person.personName}</strong>
+                          <span className="reports-risk-sub">
+                            แนวโน้ม 7 วัน: เสี่ยงปานกลาง-สูง {person.riskTrend7d.elevatedRiskDays}/
+                            {person.riskTrend7d.activeDays} วัน (เฉลี่ย {person.riskTrend7d.averageScore}/100)
+                          </span>
+                        </div>
+                        <span className={`reports-risk-badge is-${risk.level}`}>
+                          {RISK_LEVEL_LABELS_TH[risk.level]} · {risk.score}/100
+                        </span>
+                      </div>
+                      <div className="reports-risk-breakdown">
+                        <span>นั่งนาน/ต่อเนื่อง {risk.breakdown.sedentary}/30</span>
+                        <span>ท่านั่ง {risk.breakdown.posture}/45</span>
+                        <span>สายตา/ล้า {risk.breakdown.visualFatigue}/25</span>
+                      </div>
+                      {risk.factors.length > 0 && (
+                        <p className="reports-risk-factors">
+                          <strong>ปัจจัยหลัก:</strong> {risk.factors.join(' · ')}
+                        </p>
+                      )}
+                      {risk.recommendations.length > 0 && (
+                        <p className="reports-risk-rec">
+                          <strong>คำแนะนำ:</strong> {risk.recommendations[0]}
+                        </p>
+                      )}
+                    </article>
+                  )
+                })}
+              </div>
+            )}
+          </section>
+
           <div className="reports-grid">
             <section className="panel reports-chart-panel">
               <div className="reports-panel-head">
@@ -287,36 +364,63 @@ export default function ReportsPage() {
                       <th className="is-center">ระยะห่าง</th>
                       <th className="is-center">หกล้ม</th>
                       <th className="is-center">เวลาแจ้งเตือนรวม</th>
+                      <th className="is-center">ความเสี่ยง Office Syndrome</th>
+                      <th className="is-center">แนวโน้ม 7 วัน</th>
+                      <th className="is-left">ปัจจัยเสี่ยงหลัก</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {report.people.map((person) => (
-                      <tr key={person.key} className={person.byCategory.fall > 0 ? 'alerts-row-fall' : undefined}>
-                        <td className="people-name is-left">
-                          {person.employeeId ? (
-                            <a className="alerts-person-link" href={`?alerts&employee=${encodeURIComponent(person.employeeId)}`}>
-                              {person.personName}
-                            </a>
-                          ) : (
-                            person.personName
-                          )}
-                        </td>
-                        <td className="is-left">{person.cameras.length > 0 ? person.cameras.join(', ') : '—'}</td>
-                        <td className="is-center">
-                          {formatTimeShort(person.firstSeenAt)} – {formatTimeShort(person.lastSeenAt)}
-                        </td>
-                        <td className="is-center">{formatDurationMs(person.presenceDurationMs)}</td>
-                        <td className="is-center">{person.sessionCount}</td>
-                        <td className="is-center">
-                          <strong>{person.totalAlerts}</strong>
-                        </td>
-                        <td className="is-center">{person.byCategory.posture}</td>
-                        <td className="is-center">{person.byCategory.fatigue}</td>
-                        <td className="is-center">{person.byCategory.distance}</td>
-                        <td className="is-center">{person.byCategory.fall}</td>
-                        <td className="is-center">{formatDurationMs(person.alertDurationMs)}</td>
-                      </tr>
-                    ))}
+                    {report.people.map((person) => {
+                      const risk = person.officeSyndromeRisk
+                      return (
+                        <tr key={person.key} className={person.byCategory.fall > 0 ? 'alerts-row-fall' : undefined}>
+                          <td className="people-name is-left">
+                            {person.employeeId ? (
+                              <a className="alerts-person-link" href={`?alerts&employee=${encodeURIComponent(person.employeeId)}`}>
+                                {person.personName}
+                              </a>
+                            ) : (
+                              person.personName
+                            )}
+                          </td>
+                          <td className="is-left">{person.cameras.length > 0 ? person.cameras.join(', ') : '—'}</td>
+                          <td className="is-center">
+                            {formatTimeShort(person.firstSeenAt)} – {formatTimeShort(person.lastSeenAt)}
+                          </td>
+                          <td className="is-center">{formatDurationMs(person.presenceDurationMs)}</td>
+                          <td className="is-center">{person.sessionCount}</td>
+                          <td className="is-center">
+                            <strong>{person.totalAlerts}</strong>
+                          </td>
+                          <td className="is-center">{person.byCategory.posture}</td>
+                          <td className="is-center">{person.byCategory.fatigue}</td>
+                          <td className="is-center">{person.byCategory.distance}</td>
+                          <td className="is-center">{person.byCategory.fall}</td>
+                          <td className="is-center">{formatDurationMs(person.alertDurationMs)}</td>
+                          <td className="is-center">
+                            <span
+                              className={`reports-risk-badge is-${risk.level}`}
+                              title={`นั่งนาน ${risk.breakdown.sedentary}/30 · ท่านั่ง ${risk.breakdown.posture}/45 · สายตา/ล้า ${risk.breakdown.visualFatigue}/25`}
+                            >
+                              {RISK_LEVEL_LABELS_TH[risk.level]} · {risk.score}
+                            </span>
+                          </td>
+                          <td className="is-center">
+                            <span>
+                              {person.riskTrend7d.elevatedRiskDays}/{person.riskTrend7d.activeDays} วัน
+                            </span>
+                            {person.riskTrend7d.chronicPattern && (
+                              <span className="reports-chronic-tag" title="เสี่ยงปานกลาง-สูง >= 3 วันในรอบ 7 วัน">
+                                สะสม
+                              </span>
+                            )}
+                          </td>
+                          <td className="is-left reports-factors-cell">
+                            {risk.factors.length > 0 ? risk.factors.join(', ') : '—'}
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>

@@ -258,6 +258,138 @@
   text-align: center;
 }
 
+.reports-risk-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.reports-risk-note {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.reports-risk-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.reports-risk-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.reports-risk-badge.is-high {
+  background: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
+}
+
+.reports-risk-badge.is-moderate {
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+}
+
+.reports-risk-badge.is-low {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+}
+
+.reports-risk-badge.is-chronic {
+  background: rgba(139, 92, 246, 0.12);
+  color: #6d28d9;
+}
+
+.reports-risk-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.reports-risk-card {
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--border);
+  border-radius: 12px;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reports-risk-card.is-high {
+  border-left-color: #ef4444;
+  background: #fff7f7;
+}
+
+.reports-risk-card.is-moderate {
+  border-left-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.reports-risk-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.reports-risk-card-head > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reports-risk-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.reports-risk-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.reports-risk-breakdown > span {
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(148, 163, 184, 0.14);
+}
+
+.reports-risk-factors,
+.reports-risk-rec {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.reports-chronic-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(139, 92, 246, 0.14);
+  color: #6d28d9;
+}
+
+.reports-factors-cell {
+  white-space: normal !important;
+  min-width: 190px;
+  font-size: 13px;
+}
+
 @media print {
   .no-print,
   .app-nav {
