@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-type Page = 'dashboard' | 'camera' | 'people' | 'alerts' | 'report'
+type Page = 'dashboard' | 'camera' | 'gait' | 'people' | 'alerts' | 'report'
 type Theme = 'light' | 'dark'
 
 const THEME_STORAGE_KEY = 'camwell:theme'
@@ -8,6 +8,7 @@ const THEME_STORAGE_KEY = 'camwell:theme'
 const LINKS: { page: Page; label: string; href: string }[] = [
   { page: 'dashboard', label: 'ภาพรวม', href: '?dashboard' },
   { page: 'camera', label: 'ตั้งค่ากล้อง', href: '?camera' },
+  { page: 'gait', label: 'ท่ายืน & ท่าเดิน', href: '?gait' },
   { page: 'people', label: 'รายชื่อบุคคล', href: '?people' },
   { page: 'alerts', label: 'ประวัติแจ้งเตือน', href: '?alerts' },
   { page: 'report', label: 'รายงานประจำวัน', href: '?report' },
