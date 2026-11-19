@@ -20,7 +20,7 @@ import { DEFAULT_FALL_THRESHOLDS, type FallThresholds } from './types/fall'
 import type { AlertEvent } from './types/alerts'
 import type { EnrolledPerson } from './types/identity'
 import type { PersonSummary } from './types/person'
-import type { DetectionMode } from './lib/multiPerson'
+import { isDetectionMode } from './lib/multiPerson'
 import { DEFAULT_FACE_FEATURES_ENABLED, getCameraPeopleVisibility } from './lib/featureVisibility'
 import DevConsole, { type CameraStageExtras } from './console/DevConsole'
 import OfficeDashboard from './dashboard/OfficeDashboard'
@@ -73,7 +73,7 @@ function CameraApp() {
   const [detectionMode, setDetectionMode] = usePersistentState(
     'camwell:settings:detection-mode:v1',
     IS_DASHBOARD ? 'multi' : 'workstation',
-    (value): value is DetectionMode => value === 'multi' || value === 'workstation',
+    isDetectionMode,
   )
   // ลงทะเบียนใบหน้าที่ไม่รู้จักอัตโนมัติเป็น "คนที่ N" — เปิดไว้เป็นค่าเริ่มต้น จำค่าที่ผู้ใช้ปิด/เปิดไว้ใน localStorage
   const [autoEnrollEnabled, setAutoEnrollEnabled] = useState(() => localStorage.getItem(AUTO_ENROLL_STORAGE_KEY) !== 'false')

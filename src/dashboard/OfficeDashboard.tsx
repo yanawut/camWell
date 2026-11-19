@@ -4,7 +4,7 @@ import { DEMO_ALERT_COUNTS, useDemoPeople } from './useDemoPeople'
 import { useTodayAlertCounts } from './useTodayAlertCounts'
 import type { CameraSlot } from '../types/cameraSource'
 import type { PersonSummary } from '../types/person'
-import { MAX_TRACKED_PEOPLE, type DetectionMode } from '../lib/multiPerson'
+import { isMultiPersonMode, MAX_TRACKED_PEOPLE, type DetectionMode } from '../lib/multiPerson'
 import AppNavigation from '../components/AppNavigation'
 import './dashboard.css'
 
@@ -103,7 +103,7 @@ export default function OfficeDashboard({
           <label className="dash-toggle" title={`ตรวจได้สูงสุด ${MAX_TRACKED_PEOPLE} คนต่อกล้อง (ใช้ทรัพยากรมากขึ้น)`}>
             <input
               type="checkbox"
-              checked={detectionMode === 'multi'}
+              checked={isMultiPersonMode(detectionMode)}
               onChange={(e) => onDetectionModeChange(e.target.checked ? 'multi' : 'workstation')}
             />
             โหมดตรวจจับหลายคน
@@ -117,7 +117,7 @@ export default function OfficeDashboard({
         </p>
       )}
 
-      <div className={`dash-workspace${showCameras && detectionMode === 'multi' ? ' is-split' : ''}`}>
+      <div className={`dash-workspace${showCameras && isMultiPersonMode(detectionMode) ? ' is-split' : ''}`}>
       <section className="dash-rooms" aria-label="ห้องที่กำลังตรวจสอบ">
         {cameraSlots.map((slot, index) => {
           const room = roomPresentation(slot, index)

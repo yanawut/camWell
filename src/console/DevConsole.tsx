@@ -10,7 +10,7 @@ import { usePersistentState } from '../hooks/usePersistentState'
 import { API_BASE_URL } from '../services/apiConfig'
 import { DEFAULT_POSE_MODEL, POSE_MODELS, poseModelFileName, type PoseModelVariant } from '../hooks/usePoseLandmarker'
 import { DEFAULT_SKELETON_MODE, SKELETON_MODES, type SkeletonMode } from '../lib/skeletonOverlay'
-import { MAX_TRACKED_PEOPLE, maxPeopleFor, type DetectionMode } from '../lib/multiPerson'
+import { MAX_TRACKED_PEOPLE, landmarkerNumPosesFor, type DetectionMode } from '../lib/multiPerson'
 import type { CameraSlot, CameraSource } from '../types/cameraSource'
 import type { PersonSummary } from '../types/person'
 import type { AlertEvent } from '../types/alerts'
@@ -156,7 +156,7 @@ export default function DevConsole(props: DevConsoleProps) {
   const services: { name: string; detail: string; status: string; color: string }[] = [
     {
       name: 'Pose Landmarker',
-      detail: `${poseModelFileName(poseModel)} · numPoses ${maxPeopleFor(detectionMode)} · ${delegates}`,
+      detail: `${poseModelFileName(poseModel)} · numPoses ${poseModel === 'yolo' && detectionMode === 'unlimited' ? 'ไม่จำกัด' : landmarkerNumPosesFor(detectionMode)} · ${delegates}`,
       status: poseStatus,
       color: statusColor(poseStatus),
     },
@@ -264,6 +264,14 @@ export default function DevConsole(props: DevConsoleProps) {
                   onClick={() => onDetectionModeChange('multi')}
                 >
                   Multi · สูงสุด {MAX_TRACKED_PEOPLE}
+                </button>
+                <button
+                  type="button"
+                  className={detectionMode === 'unlimited' ? 'active' : ''}
+                  onClick={() => onDetectionModeChange('unlimited')}
+                  title="รับทุกคนที่เจอในเฟรม (YOLO ไม่จำกัดจริง · MediaPipe สูงสุด 20 คน) — ยิ่งคนเยอะยิ่งช้าลง"
+                >
+                  ไม่จำกัด
                 </button>
               </div>
             </div>

@@ -19,7 +19,13 @@ import { analyzeDistanceFrame, DISTANCE_LABELS_TH } from '../lib/distanceAnalysi
 import { getBreakReminderLabel } from '../lib/breakReminder'
 import { initialSustainedState, stepSustainedAlert, type SustainedAlertState } from '../lib/sustainedAlertMachine'
 import type { Point2D } from '../lib/tracker'
-import { limitPeopleForMode, maxPeopleFor, type DetectionMode } from '../lib/multiPerson'
+import {
+  formatMaxPeople,
+  landmarkerNumPosesFor,
+  limitPeopleForMode,
+  maxPeopleFor,
+  type DetectionMode,
+} from '../lib/multiPerson'
 import { nextCachedPoseResult } from '../lib/poseResultCache'
 import { shouldProcessPose } from '../lib/poseThrottle'
 import { updateInferenceEma } from '../lib/inferenceTiming'
@@ -200,7 +206,7 @@ export default function CameraStage({
     error: mediaPipeError,
     delegate: mediaPipeDelegate,
   } = usePoseLandmarker(
-    maxPeopleFor(detectionMode),
+    landmarkerNumPosesFor(detectionMode),
     poseModel === 'yolo' ? 'lite' : poseModel,
   )
   const [yoloStatus, setYoloStatus] = useState<LandmarkerStatus>('loading')
@@ -1149,7 +1155,7 @@ export default function CameraStage({
         {overlay}
       </div>
       <p className="current-issue">
-        ตรวจพบในเฟรม: {peopleCount} คน (รองรับสูงสุด {maxPeopleFor(detectionMode)} คน) · Pose ใช้เวลา ~{poseInferenceMs} ms/ครั้ง
+        ตรวจพบในเฟรม: {peopleCount} คน (รองรับสูงสุด {formatMaxPeople(maxPeopleFor(detectionMode))} คน) · Pose ใช้เวลา ~{poseInferenceMs} ms/ครั้ง
       </p>
       <button
         type="button"

@@ -6,7 +6,7 @@ import type { DevConsoleProps, RecorderState } from './DevConsole'
 import { formatDuration, formatTime, splitPersonName } from './format'
 import { loadPostureBaseline } from '../services/postureBaselineStore'
 import { POSE_INTERVAL_MS } from '../lib/poseThrottle'
-import { maxPeopleFor } from '../lib/multiPerson'
+import { formatMaxPeople, maxPeopleFor } from '../lib/multiPerson'
 import { MAX_CAMERA_SLOTS, type CameraSlot } from '../types/cameraSource'
 import { ALERT_LABELS_TH } from '../types/alerts'
 import type { PostureFeatures } from '../types/posture'
@@ -106,10 +106,10 @@ export default function MonitorTab(props: Props) {
         <div className="dc-stat">
           <span className="dc-muted-12">คนที่กำลังติดตาม</span>
           <span className="dc-stat-value">
-            {trackedTotal} / {maxPeople * cameraSlots.length}
+            {trackedTotal} / {formatMaxPeople(maxPeople * cameraSlots.length)}
           </span>
           <span className="dc-muted-12">
-            {detectionMode === 'multi' ? 'Multi-person' : 'Workstation'} · {cameraSlots.length} กล้อง
+            {detectionMode === 'unlimited' ? 'Unlimited' : detectionMode === 'multi' ? 'Multi-person' : 'Workstation'} · {cameraSlots.length} กล้อง
           </span>
         </div>
         <div className="dc-stat">
@@ -140,7 +140,7 @@ export default function MonitorTab(props: Props) {
                       {stats?.cameraError ? 'หยุดประมวลผล' : stats?.inferenceMs ? `~${Math.round(stats.inferenceMs)} ms` : '— ms'}
                     </span>
                     <span className="dc-chip">
-                      {stats?.cameraError ? '—' : people.length} / {maxPeople} คน
+                      {stats?.cameraError ? '—' : people.length} / {formatMaxPeople(maxPeople)} คน
                     </span>
                     {isRec && (
                       <span className="dc-chip dc-chip-rec">

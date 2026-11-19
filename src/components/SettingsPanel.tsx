@@ -128,6 +128,15 @@ export default function SettingsPanel({
           onChange={() => onDetectionModeChange('multi')}
         />
       </label>
+      <label className="settings-row settings-checkbox">
+        <span>ไม่จำกัดจำนวนคน (ยิ่งคนเยอะยิ่งช้าลง)</span>
+        <input
+          type="radio"
+          name="detection-mode"
+          checked={detectionMode === 'unlimited'}
+          onChange={() => onDetectionModeChange('unlimited')}
+        />
+      </label>
 
       <h3>ท่านั่ง</h3>
       <Slider
