@@ -41,6 +41,7 @@ describe('dailyReportExport', () => {
           totalAlerts: 4,
           alertDurationMs: 90_000,
           byCategory: { posture: 2, fatigue: 1, distance: 1, fall: 0 },
+          byType: { slouching: 2, drowsy: 1, too_close: 1 },
           officeSyndromeRisk: {
             score: 42,
             level: 'moderate',
