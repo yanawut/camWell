@@ -94,7 +94,7 @@
 
 .gait-custom-source .camera-source-selector {
   padding: 12px 14px;
-  background: #f8fafc;
+  background: var(--bg);
 }
 
 .gait-video-picker {
@@ -117,8 +117,8 @@
 }
 
 .gait-small-btn.is-active {
-  background: #0f172a;
-  border-color: #0f172a;
+  background: var(--accent);
+  border-color: var(--accent);
   color: #ffffff;
 }
 
@@ -250,7 +250,8 @@
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 10px 12px;
-  background: #f8fafc;
+  background: var(--bg);
+  color: var(--text);
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -281,8 +282,8 @@
 .gait-finding-ok {
   padding: 12px 14px;
   border-radius: 10px;
-  background: rgba(16, 185, 129, 0.1);
-  color: #047857;
+  background: color-mix(in srgb, var(--good) 14%, var(--panel-bg));
+  color: var(--good);
   font-size: 13px;
   font-weight: 600;
 }
@@ -301,7 +302,8 @@
   border-left: 4px solid var(--border);
   border-radius: 10px;
   padding: 10px 12px;
-  background: #ffffff;
+  background: var(--panel-bg);
+  color: var(--text);
   font-size: 13px;
   display: flex;
   flex-direction: column;
@@ -310,28 +312,28 @@
 
 .gait-finding-item p {
   margin: 0;
-  color: #334155;
+  color: var(--text-muted);
   line-height: 1.45;
 }
 
 .gait-finding-item.is-mild {
   border-left-color: #3b82f6;
-  background: #f8fbff;
+  background: color-mix(in srgb, var(--accent) 10%, var(--panel-bg));
 }
 
 .gait-finding-item.is-moderate {
   border-left-color: #f59e0b;
-  background: #fffbeb;
+  background: color-mix(in srgb, var(--warn) 12%, var(--panel-bg));
 }
 
 .gait-finding-item.is-high {
   border-left-color: #ef4444;
-  background: #fff7f7;
+  background: color-mix(in srgb, var(--danger) 12%, var(--panel-bg));
 }
 
 .gait-finding-item.is-ok {
   border-left-color: #10b981;
-  background: #ecfdf5;
+  background: color-mix(in srgb, var(--good) 12%, var(--panel-bg));
 }
 
 .gait-finding-title-row {
@@ -346,7 +348,8 @@
   font-weight: 700;
   padding: 2px 8px;
   border-radius: 999px;
-  background: rgba(15, 23, 42, 0.08);
+  background: rgba(148, 163, 184, 0.18);
+  color: var(--text);
   white-space: nowrap;
 }
 
@@ -361,13 +364,13 @@
 }
 
 .gait-phase-box.is-open {
-  background: rgba(59, 130, 246, 0.12);
-  color: #1d4ed8;
+  background: color-mix(in srgb, var(--accent) 15%, var(--panel-bg));
+  color: var(--accent);
 }
 
 .gait-phase-box.is-closed {
-  background: rgba(245, 158, 11, 0.15);
-  color: #b45309;
+  background: color-mix(in srgb, var(--warn) 18%, var(--panel-bg));
+  color: var(--warn);
 }
 
 .gait-people-cards {
@@ -380,10 +383,19 @@
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 12px 14px;
-  background: #ffffff;
+  background: var(--panel-bg);
+  color: var(--text);
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+:root[data-theme='dark'] .gait-person-block {
+  background: #1c283d;
+}
+
+:root[data-theme='dark'] .gait-metric-card {
+  background: #141e30;
 }
 
 .gait-person-header {
