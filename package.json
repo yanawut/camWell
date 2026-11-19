@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:all": "node scripts/dev-all.mjs",
     "dev:vision": ".\\vision_service\\.venv\\Scripts\\python.exe -m uvicorn app:app --app-dir vision_service --host 127.0.0.1 --port 8001",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
