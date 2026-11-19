@@ -55,6 +55,7 @@ export interface DailyReportPerson {
   totalAlerts: number
   alertDurationMs: number
   byCategory: CategoryCounts
+  byType: Record<string, number>
   officeSyndromeRisk: OfficeSyndromeRisk
   riskTrend7d: OfficeSyndromeWeeklyTrend
 }
@@ -175,7 +176,6 @@ export function buildDailyReport(params: {
     longestSessionMs: number
     prolongedSessionCount: number
     durationByCategory: CategoryCounts
-    byType: Record<string, number>
   }
 
   const peopleMap = new Map<string, PersonAccumulator>()
@@ -293,7 +293,7 @@ export function buildDailyReport(params: {
   }
 
   const people: DailyReportPerson[] = [...peopleMap.values()]
-    .map(({ cameraSet, longestSessionMs, prolongedSessionCount, durationByCategory, byType: personByType, ...rest }) => {
+    .map(({ cameraSet, longestSessionMs, prolongedSessionCount, durationByCategory, ...rest }) => {
       const officeSyndromeRisk = assessOfficeSyndromeRisk({
         presenceDurationMs: rest.presenceDurationMs,
         longestSessionMs,
@@ -304,7 +304,7 @@ export function buildDailyReport(params: {
         fatigueDurationMs: durationByCategory.fatigue,
         distanceCount: rest.byCategory.distance,
         distanceDurationMs: durationByCategory.distance,
-        byType: personByType,
+        byType: rest.byType,
       })
       return {
         ...rest,

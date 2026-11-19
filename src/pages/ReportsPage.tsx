@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import AppNavigation from '../components/AppNavigation'
 import {
   ALERT_CATEGORY_LABELS_TH,
@@ -11,6 +11,7 @@ import {
   getTodayDateInputValue,
   shiftDateInputValue,
   type DailyReport,
+  type DailyReportPerson,
 } from '../services/dailyReport'
 import {
   downloadDailyReportCsv,
@@ -20,12 +21,63 @@ import {
   formatTimeShort,
   RISK_LEVEL_LABELS_TH,
 } from '../lib/dailyReportExport'
+import {
+  buildLineShareUrl,
+  buildLineSummaryText,
+  copyPersonCardImage,
+  downloadPersonCardPng,
+} from '../lib/personSummaryExport'
+import {
+  extractPersonDailySymptoms,
+  extractPotentialConditions,
+  type UpperBodyZones,
+  type ZoneSeverity,
+} from '../lib/personSymptoms'
 import '../App.css'
 import './PeoplePage.css'
 import './AlertsPage.css'
 import './ReportsPage.css'
 
 const CATEGORIES: AlertCategory[] = ['posture', 'fatigue', 'distance', 'fall']
+type PeopleViewMode = 'cards' | 'table'
+type RiskFilter = 'all' | 'high' | 'moderate' | 'low' | 'chronic'
+
+const ZONE_STROKE: Record<ZoneSeverity, string> = {
+  none: '#cbd5e1',
+  low: '#10b981',
+  moderate: '#f59e0b',
+  high: '#ef4444',
+}
+
+function UpperBodySymptomMap({ zones }: { zones: UpperBodyZones }) {
+  return (
+    <div className="reports-body-map" title="แผนภาพจุดเฝ้าระวังอาการส่วนบน (ศีรษะ/ตา · คอ · บ่า/ไหล่ · หลัง)">
+      <svg viewBox="0 0 120 132" className="reports-body-svg" aria-label="แผนภาพจุดอาการ">
+        <circle cx="60" cy="24" r="15" fill="none" stroke="#64748b" strokeWidth="2.5" />
+        <circle cx="60" cy="22" r="5" fill={ZONE_STROKE[zones.head]} />
+        <line x1="60" y1="39" x2="60" y2="54" stroke={ZONE_STROKE[zones.neck]} strokeWidth="7" strokeLinecap="round" />
+        <path
+          d="M26 62 Q60 50 94 62"
+          fill="none"
+          stroke={ZONE_STROKE[zones.shoulders]}
+          strokeWidth="8"
+          strokeLinecap="round"
+        />
+        <rect x="44" y="64" width="32" height="52" rx="10" fill="none" stroke={ZONE_STROKE[zones.back]} strokeWidth="4" />
+        <line
+          x1="60"
+          y1="68"
+          x2="60"
+          y2="112"
+          stroke={ZONE_STROKE[zones.back]}
+          strokeWidth="4"
+          strokeDasharray="4 3"
+        />
+      </svg>
+      <span className="reports-body-caption">จุดเฝ้าระวังหลัก</span>
+    </div>
+  )
+}
 
 export default function ReportsPage() {
   const [date, setDate] = useState(() => {
@@ -35,8 +87,36 @@ export default function ReportsPage() {
   const [report, setReport] = useState<DailyReport | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [error, setError] = useState<string | null>(null)
+  const [peopleView, setPeopleView] = useState<PeopleViewMode>('cards')
+  const [riskFilter, setRiskFilter] = useState<RiskFilter>('all')
+  const [personQuery, setPersonQuery] = useState('')
+  const [cardFeedback, setCardFeedback] = useState<Record<string, string>>({})
+  const feedbackTimersRef = useRef<Record<string, number>>({})
 
   const today = getTodayDateInputValue()
+
+  useEffect(() => {
+    const timers = feedbackTimersRef.current
+    return () => {
+      for (const timerId of Object.values(timers)) {
+        window.clearTimeout(timerId)
+      }
+    }
+  }, [])
+
+  const showCardFeedback = useCallback((personKey: string, message: string) => {
+    const prevTimer = feedbackTimersRef.current[personKey]
+    if (prevTimer) window.clearTimeout(prevTimer)
+    setCardFeedback((prev) => ({ ...prev, [personKey]: message }))
+    feedbackTimersRef.current[personKey] = window.setTimeout(() => {
+      setCardFeedback((prev) => {
+        const next = { ...prev }
+        delete next[personKey]
+        return next
+      })
+      delete feedbackTimersRef.current[personKey]
+    }, 2200)
+  }, [])
 
   const handleRefresh = useCallback(() => {
     setStatus('loading')
@@ -81,12 +161,52 @@ export default function ReportsPage() {
     return Object.entries(report.summary.byType).sort((a, b) => b[1] - a[1])
   }, [report])
 
-  const elevatedRiskPeople = useMemo(() => {
+  const filteredPeople = useMemo(() => {
     if (!report) return []
-    return report.people
-      .filter((p) => p.officeSyndromeRisk.level !== 'low' || p.riskTrend7d.chronicPattern)
-      .sort((a, b) => b.officeSyndromeRisk.score - a.officeSyndromeRisk.score)
-  }, [report])
+    const q = personQuery.trim().toLowerCase()
+    return report.people.filter((person) => {
+      if (q && !person.personName.toLowerCase().includes(q)) return false
+      if (riskFilter === 'chronic') return person.riskTrend7d.chronicPattern
+      if (riskFilter !== 'all') return person.officeSyndromeRisk.level === riskFilter
+      return true
+    })
+  }, [report, personQuery, riskFilter])
+
+  const handleDownloadPng = useCallback(
+    async (person: DailyReportPerson) => {
+      try {
+        await downloadPersonCardPng(person, date)
+        showCardFeedback(person.key, 'ดาวน์โหลดรูปแล้ว ✓')
+      } catch {
+        showCardFeedback(person.key, 'สร้างรูปไม่สำเร็จ')
+      }
+    },
+    [date, showCardFeedback],
+  )
+
+  const handleCopyImage = useCallback(
+    async (person: DailyReportPerson) => {
+      try {
+        const ok = await copyPersonCardImage(person, date)
+        showCardFeedback(person.key, ok ? 'คัดลอกรูปแล้ว ✓' : 'เบราว์เซอร์ไม่รองรับคัดลอกรูป')
+      } catch {
+        showCardFeedback(person.key, 'คัดลอกรูปไม่สำเร็จ')
+      }
+    },
+    [date, showCardFeedback],
+  )
+
+  const handleCopyLineText = useCallback(
+    async (person: DailyReportPerson) => {
+      try {
+        await navigator.clipboard.writeText(buildLineSummaryText(person, date))
+        showCardFeedback(person.key, 'คัดลอกข้อความ LINE แล้ว ✓')
+      } catch {
+        showCardFeedback(person.key, 'คัดลอกข้อความไม่สำเร็จ')
+      }
+    },
+    [date, showCardFeedback],
+  )
 
   const handleDateChange = (nextDate: string) => {
     if (!nextDate || nextDate === date) return
@@ -215,63 +335,45 @@ export default function ReportsPage() {
                 </p>
               </div>
               <div className="reports-risk-pills">
-                <span className="reports-risk-badge is-high">
+                <button
+                  type="button"
+                  className={`reports-risk-filter-btn ${riskFilter === 'all' ? 'is-active' : ''}`}
+                  onClick={() => setRiskFilter('all')}
+                >
+                  ทั้งหมด {report.people.length} คน
+                </button>
+                <button
+                  type="button"
+                  className={`reports-risk-badge is-high reports-risk-filter-btn ${riskFilter === 'high' ? 'is-active' : ''}`}
+                  onClick={() => setRiskFilter((prev) => (prev === 'high' ? 'all' : 'high'))}
+                >
                   เสี่ยงสูง {report.summary.riskSummary.high} คน
-                </span>
-                <span className="reports-risk-badge is-moderate">
+                </button>
+                <button
+                  type="button"
+                  className={`reports-risk-badge is-moderate reports-risk-filter-btn ${riskFilter === 'moderate' ? 'is-active' : ''}`}
+                  onClick={() => setRiskFilter((prev) => (prev === 'moderate' ? 'all' : 'moderate'))}
+                >
                   เสี่ยงปานกลาง {report.summary.riskSummary.moderate} คน
-                </span>
-                <span className="reports-risk-badge is-low">
+                </button>
+                <button
+                  type="button"
+                  className={`reports-risk-badge is-low reports-risk-filter-btn ${riskFilter === 'low' ? 'is-active' : ''}`}
+                  onClick={() => setRiskFilter((prev) => (prev === 'low' ? 'all' : 'low'))}
+                >
                   เสี่ยงต่ำ {report.summary.riskSummary.low} คน
-                </span>
+                </button>
                 {report.summary.riskSummary.chronicRiskPeople > 0 && (
-                  <span className="reports-risk-badge is-chronic">
+                  <button
+                    type="button"
+                    className={`reports-risk-badge is-chronic reports-risk-filter-btn ${riskFilter === 'chronic' ? 'is-active' : ''}`}
+                    onClick={() => setRiskFilter((prev) => (prev === 'chronic' ? 'all' : 'chronic'))}
+                  >
                     เสี่ยงต่อเนื่องใน 7 วัน {report.summary.riskSummary.chronicRiskPeople} คน
-                  </span>
+                  </button>
                 )}
               </div>
             </div>
-
-            {elevatedRiskPeople.length === 0 ? (
-              <p className="people-muted">ยังไม่พบผู้ที่มีความเสี่ยงพฤติกรรมระดับปานกลางขึ้นไปในวันที่เลือก</p>
-            ) : (
-              <div className="reports-risk-cards">
-                {elevatedRiskPeople.map((person) => {
-                  const risk = person.officeSyndromeRisk
-                  return (
-                    <article key={person.key} className={`reports-risk-card is-${risk.level}`}>
-                      <div className="reports-risk-card-head">
-                        <div>
-                          <strong>{person.personName}</strong>
-                          <span className="reports-risk-sub">
-                            แนวโน้ม 7 วัน: เสี่ยงปานกลาง-สูง {person.riskTrend7d.elevatedRiskDays}/
-                            {person.riskTrend7d.activeDays} วัน (เฉลี่ย {person.riskTrend7d.averageScore}/100)
-                          </span>
-                        </div>
-                        <span className={`reports-risk-badge is-${risk.level}`}>
-                          {RISK_LEVEL_LABELS_TH[risk.level]} · {risk.score}/100
-                        </span>
-                      </div>
-                      <div className="reports-risk-breakdown">
-                        <span>นั่งนาน/ต่อเนื่อง {risk.breakdown.sedentary}/30</span>
-                        <span>ท่านั่ง {risk.breakdown.posture}/45</span>
-                        <span>สายตา/ล้า {risk.breakdown.visualFatigue}/25</span>
-                      </div>
-                      {risk.factors.length > 0 && (
-                        <p className="reports-risk-factors">
-                          <strong>ปัจจัยหลัก:</strong> {risk.factors.join(' · ')}
-                        </p>
-                      )}
-                      {risk.recommendations.length > 0 && (
-                        <p className="reports-risk-rec">
-                          <strong>คำแนะนำ:</strong> {risk.recommendations[0]}
-                        </p>
-                      )}
-                    </article>
-                  )
-                })}
-              </div>
-            )}
           </section>
 
           <div className="reports-grid">
@@ -345,9 +447,171 @@ export default function ReportsPage() {
           </div>
 
           <section className="panel">
-            <h2>สรุปรายบุคคล ({report.people.length} คน)</h2>
+            <div className="reports-panel-head reports-people-head">
+              <h2>
+                สรุปรายบุคคล ({filteredPeople.length}
+                {filteredPeople.length !== report.people.length ? ` / ${report.people.length}` : ''} คน)
+              </h2>
+              <div className="reports-people-controls no-print">
+                <input
+                  type="search"
+                  className="reports-search-input"
+                  placeholder="ค้นหาชื่อบุคคล..."
+                  aria-label="ค้นหาชื่อบุคคล"
+                  value={personQuery}
+                  onChange={(e) => setPersonQuery(e.target.value)}
+                />
+                <div className="reports-view-toggle" role="group" aria-label="รูปแบบการแสดงผลรายบุคคล">
+                  <button
+                    type="button"
+                    className={`reports-pill-btn ${peopleView === 'cards' ? 'is-active' : ''}`}
+                    onClick={() => setPeopleView('cards')}
+                  >
+                    แบบการ์ด
+                  </button>
+                  <button
+                    type="button"
+                    className={`reports-pill-btn ${peopleView === 'table' ? 'is-active' : ''}`}
+                    onClick={() => setPeopleView('table')}
+                  >
+                    แบบตาราง
+                  </button>
+                </div>
+              </div>
+            </div>
+
             {report.people.length === 0 ? (
               <p className="people-muted">ยังไม่มีข้อมูลบุคคลในวันที่เลือก</p>
+            ) : filteredPeople.length === 0 ? (
+              <p className="people-muted">ไม่พบบุคคลที่ตรงกับเงื่อนไขการกรอง</p>
+            ) : peopleView === 'cards' ? (
+              <div className="reports-person-cards">
+                {filteredPeople.map((person) => {
+                  const risk = person.officeSyndromeRisk
+                  const trend = person.riskTrend7d
+                  const feedback = cardFeedback[person.key]
+                  const lineUrl = buildLineShareUrl(buildLineSummaryText(person, date))
+                  const { zones, symptoms } = extractPersonDailySymptoms(person)
+                  const conditions = extractPotentialConditions(person)
+                  return (
+                    <article
+                      key={person.key}
+                      className={`reports-person-card is-${risk.level} ${person.byCategory.fall > 0 ? 'has-fall' : ''}`}
+                    >
+                      <div className="reports-person-card-head">
+                        <div>
+                          <div className="reports-person-title">
+                            {person.employeeId ? (
+                              <a
+                                className="alerts-person-link"
+                                href={`?alerts&employee=${encodeURIComponent(person.employeeId)}`}
+                              >
+                                {person.personName}
+                              </a>
+                            ) : (
+                              <span>{person.personName}</span>
+                            )}
+                            {trend.chronicPattern && (
+                              <span className="reports-chronic-tag" title="เสี่ยงปานกลาง-สูง >= 3 วันในรอบ 7 วัน">
+                                สะสม 7 วัน
+                              </span>
+                            )}
+                          </div>
+                          <span className="reports-risk-sub">
+                            {person.cameras.length > 0 ? person.cameras.join(', ') : '—'} · เข้า–ออก{' '}
+                            {formatTimeShort(person.firstSeenAt)} – {formatTimeShort(person.lastSeenAt)} · อยู่หน้ากล้อง{' '}
+                            {formatDurationMs(person.presenceDurationMs)}
+                          </span>
+                        </div>
+                        <div className="reports-score-pill-wrap">
+                          <span className={`reports-risk-badge is-${risk.level}`}>
+                            {RISK_LEVEL_LABELS_TH[risk.level]} · {risk.score}/100
+                          </span>
+                          <span className="reports-trend-sub">
+                            7 วัน: {trend.elevatedRiskDays}/{trend.activeDays} วัน
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="reports-symptom-layout">
+                        <UpperBodySymptomMap zones={zones} />
+                        <div className="reports-symptom-list">
+                          <div className="reports-symptom-heading">อาการที่ตรวจพบวันนี้</div>
+                          {symptoms.map((item) => (
+                            <div key={item.key} className="reports-symptom-row">
+                              <span className="reports-symptom-name">
+                                <span className={`reports-symptom-dot is-${item.severity}`} />
+                                {item.label}
+                              </span>
+                              <strong className={`reports-symptom-val is-${item.severity}`}>{item.valueText}</strong>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="reports-conditions-box">
+                        <div className="reports-conditions-title">แนวโน้มอาการที่อาจเกิดขึ้นได้</div>
+                        {conditions.length === 0 ? (
+                          <p className="reports-conditions-empty">ยังไม่พบแนวโน้มอาการป่วยเด่นจากพฤติกรรมวันนี้</p>
+                        ) : (
+                          <ul className="reports-conditions-list">
+                            {conditions.map((cond) => (
+                              <li key={cond.key} className={`reports-condition-item is-${cond.severity}`}>
+                                <span className={`reports-symptom-dot is-${cond.severity}`} />
+                                <div>
+                                  <strong>{cond.title}</strong>
+                                  <span className="reports-condition-reason"> — {cond.reason}</span>
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+
+                      {risk.recommendations.length > 0 && (
+                        <div className="reports-person-notes">
+                          <p className="reports-risk-rec">
+                            <strong>แนวทางดูแล:</strong> {risk.recommendations[0]}
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="reports-card-actions no-print">
+                        <button
+                          type="button"
+                          className="reports-card-btn"
+                          onClick={() => void handleDownloadPng(person)}
+                        >
+                          บันทึกรูป PNG
+                        </button>
+                        <button
+                          type="button"
+                          className="reports-card-btn"
+                          onClick={() => void handleCopyImage(person)}
+                        >
+                          คัดลอกรูป
+                        </button>
+                        <button
+                          type="button"
+                          className="reports-card-btn"
+                          onClick={() => void handleCopyLineText(person)}
+                        >
+                          คัดลอกข้อความ LINE
+                        </button>
+                        <a
+                          className="reports-card-btn is-line"
+                          href={lineUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          ส่งเข้า LINE
+                        </a>
+                        {feedback && <span className="reports-card-feedback">{feedback}</span>}
+                      </div>
+                    </article>
+                  )
+                })}
+              </div>
             ) : (
               <div className="people-table-wrap">
                 <table className="people-table reports-table">
@@ -367,10 +631,11 @@ export default function ReportsPage() {
                       <th className="is-center">ความเสี่ยง Office Syndrome</th>
                       <th className="is-center">แนวโน้ม 7 วัน</th>
                       <th className="is-left">ปัจจัยเสี่ยงหลัก</th>
+                      <th className="is-center no-print">ส่งออก</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {report.people.map((person) => {
+                    {filteredPeople.map((person) => {
                       const risk = person.officeSyndromeRisk
                       return (
                         <tr key={person.key} className={person.byCategory.fall > 0 ? 'alerts-row-fall' : undefined}>
@@ -417,6 +682,25 @@ export default function ReportsPage() {
                           </td>
                           <td className="is-left reports-factors-cell">
                             {risk.factors.length > 0 ? risk.factors.join(', ') : '—'}
+                          </td>
+                          <td className="is-center no-print">
+                            <div className="reports-table-actions">
+                              <button
+                                type="button"
+                                className="reports-card-btn"
+                                onClick={() => void handleDownloadPng(person)}
+                              >
+                                PNG
+                              </button>
+                              <a
+                                className="reports-card-btn is-line"
+                                href={buildLineShareUrl(buildLineSummaryText(person, date))}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                LINE
+                              </a>
+                            </div>
                           </td>
                         </tr>
                       )

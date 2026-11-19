@@ -390,6 +390,349 @@
   font-size: 13px;
 }
 
+.reports-risk-filter-btn {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  background: var(--panel-bg);
+  color: inherit;
+  transition: box-shadow 140ms ease, transform 120ms ease;
+}
+
+.reports-risk-filter-btn.reports-risk-badge {
+  border-color: transparent;
+}
+
+.reports-risk-filter-btn:hover {
+  transform: translateY(-1px);
+}
+
+.reports-risk-filter-btn.is-active {
+  box-shadow: 0 0 0 2px #0f172a;
+}
+
+.reports-people-head {
+  margin-bottom: 14px;
+}
+
+.reports-people-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.reports-search-input {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #f8fafc;
+  font: inherit;
+  font-size: 13px;
+  min-width: 190px;
+}
+
+.reports-search-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.reports-view-toggle {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.reports-view-toggle .reports-pill-btn.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.reports-person-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 14px;
+}
+
+.reports-person-card {
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+}
+
+.reports-person-card.is-low {
+  border-top-color: #10b981;
+}
+
+.reports-person-card.is-moderate {
+  border-top-color: #f59e0b;
+}
+
+.reports-person-card.is-high {
+  border-top-color: #ef4444;
+}
+
+.reports-person-card.has-fall {
+  background: #fff9f9;
+}
+
+.reports-person-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.reports-person-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.reports-score-pill-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.reports-trend-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.reports-symptom-layout {
+  display: grid;
+  grid-template-columns: 116px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+}
+
+@media (max-width: 440px) {
+  .reports-symptom-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.reports-body-map {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.reports-body-svg {
+  width: 92px;
+  height: 102px;
+  display: block;
+}
+
+.reports-body-caption {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.reports-symptom-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.reports-symptom-heading {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.reports-symptom-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  font-size: 13px;
+}
+
+.reports-symptom-row:last-child {
+  border-bottom: 0;
+}
+
+.reports-symptom-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 500;
+}
+
+.reports-symptom-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: #cbd5e1;
+}
+
+.reports-symptom-dot.is-low {
+  background: #10b981;
+}
+
+.reports-symptom-dot.is-moderate {
+  background: #f59e0b;
+}
+
+.reports-symptom-dot.is-high {
+  background: #ef4444;
+}
+
+.reports-symptom-val {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.reports-symptom-val.is-low {
+  color: #047857;
+}
+
+.reports-symptom-val.is-moderate {
+  color: #b45309;
+}
+
+.reports-symptom-val.is-high {
+  color: #b91c1c;
+}
+
+.reports-conditions-box {
+  background: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.reports-conditions-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.reports-conditions-empty {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.reports-conditions-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.reports-condition-item {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.reports-condition-reason {
+  color: var(--text-muted);
+}
+
+.reports-person-notes {
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.reports-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(148, 163, 184, 0.35);
+}
+
+.reports-card-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1e293b;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+}
+
+.reports-card-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.reports-card-btn.is-line {
+  background: #06c755;
+  border-color: #06c755;
+  color: #ffffff;
+}
+
+.reports-card-btn.is-line:hover {
+  background: #05b34c;
+  border-color: #05b34c;
+  color: #ffffff;
+}
+
+.reports-card-feedback {
+  font-size: 12px;
+  font-weight: 600;
+  color: #047857;
+}
+
+.reports-table-actions {
+  display: inline-flex;
+  gap: 6px;
+}
+
 @media print {
   .no-print,
   .app-nav {

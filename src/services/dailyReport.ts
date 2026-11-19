@@ -56,6 +56,7 @@ export interface DailyReportPerson {
   totalAlerts: number
   alertDurationMs: number
   byCategory: DailyReportCategoryCounts
+  byType?: Record<string, number>
   officeSyndromeRisk: OfficeSyndromeRisk
   riskTrend7d: OfficeSyndromeWeeklyTrend
 }
