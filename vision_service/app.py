@@ -1,4 +1,5 @@
 """Local YOLO inference service for CamWell camera frames."""
+import asyncio
 import os
 import re
 import threading
@@ -9,7 +10,7 @@ os.environ.setdefault("OPENCV_FFMPEG_CAPTURE_OPTIONS", "rtsp_transport;tcp")
 
 import cv2
 import numpy as np
-from fastapi import Body, FastAPI, Header, HTTPException, Request
+from fastapi import Body, FastAPI, Header, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from ultralytics import YOLO
@@ -23,6 +24,8 @@ MAX_CAMERAS = 2
 ALLOWED_ORIGINS = {"http://localhost:5173", "http://127.0.0.1:5173"}
 TRACKER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bytetrack_room.yaml")
 CHAIR, TABLE = 56, 60
+# go2rtc starts ffmpeg only when a consumer connects, so a first frame (or one after a reconnect) can take seconds
+GO2RTC_FRAME_TIMEOUT_S = 20
 
 app = FastAPI(title="CamWell YOLO Vision")
 app.add_middleware(
@@ -315,3 +318,48 @@ def close_yolo(camera_id: str):
     with _runners_lock:
         _runners.pop(camera_id, None)
     return {"status": "closed"}
+
+
+@app.websocket("/ws/camera/{camera_id}/go2rtc")
+async def go2rtc_live(websocket: WebSocket, camera_id: str):
+    origin = websocket.headers.get("origin")
+    if origin and origin not in ALLOWED_ORIGINS:
+        await websocket.close(code=4403)
+        return
+    validate_camera_id(camera_id)
+    await websocket.accept()
+    stream = None
+    try:
+        error = None
+        try:
+            # the link arrives as the first message, not in the URL, because uvicorn logs the URL and a link may hold a password
+            request = await websocket.receive_json()
+            if not isinstance(request, dict):
+                raise ValueError("ข้อความเริ่มต้นไม่ถูกต้อง")
+            stream = RTSPStream(stream_candidates(str(request.get("url", ""))))
+            stream.start()
+            runner = await asyncio.to_thread(runner_for, camera_id)
+        except ValueError as bad_link:
+            error = str(bad_link)
+        except HTTPException:
+            error = f"ใช้ YOLO พร้อมกันได้สูงสุด {MAX_CAMERAS} กล้อง"
+        sequence = 0
+        while error is None:
+            frame, next_sequence = await asyncio.to_thread(stream.wait_for_frame, sequence, GO2RTC_FRAME_TIMEOUT_S)
+            if frame is None:
+                error = (f"ไม่ได้รับภาพจาก go2rtc ภายใน {GO2RTC_FRAME_TIMEOUT_S} วินาที ตรวจสอบลิงก์และว่า go2rtc เปิดอยู่"
+                         if sequence == 0 else "ภาพจาก go2rtc ขาดหาย")
+                break
+            sequence = next_sequence
+            ok, encoded = cv2.imencode(".jpg", frame)
+            if not ok:
+                continue
+            await websocket.send_json(await asyncio.to_thread(runner.infer, frame))
+            await websocket.send_bytes(encoded.tobytes())
+        await websocket.send_json({"error": error})
+        await websocket.close()
+    except WebSocketDisconnect:
+        pass
+    finally:
+        if stream is not None:
+            await asyncio.to_thread(stream.close)

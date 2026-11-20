@@ -75,6 +75,7 @@ function loadSavedCameraSlots(): CameraSlot[] {
 function sourceKindTag(source: CameraSource): string {
   if (source.kind === 'rtsp') return 'RTSP/go2rtc'
   if (source.kind === 'ip-mjpeg') return 'IP MJPEG'
+  if (source.kind === 'go2rtc') return 'ลิงก์ go2rtc'
   return 'เว็บแคม/USB'
 }
 
@@ -221,7 +222,7 @@ export default function GaitAssessmentPage() {
     return customSource
   }, [sourceSelection, savedSlots, customSource])
 
-  const activeKind: 'local' | 'ip-mjpeg' | 'rtsp' | 'video' = activeCameraSource ? activeCameraSource.kind : 'video'
+  const activeKind: 'local' | 'ip-mjpeg' | 'rtsp' | 'go2rtc' | 'video' = activeCameraSource ? activeCameraSource.kind : 'video'
 
   // เชื่อมต่อแหล่งภาพตามชนิดที่เลือก และรีเซ็ต tracker เมื่อเปลี่ยนแหล่งกล้อง
   useEffect(() => {
@@ -315,6 +316,13 @@ export default function GaitAssessmentPage() {
             }
           })
       }
+    } else if (activeKind === 'go2rtc') {
+      queueMicrotask(() => {
+        if (active) {
+          setRtspReady(false)
+          setStreamError('หน้านี้ยังไม่รองรับแหล่งภาพ "ลิงก์ go2rtc" — ใช้ตัวเลือก RTSP / go2rtc แทน')
+        }
+      })
     } else {
       queueMicrotask(() => {
         if (active) {

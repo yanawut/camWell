@@ -18,6 +18,8 @@ export default function CameraSourceSelector({ value, onChange, title, headerExt
   const [ipUrlDraft, setIpUrlDraft] = useState(value.ipUrl ?? '')
   const [rtspUrlDraft, setRtspUrlDraft] = useState(value.rtspUrl ?? '')
   const normalizedRtspUrl = normalizeStreamUrl(rtspUrlDraft)
+  const [go2rtcUrlDraft, setGo2rtcUrlDraft] = useState(value.go2rtcUrl ?? '')
+  const normalizedGo2rtcUrl = normalizeStreamUrl(go2rtcUrlDraft)
 
   return (
     <div className="camera-source-selector panel">
@@ -132,6 +134,40 @@ export default function CameraSourceSelector({ value, onChange, title, headerExt
             เชื่อมต่อ
           </button>
           <p className="panel-note">รองรับ RTSP กล้องโดยตรง, go2rtc `stream.html?src=...` และ go2rtc MJPEG URL · URL/รหัสผ่านจะถูกเก็บใน browser storage ของเครื่องนี้ โปรดเก็บ URL เป็นความลับและ encode อักขระพิเศษในชื่อผู้ใช้/รหัสผ่าน</p>
+        </div>
+      )}
+
+      <div className="settings-row">
+        <label>
+          <input
+            type="radio"
+            name={sourceName}
+            checked={value.kind === 'go2rtc'}
+            onChange={() => onChange({ kind: 'go2rtc', go2rtcUrl: value.go2rtcUrl })}
+          />
+          {' '}ลิงก์ go2rtc
+        </label>
+      </div>
+
+      {value.kind === 'go2rtc' && (
+        <div className="camera-source-ip">
+          <input
+            type="text"
+            autoComplete="off"
+            spellCheck={false}
+            aria-label="ลิงก์ go2rtc"
+            placeholder="http://host:1984/stream.html?src=กล้อง"
+            value={go2rtcUrlDraft}
+            onChange={(e) => setGo2rtcUrlDraft(e.target.value)}
+          />
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => normalizedGo2rtcUrl && onChange({ kind: 'go2rtc', go2rtcUrl: normalizedGo2rtcUrl })}
+            disabled={!normalizedGo2rtcUrl}
+          >
+            เชื่อมต่อ
+          </button>
         </div>
       )}
     </div>
