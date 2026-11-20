@@ -40,6 +40,7 @@ function sourceText(slot: CameraSlot) {
     }
   }
   if (source.kind === 'ip-mjpeg') return `ip-mjpeg · ${source.ipUrl ? 'ตั้ง URL แล้ว' : 'ยังไม่ได้ตั้ง URL'}`
+  if (source.kind === 'go2rtc') return `go2rtc · ${source.go2rtcUrl ? 'ตั้งลิงก์แล้ว' : 'ยังไม่ได้ตั้งลิงก์'}`
   return `local · ${source.deviceId ? source.deviceId.slice(0, 12) : 'ค่าเริ่มต้นของเบราว์เซอร์'}`
 }
 

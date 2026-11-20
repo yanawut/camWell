@@ -34,6 +34,7 @@ import {
   checkYoloService,
   closeYoloCamera,
   closeVisionCamera,
+  go2rtcSocketUrl,
   inferYoloFrame,
   rtspStreamUrl,
   startRtspCamera,
@@ -50,7 +51,7 @@ import type { EnrolledPerson } from '../types/identity'
 import type { AlertEvent } from '../types/alerts'
 import type { FallThresholds } from '../types/fall'
 import type { PersonSummary } from '../types/person'
-import type { CameraSource } from '../types/cameraSource'
+import { go2rtcBrowserSocketUrl, type CameraSource } from '../types/cameraSource'
 
 
 const FACE_DETECT_INTERVAL_MS = 400 // ตรวจใบหน้า (fatigue/distance/identity) ไม่ทุกเฟรม กันหน่วง
@@ -212,6 +213,7 @@ export default function CameraStage({
   const [yoloStatus, setYoloStatus] = useState<LandmarkerStatus>('loading')
   const [yoloError, setYoloError] = useState<string | null>(null)
   const [rtspReady, setRtspReady] = useState(false)
+  const [go2rtcReady, setGo2rtcReady] = useState(false)
   const poseStatus = poseModel === 'yolo' ? yoloStatus : mediaPipeStatus
   const poseError = poseModel === 'yolo' ? yoloError : mediaPipeError
   const poseDelegate: PoseDelegate | null = poseModel === 'yolo' ? null : mediaPipeDelegate
@@ -307,6 +309,65 @@ export default function CameraStage({
       })
     return () => { active = false }
   }, [cameraId, cameraSource.kind, cameraSource.rtspUrl])
+
+  // YOLO รันใน vision service จึงต่อผ่าน vision service ส่วน lite/full/heavy รันใน browser จึงดึงภาพจาก go2rtc ตรง
+  const go2rtcYolo = poseModel === 'yolo'
+  const go2rtcDirectUrl = cameraSource.kind === 'go2rtc' && cameraSource.go2rtcUrl && !go2rtcYolo
+    ? go2rtcBrowserSocketUrl(cameraSource.go2rtcUrl)
+    : null
+  useEffect(() => {
+    const img = imgRef.current
+    const link = cameraSource.go2rtcUrl
+    if (cameraSource.kind !== 'go2rtc' || !link || !img || (!go2rtcYolo && !go2rtcDirectUrl)) return
+    const socket = new WebSocket(go2rtcDirectUrl ?? go2rtcSocketUrl(cameraId))
+    // vision service รับลิงก์เป็นข้อความแรกแทน query string เพราะมัน log path ของ WebSocket และลิงก์อาจมีรหัสผ่าน
+    socket.onopen = () => socket.send(JSON.stringify(go2rtcDirectUrl ? { type: 'mjpeg' } : { url: link }))
+    let pending: YoloFrameResult | null = null
+    let frameUrl: string | null = null
+    let failed = false
+    socket.onmessage = (event: MessageEvent<string | Blob>) => {
+      if (typeof event.data === 'string') {
+        const message = JSON.parse(event.data)
+        // go2rtc ส่ง {type: 'error', value} หรือข้อความตอบรับ ส่วน vision service ส่ง {error} หรือผล YOLO
+        const error: unknown = go2rtcDirectUrl ? (message.type === 'error' ? message.value : null) : message.error
+        if (typeof error === 'string') {
+          failed = true
+          setCameraError(error)
+        } else if (!go2rtcDirectUrl) {
+          pending = message as YoloFrameResult
+        }
+        return
+      }
+      const frame = pending
+      pending = null
+      const previousUrl = frameUrl
+      frameUrl = URL.createObjectURL(event.data)
+      // ส่งผลให้ overlay ตอนภาพเฟรมเดียวกันโหลดเสร็จ กรอบจะได้ตรงกับภาพที่เห็นอยู่
+      img.onload = () => {
+        if (frame) {
+          yoloFrameRef.current = { frame, sequence: ++yoloSequenceRef.current }
+          poseInferenceMsRef.current = updateInferenceEma(poseInferenceMsRef.current, frame.processMs ?? 0)
+        }
+        setGo2rtcReady(true)
+      }
+      img.src = frameUrl
+      if (previousUrl) URL.revokeObjectURL(previousUrl)
+    }
+    socket.onclose = () => {
+      if (failed) return
+      if (!go2rtcDirectUrl) setCameraError('ขาดการเชื่อมต่อกับ vision service (YOLO)')
+      else if (frameUrl) setCameraError('ขาดการเชื่อมต่อกับ go2rtc')
+      // go2rtc ปฏิเสธ WebSocket จาก origin อื่น (HTTP 403) ถ้าไม่ได้ตั้ง api.origin
+      else setCameraError('เชื่อมต่อ go2rtc ไม่ได้ ตรวจสอบว่า go2rtc เปิดอยู่ และตั้ง api: origin: "*" ใน go2rtc.yaml แล้ว')
+    }
+    return () => {
+      socket.onclose = null
+      socket.close()
+      img.onload = null
+      if (frameUrl) URL.revokeObjectURL(frameUrl)
+      setGo2rtcReady(false)
+    }
+  }, [cameraId, cameraSource.kind, cameraSource.go2rtcUrl, go2rtcYolo, go2rtcDirectUrl])
 
   const propsRef = useRef({
     postureThresholds,
@@ -700,7 +761,7 @@ export default function CameraStage({
     const now = Date.now()
 
     // สลับแหล่งภาพกล้องหรือ URL — เคลียร์ error ค้างจากกล้องก่อนหน้าทิ้ง
-    const cameraSourceKey = `${p.cameraSource.kind}|${p.cameraSource.deviceId ?? ''}|${p.cameraSource.ipUrl ?? ''}|${p.cameraSource.rtspUrl ?? ''}`
+    const cameraSourceKey = `${p.cameraSource.kind}|${p.cameraSource.deviceId ?? ''}|${p.cameraSource.ipUrl ?? ''}|${p.cameraSource.rtspUrl ?? ''}|${p.cameraSource.go2rtcUrl ?? ''}`
     if (cameraSourceKey !== lastCameraSourceKeyRef.current) {
       lastCameraSourceKeyRef.current = cameraSourceKey
       sourceEpochRef.current += 1
@@ -742,7 +803,11 @@ export default function CameraStage({
     // กล้อง IP (MJPEG ผ่าน <img>): ไม่มีสัญญาณ "เฟรมใหม่" ที่เชื่อถือได้ จึงใช้ time throttle ด้านล่างเป็นตัวจำกัดหลัก
     // ถ้าเคยเจอปัญหา CORS กับแหล่งภาพนี้มาแล้ว หยุดลองซ้ำทุกเฟรม (กัน error สแปม) จนกว่าจะเปลี่ยนแหล่งกล้อง
     const perfNow = performance.now()
-    const shouldRunPose = shouldProcessPose({
+    // go2rtc + YOLO: vision service ส่งผลมาพร้อมภาพทุกเฟรมแล้ว ใช้ผลทันทีที่มีเฟรมใหม่โดยไม่ throttle
+    // go2rtc + MediaPipe: ภาพเป็น <img> เหมือนแหล่ง MJPEG อื่น จึงผ่าน throttle และ MediaPipe ตามปกติ
+    const isGo2rtc = p.cameraSource.kind === 'go2rtc'
+    const isGo2rtcYolo = isGo2rtc && poseModel === 'yolo'
+    const shouldRunPose = isGo2rtcYolo || shouldProcessPose({
       hasLandmarker: !!landmarker || (poseModel === 'yolo' && yoloStatus === 'ready'),
       sourceErrorSticky: sourceErrorStickyRef.current,
       perfNow,
@@ -755,8 +820,8 @@ export default function CameraStage({
     if (shouldRunPose) {
       if (isVideoSource) lastVideoTimeRef.current = source.currentTime
       lastPoseRunAtRef.current = perfNow
-      if (poseModel === 'yolo' && yoloStatus === 'ready') {
-        if (!yoloBusyRef.current) {
+      if (isGo2rtcYolo || (poseModel === 'yolo' && yoloStatus === 'ready')) {
+        if (!isGo2rtc && !yoloBusyRef.current) {
           yoloBusyRef.current = true
           const inputCanvas = inputCanvasRef.current ?? (inputCanvasRef.current = document.createElement('canvas'))
           inputCanvas.width = frameWidth
@@ -1114,6 +1179,9 @@ export default function CameraStage({
             }}
             className="camera-video"
           />
+        ) : cameraSource.kind === 'go2rtc' ? (
+          // src ตั้งจาก effect ของ WebSocket ทีละเฟรม (blob URL เป็น origin เดียวกัน ไม่ต้องใช้ crossOrigin)
+          <img key={`${cameraId}:${cameraSource.go2rtcUrl}`} ref={imgRef} alt="ภาพจาก go2rtc" className="camera-video" />
         ) : (
           // RTSP แสดงผ่าน MJPEG ที่ vision service แปลงให้; MJPEG HTTP ยังเปิดตรงจาก browser ได้
           <img
@@ -1146,6 +1214,15 @@ export default function CameraStage({
         )}
         {cameraSource.kind === 'rtsp' && cameraSource.rtspUrl && !rtspReady && !cameraError && (
           <div className="camera-status-banner">กำลังเชื่อมต่อกล้อง RTSP...</div>
+        )}
+        {cameraSource.kind === 'go2rtc' && !cameraSource.go2rtcUrl && (
+          <div className="camera-status-banner">กรอกลิงก์ go2rtc แล้วกด "เชื่อมต่อ" ในช่อง "แหล่งภาพกล้อง"</div>
+        )}
+        {cameraSource.kind === 'go2rtc' && cameraSource.go2rtcUrl && (go2rtcYolo || go2rtcDirectUrl) && !go2rtcReady && !cameraError && (
+          <div className="camera-status-banner">กำลังเชื่อมต่อ go2rtc...</div>
+        )}
+        {cameraSource.kind === 'go2rtc' && cameraSource.go2rtcUrl && !go2rtcYolo && !go2rtcDirectUrl && (
+          <div className="camera-status-banner banner-error">โมเดล {poseModel} ดึงภาพจาก go2rtc ตรง ต้องใช้ลิงก์ที่มี ?src= เช่น http://host:1984/stream.html?src=กล้อง</div>
         )}
         {poseStatus === 'loading' && <div className="camera-status-banner">กำลังโหลดโมเดล Pose Landmarker...</div>}
         {poseStatus === 'error' && <div className="camera-status-banner banner-error">{poseError}</div>}

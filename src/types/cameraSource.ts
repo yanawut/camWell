@@ -7,7 +7,9 @@
 //              เบราว์เซอร์แสดงผลสตรีมแบบนี้ได้ตรงๆ ผ่าน <img> โดยไม่ต้องมี backend
 //              กล้องที่ไม่มี MJPEG ใช้ชนิด 'rtsp' ด้านล่าง ซึ่ง vision service จะแปลงภาพให้
 // 'rtsp'     — RTSP, go2rtc page, or go2rtc MJPEG URL opened by vision service and exposed as local MJPEG
-export type CameraSourceKind = 'local' | 'ip-mjpeg' | 'rtsp'
+// 'go2rtc'   — ลิงก์ go2rtc ใช้ได้ทุกโมเดล Pose: lite/full/heavy ดึงภาพจาก WebSocket ของ go2rtc ตรงจาก browser
+//              ส่วน YOLO ให้ vision service เปิดลิงก์และส่งภาพพร้อมผลมาทาง WebSocket ไม่ต้องส่งภาพกลับไป infer แบบ 'rtsp'
+export type CameraSourceKind = 'local' | 'ip-mjpeg' | 'rtsp' | 'go2rtc'
 
 export interface CameraSource {
   kind: CameraSourceKind
@@ -18,6 +20,8 @@ export interface CameraSource {
   // shortcut: RTSP credentials stay in localStorage; upgrade to OS-backed secret storage if camera settings become shared.
   /** สำหรับ kind='rtsp' — RTSP หรือ go2rtc URL ที่อ่านโดย vision service ในเครื่อง */
   rtspUrl?: string
+  /** สำหรับ kind='go2rtc' — ลิงก์ go2rtc เช่น http://localhost:1984/stream.html?src=กล้อง */
+  go2rtcUrl?: string
 }
 
 export function normalizeStreamUrl(value: string): string | null {
@@ -27,6 +31,16 @@ export function normalizeStreamUrl(value: string): string | null {
   } catch {
     return null
   }
+}
+
+// ลิงก์หน้า go2rtc เช่น http://host:1984/stream.html?src=กล้อง -> ws://host:1984/api/ws?src=กล้อง (WebSocket ของ go2rtc เอง)
+export function go2rtcBrowserSocketUrl(link: string): string | null {
+  const url = new URL(link)
+  const src = url.searchParams.get('src')
+  if (!['http:', 'https:'].includes(url.protocol) || !src) return null
+  const marker = url.pathname.indexOf('/api/')
+  const prefix = marker >= 0 ? url.pathname.slice(0, marker) : url.pathname.slice(0, url.pathname.lastIndexOf('/'))
+  return `${url.protocol === 'https:' ? 'wss:' : 'ws:'}//${url.host}${prefix}/api/ws?src=${encodeURIComponent(src)}`
 }
 
 export const DEFAULT_CAMERA_SOURCE: CameraSource = { kind: 'local' }

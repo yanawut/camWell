@@ -33,6 +33,10 @@ export function rtspStreamUrl(cameraId: string): string {
   return `${VISION_URL}/api/camera/${encodeURIComponent(cameraId)}/rtsp/stream`
 }
 
+export function go2rtcSocketUrl(cameraId: string): string {
+  return `${VISION_URL.replace(/^http/, 'ws')}/ws/camera/${encodeURIComponent(cameraId)}/go2rtc`
+}
+
 export function stopRtspCamera(cameraId: string): void {
   void fetch(`${VISION_URL}/api/camera/${encodeURIComponent(cameraId)}/rtsp`, { method: 'DELETE' }).catch(() => undefined)
 }
