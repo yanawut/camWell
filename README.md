@@ -149,11 +149,11 @@ YOLO ส่ง keypoints 17 จุดแบบ COCO; CamWell map จุดหู
 
 ### ท่านั่ง + หกล้ม + เตือนพัก (PostureEngine)
 1. แหล่ง RTSP ให้ `vision_service` เปิดสตรีมด้วย OpenCV/FFmpeg ผ่าน TCP และส่งภาพ preview แบบ MJPEG ผ่าน localhost; go2rtc page จะลอง RTSP port 8554 ก่อน fallback เป็น MJPEG; แหล่งอื่นส่ง JPEG เฟรมจาก browser เข้า service
-2. YOLOv8m ตรวจคน/เก้าอี้/โต๊ะ, ByteTrack ให้ track ID และ YOLOv8m-pose หา COCO 17 keypoints ต่อคน
+2. YOLOv8m ตรวจคน/เก้าอี้/โต๊ะ, ByteTrack (`bytetrack_room.yaml`) จับกรอบข้ามเฟรม, `vision_service/people.py` ตัดสินว่าแต่ละกรอบเป็นใคร (คนเดียวได้กรอบเดียว, คนนั่งนิ่งได้ ID เดิม, กรอบที่ตรงกับเก้าอี้ไม่นับเป็นคน) แล้ว YOLOv8m-pose หา COCO 17 keypoints ให้คนที่เห็นในเฟรมนั้น คนที่ถูกบังชั่วคราวส่งเป็น `held: true` โดยไม่มี keypoints
 3. `lib/yoloPose.ts` map keypoints เข้ากับ posture engine; โหมด MediaPipe เดิมยังอยู่เป็น fallback และเป็นตัวเลือกใน Dev Console
 4. `lib/poseThrottle.ts` จำกัดการรันไว้ 12 fps ต่อกล้องและส่งเฉพาะเฟรมใหม่ของวิดีโอ
 5. `lib/postureEngine.ts` (หนึ่ง instance ต่อกล้อง) รวมขั้นตอนต่อเฟรม:
-   - ByteTrack ให้ ID ในโหมด YOLO; `lib/tracker.ts` จับคู่คนข้ามเฟรมในโหมด MediaPipe
+   - `vision_service/people.py` ให้ ID ในโหมด YOLO; `lib/tracker.ts` จับคู่คนข้ามเฟรมในโหมด MediaPipe
    - `lib/postureAnalysis.ts` คำนวณมุมคอ/มุมลำตัว/มุมเอียงไหล่/`headHeightRatio` (ข้ามจุดที่ visibility < `minVisibility`)
      และแยก `full_body` / `upper_body`
    - `lib/smoothing.ts` ทำค่าให้นิ่ง (EMA) ก่อนจัดท่า → `classifyPosture` → forward_head / slouching / leaning / good

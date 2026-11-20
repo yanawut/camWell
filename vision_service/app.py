@@ -3,7 +3,7 @@ import os
 import re
 import threading
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 os.environ.setdefault("OPENCV_FFMPEG_CAPTURE_OPTIONS", "rtsp_transport;tcp")
 
@@ -14,12 +14,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from ultralytics import YOLO
 from go2rtc import stream_candidates
+from people import PersonIdentities, person_identities
 
 DET_MODEL = os.environ.get("CAMWELL_YOLO_DET_MODEL", "yolov8m.pt")
 POSE_MODEL = os.environ.get("CAMWELL_YOLO_POSE_MODEL", "yolov8m-pose.pt")
 MAX_FRAME_BYTES = 4 * 1024 * 1024
 MAX_CAMERAS = 2
 ALLOWED_ORIGINS = {"http://localhost:5173", "http://127.0.0.1:5173"}
+TRACKER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bytetrack_room.yaml")
+CHAIR, TABLE = 56, 60
 
 app = FastAPI(title="CamWell YOLO Vision")
 app.add_middleware(
@@ -43,57 +46,74 @@ class CameraRunner:
     detector: YOLO
     pose: YOLO
     lock: threading.Lock
+    people: PersonIdentities
+    chairs: list = field(default_factory=list)
 
     @classmethod
     def create(cls):
-        return cls(YOLO(DET_MODEL), YOLO(POSE_MODEL), threading.Lock())
+        runner = cls(YOLO(DET_MODEL), YOLO(POSE_MODEL), threading.Lock(), person_identities())
+        runner.detector.add_callback("on_predict_postprocess_end", runner._keep_chairs)  # runs before the tracker's
+        return runner
+
+    def _keep_chairs(self, predictor):
+        """Every chair box YOLO kept, faint ones too: PersonIdentities checks person boxes against them."""
+        boxes = predictor.results[0].boxes
+        self.chairs = [(np.array(box, np.float32), conf)
+                       for box, conf, cls in zip(boxes.xyxy.tolist(), boxes.conf.tolist(), boxes.cls.tolist())
+                       if cls == CHAIR]
 
     def infer(self, frame):
         started = time.perf_counter()
         with self.lock:
             result = self.detector.track(
-                frame, persist=True, tracker="bytetrack.yaml", conf=0.1,
-                imgsz=960, classes=[0, 56, 60], verbose=False,
+                frame, persist=True, tracker=TRACKER, conf=0.1, iou=0.5,
+                imgsz=960, classes=[0, CHAIR, TABLE], verbose=False,
             )[0]
-            people, objects, crops, offsets = [], [], [], []
+            tracks, objects = [], []
             if result.boxes is not None:
                 xyxy = result.boxes.xyxy.cpu().numpy()
                 conf = result.boxes.conf.cpu().numpy()
                 cls = result.boxes.cls.int().cpu().numpy()
                 ids = result.boxes.id.int().cpu().numpy() if result.boxes.id is not None else np.full(len(cls), -1)
-                height, width = frame.shape[:2]
                 for box, score, class_id, track_id in zip(xyxy, conf, cls, ids):
-                    x1, y1, x2, y2 = (int(v) for v in box)
                     if class_id == 0:
-                        if track_id < 0:
-                            continue
-                        xpad, ypad = int((x2 - x1) * 0.12), int((y2 - y1) * 0.12)
-                        left, top = max(0, x1 - xpad), max(0, y1 - ypad)
-                        right, bottom = min(width, x2 + xpad), min(height, y2 + ypad)
-                        people.append({"id": int(track_id), "box": box.round(1).tolist(), "conf": float(score)})
-                        crops.append(frame[top:bottom, left:right])
-                        offsets.append((left, top))
+                        if track_id >= 0:
+                            tracks.append((int(track_id), box, float(score)))
                     else:
                         objects.append({
-                            "class": "chair" if class_id == 56 else "table",
+                            "class": "chair" if class_id == CHAIR else "table",
                             "box": box.round(1).tolist(),
                             "conf": float(score),
                         })
 
-            valid_indexes = [i for i, crop in enumerate(crops) if crop.size]
-            if valid_indexes:
-                pose_results = self.pose.predict(
-                    [crops[i] for i in valid_indexes], conf=0.15, imgsz=320, verbose=False,
-                )
-                for i, pose_result in zip(valid_indexes, pose_results):
+            shown = self.people.update(tracks, self.chairs)
+            people = [{"id": int(p.id), "box": [round(float(v), 1) for v in p.box], "conf": float(p.conf),
+                       "held": bool(p.held)} for p in shown]
+            # pose only for people seen this frame: a held box is memory, and its crop may show whoever is in front
+            height, width = frame.shape[:2]
+            crops, offsets, targets = [], [], []
+            for person, shown_person in zip(people, shown):
+                if shown_person.held:
+                    continue
+                x1, y1, x2, y2 = (int(v) for v in shown_person.box)
+                xpad, ypad = int((x2 - x1) * 0.12), int((y2 - y1) * 0.12)
+                left, top = max(0, x1 - xpad), max(0, y1 - ypad)
+                right, bottom = min(width, x2 + xpad), min(height, y2 + ypad)
+                crop = frame[top:bottom, left:right]
+                if crop.size:
+                    crops.append(crop)
+                    offsets.append((left, top))
+                    targets.append(person)
+            if crops:
+                pose_results = self.pose.predict(crops, conf=0.15, imgsz=320, verbose=False)
+                for person, (xoff, yoff), pose_result in zip(targets, offsets, pose_results):
                     keypoints = pose_result.keypoints
                     if keypoints is None or len(keypoints) == 0:
                         continue
-                    xoff, yoff = offsets[i]
                     points = keypoints.data[0].cpu().numpy()
                     points[:, 0] += xoff
                     points[:, 1] += yoff
-                    people[i]["keypoints"] = points.round(4).tolist()
+                    person["keypoints"] = points.round(4).tolist()
             return {
                 "width": frame.shape[1], "height": frame.shape[0], "people": people,
                 "objects": objects, "processMs": round((time.perf_counter() - started) * 1000, 1),
