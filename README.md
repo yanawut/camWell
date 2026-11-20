@@ -38,8 +38,8 @@ Webapp เชื่อมกล้องเพื่อตรวจจับท�
 เตรียม YOLO service ครั้งแรกจาก root ของโปรเจกต์:
 
 ```bat
-py -3.12 -m venv vision_service\.venv
-vision_service\.venv\Scripts\python.exe -m pip install -r vision_service\requirements.txt
+py -3.12 -m venv yolo-backend\.venv
+yolo-backend\.venv\Scripts\python.exe -m pip install -r yolo-backend\requirements.txt
 ```
 
 เปิด service และ frontend ในคนละ terminal:
@@ -49,6 +49,7 @@ npm run dev:vision
 ```
 
 ```bash
+cd frontend
 npm install       # ติดตั้ง dependency + รัน postinstall (scripts/setup-assets.mjs) ที่จะ:
                    #   1) คัดลอก WASM runtime ของ MediaPipe มาไว้ที่ public/wasm
                    #   2) ดาวน์โหลดโมเดล pose_landmarker_{lite,full,heavy}.task (~44MB รวม) มาไว้ที่ public/models
@@ -66,13 +67,13 @@ npm run dev        # เปิด dev server (http://localhost:5173)
 `http://go2rtc:1984/stream.html?src=cam` — vision service จะลอง RTSP port 8554 ก่อนแล้ว fallback เป็น MJPEG
 URL พร้อม credential ถูกเก็บใน localStorage ของ browser เครื่องนี้ อย่าใช้ URL ที่ฝังรหัสผ่านซึ่งแชร์กับผู้อื่น
 
-ไฟล์ที่ข้ามไปแล้วจะไม่ดาวน์โหลดซ้ำ ถ้าเครือข่ายบล็อกการดาวน์โหลดโมเดลใด ดูวิธีดาวน์โหลดเองที่ `public/models/README.md`
-และ `public/models/face-api/README.md` หรือรัน `npm run setup:assets` ใหม่ภายหลัง
+ไฟล์ที่ข้ามไปแล้วจะไม่ดาวน์โหลดซ้ำ ถ้าเครือข่ายบล็อกการดาวน์โหลดโมเดลใด ดูวิธีดาวน์โหลดเองที่ `frontend/public/models/README.md`
+และ `frontend/public/models/face-api/README.md` หรือรัน `npm run setup:assets` ใน `frontend/` ใหม่ภายหลัง
 
 ถ้าต้องการฟีเจอร์ระบุตัวตน ให้รัน backend ด้วย (`cd backend && npm install && npm run dev` — รายละเอียดใน `backend/README.md`)
-ที่อยู่ backend ตั้งได้ผ่าน `VITE_API_BASE_URL` ใน `.env` (ค่าเริ่มต้น `http://localhost:4000`)
+ที่อยู่ backend ตั้งได้ผ่าน `VITE_API_BASE_URL` ใน `frontend/.env` (ค่าเริ่มต้น `http://localhost:4000`)
 
-คำสั่งอื่น: `npm test` (vitest) · `npm run lint` (oxlint) · `npm run build` (tsc + vite build)
+คำสั่งอื่นใน `frontend/`: `npm test` (vitest) · `npm run lint` (oxlint) · `npm run build` (tsc + vite build)
 
 ### หน้าที่เปิดได้
 
@@ -148,12 +149,12 @@ YOLO ส่ง keypoints 17 จุดแบบ COCO; CamWell map จุดหู
 ## วิธีทำงานของแต่ละฟีเจอร์
 
 ### ท่านั่ง + หกล้ม + เตือนพัก (PostureEngine)
-1. แหล่ง RTSP ให้ `vision_service` เปิดสตรีมด้วย OpenCV/FFmpeg ผ่าน TCP และส่งภาพ preview แบบ MJPEG ผ่าน localhost; go2rtc page จะลอง RTSP port 8554 ก่อน fallback เป็น MJPEG; แหล่งอื่นส่ง JPEG เฟรมจาก browser เข้า service
-2. YOLOv8m ตรวจคน/เก้าอี้/โต๊ะ, ByteTrack (`bytetrack_room.yaml`) จับกรอบข้ามเฟรม, `vision_service/people.py` ตัดสินว่าแต่ละกรอบเป็นใคร (คนเดียวได้กรอบเดียว, คนนั่งนิ่งได้ ID เดิม, กรอบที่ตรงกับเก้าอี้ไม่นับเป็นคน) แล้ว YOLOv8m-pose หา COCO 17 keypoints ให้คนที่เห็นในเฟรมนั้น คนที่ถูกบังชั่วคราวส่งเป็น `held: true` โดยไม่มี keypoints
+1. แหล่ง RTSP ให้ `yolo-backend` เปิดสตรีมด้วย OpenCV/FFmpeg ผ่าน TCP และส่งภาพ preview แบบ MJPEG ผ่าน localhost; go2rtc page จะลอง RTSP port 8554 ก่อน fallback เป็น MJPEG; แหล่งอื่นส่ง JPEG เฟรมจาก browser เข้า service
+2. YOLOv8m ตรวจคน/เก้าอี้/โต๊ะ, ByteTrack (`bytetrack_room.yaml`) จับกรอบข้ามเฟรม, `yolo-backend/people.py` ตัดสินว่าแต่ละกรอบเป็นใคร (คนเดียวได้กรอบเดียว, คนนั่งนิ่งได้ ID เดิม, กรอบที่ตรงกับเก้าอี้ไม่นับเป็นคน) แล้ว YOLOv8m-pose หา COCO 17 keypoints ให้คนที่เห็นในเฟรมนั้น คนที่ถูกบังชั่วคราวส่งเป็น `held: true` โดยไม่มี keypoints
 3. `lib/yoloPose.ts` map keypoints เข้ากับ posture engine; โหมด MediaPipe เดิมยังอยู่เป็น fallback และเป็นตัวเลือกใน Dev Console
 4. `lib/poseThrottle.ts` จำกัดการรันไว้ 12 fps ต่อกล้องและส่งเฉพาะเฟรมใหม่ของวิดีโอ
 5. `lib/postureEngine.ts` (หนึ่ง instance ต่อกล้อง) รวมขั้นตอนต่อเฟรม:
-   - `vision_service/people.py` ให้ ID ในโหมด YOLO; `lib/tracker.ts` จับคู่คนข้ามเฟรมในโหมด MediaPipe
+   - `yolo-backend/people.py` ให้ ID ในโหมด YOLO; `lib/tracker.ts` จับคู่คนข้ามเฟรมในโหมด MediaPipe
    - `lib/postureAnalysis.ts` คำนวณมุมคอ/มุมลำตัว/มุมเอียงไหล่/`headHeightRatio` (ข้ามจุดที่ visibility < `minVisibility`)
      และแยก `full_body` / `upper_body`
    - `lib/smoothing.ts` ทำค่าให้นิ่ง (EMA) ก่อนจัดท่า → `classifyPosture` → forward_head / slouching / leaning / good
@@ -181,7 +182,7 @@ YOLO ส่ง keypoints 17 จุดแบบ COCO; CamWell map จุดหู
 ## โครงสร้างโค้ดที่สำคัญ
 
 ```
-src/
+frontend/src/
   App.tsx                         state กลาง + หน้าหลัก (/) — ถ้ามี ?console จะแสดง DevConsole แทน
   hooks/usePoseLandmarker.ts      โหลด MediaPipe Pose Landmarker (เลือกรุ่น lite/full/heavy, รายงาน GPU/CPU)
   hooks/useFaceApiModels.ts       โหลดโมเดลของ face-api
@@ -249,7 +250,7 @@ CamWell ใช้ YOLO เป็นค่าเริ่มต้นสำหร
 
 ## แผนถัดไป (ยังไม่ได้ทำ)
 
-- ส่งเหตุการณ์แจ้งเตือนไป backend (`createWebSocketAlertReporter()` ใน `src/services/alertReporter.ts` เตรียมไว้แล้ว
+- ส่งเหตุการณ์แจ้งเตือนไป backend (`createWebSocketAlertReporter()` ใน `frontend/src/services/alertReporter.ts` เตรียมไว้แล้ว
   ใช้โครงสร้าง `AlertEvent` เดียวกันทุกหมวด) และเก็บ log พร้อม employeeId/cameraId
 - Dashboard รวมสำหรับ HR/หัวหน้างาน
 - แจ้งเตือนภายนอกผ่าน LINE Messaging API + LINE Official Account (LINE Notify ปิดให้บริการไปแล้วตั้งแต่ 31 มี.ค. 2025)

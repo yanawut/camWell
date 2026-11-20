@@ -12,16 +12,16 @@ dist
 dist-ssr
 *.local
 .env
-vision_service/.venv/
-vision_service/__pycache__/
-vision_service/*.pyc
+yolo-backend/.venv/
+yolo-backend/**/__pycache__/
+yolo-backend/**/*.pyc
 
-# โมเดล AI / WASM runtime ที่ดาวน์โหลด/คัดลอกอัตโนมัติผ่าน postinstall (scripts/setup-assets.mjs)
+# โมเดล AI / WASM runtime ที่ดาวน์โหลด/คัดลอกอัตโนมัติผ่าน postinstall (frontend/scripts/setup-assets.mjs)
 # ไม่ commit เพราะเป็นไฟล์ binary ขนาดใหญ่และสร้างใหม่ได้เสมอหลัง npm install
-public/wasm/
-public/models/*.task
-public/models/face-api/*.bin
-public/models/face-api/*-weights_manifest.json
+frontend/public/wasm/
+frontend/public/models/*.task
+frontend/public/models/face-api/*.bin
+frontend/public/models/face-api/*-weights_manifest.json
 
 # Editor directories and files
 .vscode/*

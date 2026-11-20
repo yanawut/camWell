@@ -1,34 +1,8 @@
 {
-  "name": "camwell-frontend",
+  "name": "camwell",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
   "scripts": {
-    "dev": "vite",
     "dev:all": "node scripts/dev-all.mjs",
-    "dev:vision": ".\\vision_service\\.venv\\Scripts\\python.exe -m uvicorn app:app --app-dir vision_service --host 127.0.0.1 --port 8001",
-    "build": "tsc -b && vite build",
-    "lint": "oxlint",
-    "test": "vitest",
-    "preview": "vite preview",
-    "setup:assets": "node scripts/setup-assets.mjs",
-    "postinstall": "node scripts/setup-assets.mjs"
-  },
-  "dependencies": {
-    "@mediapipe/tasks-vision": "^1.0.1",
-    "@vladmandic/face-api": "^1.7.15",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "react-webcam": "^7.2.0"
-  },
-  "devDependencies": {
-    "@types/node": "^24.13.3",
-    "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.4",
-    "@vitejs/plugin-react": "^6.1.0",
-    "oxlint": "^1.79.0",
-    "typescript": "~6.0.2",
-    "vite": "^8.2.2",
-    "vitest": "^5.0.3"
+    "dev:vision": ".\\yolo-backend\\.venv\\Scripts\\python.exe -m uvicorn app.main:app --app-dir yolo-backend --host 127.0.0.1 --port 8001"
   }
 }
