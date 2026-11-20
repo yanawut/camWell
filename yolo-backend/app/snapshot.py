@@ -62,6 +62,8 @@ def to_message(snap, cfg, frame_size, fps, proc_ms, source, with_heat):
         floor=dict(w=cfg.floor_size_m[0], d=cfg.floor_size_m[1],
                    zones={n: [list(p) for p in poly] for n, poly in cfg.zones.items()}),
     )
+    if source.seekable:
+        msg["clip"] = dict(pos=round(source.position, 2), duration=round(source.duration, 2))
     if with_heat:
         msg["heat"] = heat_message(snap["heat"])
     return msg

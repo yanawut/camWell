@@ -60,6 +60,7 @@ class Session:
         self._cond = threading.Condition()
         self._stop = False
         self._pending: FloorSettings | None = None
+        self._seek: float | None = None  # seconds into the clip, applied by the worker before its next read
         self._last = None  # (frame, persons, objects) for re-analysis under new settings
         self._index = 0
         self._fps = 0.0
@@ -91,6 +92,16 @@ class Session:
     def apply_settings(self, settings: FloorSettings):
         with self._cond:
             self._pending = settings
+            self._cond.notify_all()
+
+    def seek(self, t: float):
+        """Only the worker may touch the capture, so this just leaves the request for it."""
+        with self._cond:
+            if not (self.source and self.source.seekable):
+                raise InvalidTransition("แหล่งภาพนี้เลื่อนเวลาไม่ได้")
+            if self.state not in (State.RUNNING, State.PAUSED):
+                raise InvalidTransition(f"{self.state.value} -> seek")
+            self._seek = t
             self._cond.notify_all()
 
     def push_frame(self, data: bytes):
@@ -145,16 +156,26 @@ class Session:
         while True:
             with self._cond:
                 was_idle = self.state in IDLE
-                while not self._stop and self.state in IDLE and self._pending is None:
+                while not self._stop and self.state in IDLE and self._pending is None and self._seek is None:
                     self._cond.wait()
                 if self._stop:
                     return
                 pending, self._pending = self._pending, None
+                seek, self._seek = self._seek, None
                 idle = self.state in IDLE
             if pending is not None:
                 self.settings = pending
                 if self._last is not None and self.source.uses_settings:
                     self._reanalyse()
+            if seek is not None:
+                self.source.seek(seek)
+                last_tick = due = None
+                if idle:
+                    # Paused: analyse the one frame there, so the picture follows the slider
+                    frame = self.source.read()
+                    if frame is not None:
+                        self._process(frame, runner)
+                    continue
             if idle:
                 continue
             if was_idle:
@@ -167,17 +188,7 @@ class Session:
                 self._transition(State.HOLDING)
                 continue
 
-            started = time.perf_counter()
-            persons, objects = frame.dets if frame.dets is not None else runner(frame.image)
-            self._last = (frame, persons, objects)
-            if self.analytics is None:
-                self._new_analytics(frame.image)
-            if self.source.live and self._fps > 0:
-                self.analytics.fps = max(1.0, self._fps)  # time step follows the rate actually analysed
-            self._analyse(frame, persons, objects, started)
-            if frame.dets is None:
-                self.report.add_layers(self._index, frame.t, runner.layers)
-            self._index += 1
+            self._process(frame, runner)
 
             if self.paced and self.source.paced:
                 now = time.perf_counter()
@@ -195,6 +206,19 @@ class Session:
                 rate = 1.0 / max(tick - last_tick, 1e-6)
                 self._fps = rate if self._fps == 0 else 0.9 * self._fps + 0.1 * rate
             last_tick = tick
+
+    def _process(self, frame, runner):
+        started = time.perf_counter()
+        persons, objects = frame.dets if frame.dets is not None else runner(frame.image)
+        self._last = (frame, persons, objects)
+        if self.analytics is None:
+            self._new_analytics(frame.image)
+        if self.source.live and self._fps > 0:
+            self.analytics.fps = max(1.0, self._fps)  # time step follows the rate actually analysed
+        self._analyse(frame, persons, objects, started)
+        if frame.dets is None:
+            self.report.add_layers(self._index, frame.t, runner.layers)
+        self._index += 1
 
     def _analyse(self, frame, persons, objects, started):
         snap = self.analytics.update(persons, objects, frame.t, self._index)

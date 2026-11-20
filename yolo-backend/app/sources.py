@@ -30,6 +30,7 @@ class SimSpec(BaseModel):
 class VideoSpec(BaseModel):
     kind: Literal["video"] = "video"
     upload_id: str
+    loop: bool = False  # start the clip again instead of ending the session
 
 
 class ImageSpec(BaseModel):
@@ -70,8 +71,15 @@ class Source:
     badge = "LIVE"
     needs_detector = True
     uses_settings = True
+    seekable = False  # has a timeline: position, duration and seek() below
+    duration: float | None = None
+    position = 0.0  # seconds into the timeline of the frame read() returned last
 
     def read(self) -> Frame | None:
+        raise NotImplementedError
+
+    def seek(self, t: float) -> None:
+        """Worker thread only, like read(): the next frame comes from t seconds into the timeline."""
         raise NotImplementedError
 
     def configure(self, cfg: ra.Config, settings: FloorSettings, frame_size) -> ra.Config:
@@ -111,21 +119,43 @@ class SimSource(Source):
 class VideoSource(Source):
     kind, paced = "video", True
 
-    def __init__(self, path, name):
+    def __init__(self, path, name, loop=False):
         self.label = name
+        self.loop = loop
         self.cap = cv2.VideoCapture(str(path))
         if not self.cap.isOpened():
             raise SourceError(f"เปิดไฟล์วิดีโอไม่ได้: {name}")
         fps = self.cap.get(cv2.CAP_PROP_FPS) or 30.0
         self.fps = fps if 1 <= fps <= 240 else 30.0
-        self.index = 0
+        frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+        self.frames = frames if frames > 0 else None
+        self.duration = self.frames / self.fps if self.frames else None
+        self.seekable = self.duration is not None  # some containers do not say how long they are
+        self.index = 0  # frames read so far: analytics time, never goes back
+        self.next_frame = 0  # place in the clip of the frame read() returns next: goes back on loop and seek
+
+    @property
+    def position(self) -> float:
+        return max(0, self.next_frame - 1) / self.fps
+
+    def seek(self, t):
+        frame = round(t * self.fps)
+        if self.frames:
+            frame = min(frame, self.frames - 1)
+        self.next_frame = max(0, frame)
+        self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.next_frame)
 
     def read(self):
         ok, image = self.cap.read()
+        if not ok and self.loop and self.index > 0:
+            # Back to the first frame. index keeps counting, so analytics time never runs backwards
+            self.seek(0)
+            ok, image = self.cap.read()
         if not ok:
             return None
         frame = Frame(image, self.index / self.fps)
         self.index += 1
+        self.next_frame += 1
         return frame
 
     def close(self):
@@ -237,7 +267,7 @@ class BrowserSource(Source):
 def open_source(spec, uploads: UploadStore) -> Source:
     openers = {
         "sim": lambda: SimSource(spec),
-        "video": lambda: VideoSource(*uploads.resolve(spec.upload_id, "video")),
+        "video": lambda: VideoSource(*uploads.resolve(spec.upload_id, "video"), loop=spec.loop),
         "image": lambda: ImageSource(*uploads.resolve(spec.upload_id, "image")),
         "browser": BrowserSource,
         "go2rtc": lambda: StreamSource(spec.url),

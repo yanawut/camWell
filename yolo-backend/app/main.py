@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 import anyio
 from fastapi import Body, FastAPI, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, JSONResponse
-from pydantic import TypeAdapter, ValidationError
+from pydantic import BaseModel, Field, TypeAdapter, ValidationError
 
 from . import config
 from .go2rtc import stream_candidates
@@ -165,6 +165,21 @@ def post_session(request: Request, body: dict = Body(...)) -> dict:
 def get_session(request: Request) -> dict:
     session = request.app.state.manager.session
     return session.status() if session else dict(type="status", state="idle")
+
+
+class SeekBody(BaseModel):
+    t: float = Field(ge=0)  # seconds into the clip
+
+
+# Declared before /api/session/{action}, which would otherwise take "seek" as an unknown action
+@app.post("/api/session/seek")
+def session_seek(body: SeekBody, request: Request) -> dict:
+    session = request.app.state.manager.require()
+    try:
+        session.seek(body.t)
+    except InvalidTransition as exc:
+        raise HTTPException(409, str(exc))
+    return session.status()
 
 
 @app.post("/api/session/{action}")

@@ -248,6 +248,8 @@ export const yoloService = {
   },
 
   sessionAction: (action: SessionAction) => request<SessionStatus>(`/api/session/${action}`, { method: 'POST' }),
+  /** เลื่อนคลิปวิดีโอไปที่ t วินาที — ระหว่างหยุดชั่วคราว backend จะส่งภาพเฟรมนั้นมาให้ดู */
+  seek: (t: number) => sendJson<SessionStatus>('/api/session/seek', { t }),
 
   async upload(file: File) {
     const body = new FormData()

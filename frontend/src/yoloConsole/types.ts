@@ -74,6 +74,8 @@ export interface Snapshot {
   stats: Stats
   floor: FloorPlan
   heat?: Heat
+  /** เฉพาะแหล่งที่มีเส้นเวลา (ไฟล์วิดีโอ): ตำแหน่งของเฟรมนี้ในคลิปและความยาวคลิป เป็นวินาที */
+  clip?: { pos: number; duration: number }
 }
 
 export type SessionState = 'idle' | 'starting' | 'running' | 'paused' | 'holding' | 'ended' | 'error'
@@ -90,7 +92,7 @@ export interface SessionStatus {
 
 export type SourceSpec =
   | { kind: 'sim'; people?: number; seed?: number; seconds?: number }
-  | { kind: 'video'; upload_id: string }
+  | { kind: 'video'; upload_id: string; loop?: boolean }
   | { kind: 'image'; upload_id: string }
   | { kind: 'browser' }
   | { kind: 'go2rtc'; url: string }

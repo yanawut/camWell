@@ -23,6 +23,8 @@
 .yc-grow { flex: 1 1 280px; }
 .yc-narrow { width: 84px; }
 .yc-file { font-size: 13px; max-width: 100%; }
+.yc-check { font-size: 13px; cursor: pointer; flex-wrap: nowrap; align-items: flex-start; }
+.yc-check input { margin-top: 3px; }
 .yc-note { margin: 10px 0 0; }
 .yc-error { color: var(--danger); font-size: 12px; margin: 8px 0 0; }
 .yc-ok { color: var(--good); font-size: 12px; }
@@ -62,6 +64,13 @@
   pointer-events: none;
 }
 .yc-stage-msg.is-error { color: #fca5a5; }
+
+.yc-player { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 14px; }
+.yc-player-btn { min-width: 38px; padding: 6px 10px; font-size: 14px; line-height: 1; }
+.yc-player-time { font-size: 12px; color: var(--text-muted); min-width: 34px; text-align: center; }
+.yc-player-seek { flex: 1 1 240px; min-width: 120px; accent-color: var(--accent); cursor: pointer; }
+.yc-player-seek:disabled { cursor: default; opacity: 0.5; }
+.yc-player-error { margin: 0; flex-basis: 100%; }
 
 .yc-stat-row {
   display: flex;

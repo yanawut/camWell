@@ -2,6 +2,7 @@ import { useRef, useState, type FormEvent } from 'react'
 import { usePersistentState } from '../hooks/usePersistentState'
 import { DEFAULT_LAYERS, drawLiveFrame, LAYERS, type LayerKey, type Layers } from './drawLive'
 import { FloorPlanCard, HeatmapCard, LegendCard, StatsPanel } from './LivePanels'
+import PlayerBar from './PlayerBar'
 import { useFrameAspect, useLiveDraw, useYoloLive } from './useYoloLive'
 import { yoloService } from './yoloService'
 import type { SessionState } from './types'
@@ -29,6 +30,7 @@ function SourcePicker() {
   const [error, setError] = useState<string | null>(null)
   const [go2rtcUrl, setGo2rtcUrl] = useState('')
   const [simPeople, setSimPeople] = useState(7)
+  const [loopVideo, setLoopVideo] = usePersistentState('camwell:yolo-console:video-loop:v1', true)
 
   const run = async (message: string, job: () => Promise<unknown>) => {
     setPending(message)
@@ -46,7 +48,9 @@ function SourcePicker() {
     run('กำลังอัปโหลด...', async () => {
       const upload = await yoloService.upload(file)
       if (upload.kind !== kind) throw new Error(kind === 'video' ? 'ไฟล์นี้ไม่ใช่วิดีโอ' : 'ไฟล์นี้ไม่ใช่รูปภาพ')
-      await yoloService.startSession({ kind, upload_id: upload.id })
+      await yoloService.startSession(
+        kind === 'video' ? { kind, upload_id: upload.id, loop: loopVideo } : { kind, upload_id: upload.id },
+      )
     })
 
   const submitGo2rtc = (e: FormEvent) => {
@@ -92,6 +96,12 @@ function SourcePicker() {
               e.target.value = '' // เลือกไฟล์เดิมซ้ำก็ยังเริ่มใหม่ได้
             }}
           />
+        </label>
+      )}
+      {tab === 'video' && (
+        <label className="yc-row yc-check">
+          <input type="checkbox" checked={loopVideo} onChange={(e) => setLoopVideo(e.target.checked)} />
+          <span>เล่นวนซ้ำ — จบคลิปแล้วเริ่มจากต้นคลิปเองจนกว่าจะกด "จบ" (มีผลกับไฟล์ที่เลือกครั้งถัดไป)</span>
         </label>
       )}
 
@@ -193,6 +203,7 @@ export default function LiveTab() {
       <div className="yc-live-main">
         <SourcePicker />
         <LiveStage layers={layers} />
+        <PlayerBar />
         <div className="dc-card dc-pad">
           <span className="dc-section-label">Layers</span>
           <div className="dc-toggle-row">
