@@ -1,8 +1,9 @@
 """Which person each ByteTrack track belongs to, and who to show.
 
-Copied from Cam-Well-YoLo-ByteTrack backend/room_analytics.py at 9bc5f9b (PersonIdentities and the helpers it
-uses), so CamWell gets the same people as Room Analytics: one box per person, the same ID while someone sits
-still, held through short detection gaps, and no chair counted as a person. Keep it in step with that file.
+Started as a copy of Cam-Well-YoLo-ByteTrack backend/room_analytics.py at 9bc5f9b (PersonIdentities and the
+helpers it uses): one box per person, the same ID while someone sits still, held through short detection gaps, and
+no chair counted as a person. That project is paused, so this file is now the one to change. Check a change on
+recorded clips with tools/eval_clips.py (replay takes seconds) before trusting it; see docs/vision/next-steps.md.
 """
 from __future__ import annotations
 
