@@ -38,6 +38,7 @@ import ReportsPage from './pages/ReportsPage'
 import { backendAlertReporter } from './services/alertReporter'
 import { listEnrolledPeople, removePerson, renamePerson } from './services/faceEnrollment'
 import { usePersistentState } from './hooks/usePersistentState'
+import { WarnGlyph } from './envelope/marks'
 import './App.css'
 
 // โหลดเฉพาะตอนเปิด /?yolo-console — หน้าอื่นไม่ต้องดาวน์โหลดโค้ดส่วนนี้
@@ -373,12 +374,12 @@ function CameraApp() {
 
   return (
     <>
+      <AppNavigation active="camera" />
       <div className="camera-status-bar" aria-label="สถานะการตรวจจับ">
-        <span className="camera-status-active"><span aria-hidden="true">●</span> ประมวลผลวิดีโอในเครื่อง</span>
+        <span className="camera-status-active"><span className="camera-status-dot" aria-hidden="true" /> ประมวลผลวิดีโอในเครื่อง</span>
         <span>กล้องที่ตั้งค่า {cameraSlots.length}/{MAX_CAMERA_SLOTS} ตัว</span>
         <span className="camera-status-privacy">วิดีโอไม่ถูกส่งออกจากอุปกรณ์</span>
       </div>
-      <AppNavigation active="camera" />
       <div className="app-shell">
       <header className="page-heading">
         <h1>ตั้งค่ากล้องและการตรวจสอบ</h1>
@@ -386,8 +387,8 @@ function CameraApp() {
       </header>
 
       {fallAlerts.map((alert) => (
-        <div key={alert.id} className="fall-alert-banner">
-          <span>🚨 {alert.message}</span>
+        <div key={alert.id} className="fall-alert-banner" role="alert">
+          <span>{alert.message}</span>
           <button type="button" onClick={() => handleAcknowledgeFall(alert.id)}>
             รับทราบ
           </button>
@@ -395,8 +396,8 @@ function CameraApp() {
       ))}
 
       {breakMessage && (
-        <div className="break-banner">
-          <span>🧘 {breakMessage}</span>
+        <div className="break-banner" role="status">
+          <span>{breakMessage}</span>
           <button type="button" onClick={() => setBreakMessage(null)}>
             รับทราบ
           </button>
@@ -452,8 +453,8 @@ function CameraApp() {
                       {people.map((person) => (
                         <li key={person.trackId}>
                           <strong>{person.label}</strong> — {person.postureStatus}
-                          {person.fatigueActive && ' · ⚠ ความเหนื่อยล้า/หาว'}
-                          {person.distanceActive && ' · ⚠ นั่งใกล้จอเกินไป'}
+                          {person.fatigueActive && ' · ความเหนื่อยล้า/หาว'}
+                          {person.distanceActive && ' · นั่งใกล้จอเกินไป'}
                           {person.yawnCount > 0 && ` · หาวสะสม ${person.yawnCount} ครั้ง`}
                         </li>
                       ))}
@@ -513,7 +514,7 @@ function CameraApp() {
           ถูกส่งไปเก็บที่ backend แล้ว ขั้นต่อไป: dashboard ของ HR/หัวหน้างาน และแจ้งเตือนผ่าน LINE Messaging API
         </p>
         <p className="pdpa-note">
-          ⚠️ ฟีเจอร์ face recognition เก็บข้อมูลชีวภาพ (biometric) ไว้ที่ backend/ฐานข้อมูลของระบบนี้เท่านั้น (ดู
+          <WarnGlyph /> ฟีเจอร์ face recognition เก็บข้อมูลชีวภาพ (biometric) ไว้ที่ backend/ฐานข้อมูลของระบบนี้เท่านั้น (ดู
           camwell-backend/README.md) การใช้งานจริงกับพนักงานต้องขอความยินยอมตาม พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล
           (PDPA) ก่อนเสมอ — โปรดปรึกษาฝ่ายกฎหมาย/HR ก่อนนำไปใช้งานจริง
         </p>

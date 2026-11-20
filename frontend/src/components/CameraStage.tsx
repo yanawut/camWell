@@ -41,6 +41,7 @@ import type { AlertEvent } from '../types/alerts'
 import type { FallThresholds } from '../types/fall'
 import type { PersonSummary } from '../types/person'
 import { go2rtcBrowserSocketUrl, type CameraSource } from '../types/cameraSource'
+import { WarnGlyph } from '../envelope/marks'
 
 
 const FACE_DETECT_INTERVAL_MS = 400 // ตรวจใบหน้า (fatigue/distance/identity) ไม่ทุกเฟรม กันหน่วง
@@ -1063,7 +1064,7 @@ export default function CameraStage({
         {poseStatus === 'error' && <div className="camera-status-banner banner-error">{poseError}</div>}
         {faceStatus === 'error' && <div className="camera-status-banner banner-error">{faceError}</div>}
         {cameraError && <div className="camera-status-banner banner-error">{cameraError}</div>}
-        {isAlerting && <div className="camera-status-banner banner-alert">⚠ {alertBannerText}</div>}
+        {isAlerting && <div className="camera-status-banner banner-alert"><WarnGlyph size={16} />{alertBannerText}</div>}
         {overlay}
       </div>
       <p className="current-issue">

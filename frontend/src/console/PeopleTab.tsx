@@ -1,4 +1,5 @@
 import type { EnrolledPerson } from '../types/identity'
+import { WarnGlyph } from '../envelope/marks'
 
 interface Props {
   people: EnrolledPerson[]
@@ -10,7 +11,7 @@ export default function PeopleTab({ people, error, onRemove }: Props) {
   return (
     <>
       <div className="dc-pdpa">
-        <span>⚠️</span>
+        <WarnGlyph />
         <span>
           Face descriptor เป็นข้อมูลชีวภาพตาม PDPA — ลงทะเบียนได้เฉพาะเมื่อติ๊กยืนยันความยินยอมแล้ว (backend ปฏิเสธคำขอที่ไม่มี{' '}
           <code>consentGiven: true</code>) และพนักงานขอลบได้ตลอดเวลา

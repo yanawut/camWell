@@ -5,6 +5,7 @@ import {
   type DatasetLabel,
 } from '../services/datasetRecorder'
 import type { PostureThresholds } from '../types/posture'
+import { RecordGlyph, StopGlyph } from '../envelope/marks'
 
 interface Props {
   postureThresholds: PostureThresholds
@@ -59,7 +60,7 @@ export default function DatasetRecorderPanel({ postureThresholds }: Props) {
         </select>
       </label>
       <button type="button" className="secondary-button" onClick={toggleRecording}>
-        {recording ? `■ หยุดบันทึก (${label})` : '● เริ่มบันทึก'}
+        {recording ? <><StopGlyph />หยุดบันทึก ({label})</> : <><RecordGlyph />เริ่มบันทึก</>}
       </button>
       <p>จำนวนตัวอย่างที่เก็บแล้ว: {count.toLocaleString()}</p>
       <button

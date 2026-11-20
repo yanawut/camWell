@@ -2,6 +2,7 @@
 import { useRef, useState } from 'react'
 import { useYoloLive } from './useYoloLive'
 import { ACTIVE_STATES, yoloService } from './yoloService'
+import { PauseGlyph, PlayGlyph, StopGlyph } from '../envelope/marks'
 
 /** ส่งตำแหน่งระหว่างลากไม่ถี่กว่านี้ — backend ทำแค่คำขอล่าสุดอยู่แล้ว */
 const SCRUB_INTERVAL_MS = 150
@@ -63,11 +64,11 @@ export default function PlayerBar() {
 
   const playPause =
     state === 'running'
-      ? { text: '❚❚', label: 'หยุดชั่วคราว', act: () => yoloService.sessionAction('pause') }
+      ? { icon: 'pause', label: 'หยุดชั่วคราว', act: () => yoloService.sessionAction('pause') }
       : state === 'paused'
-        ? { text: '▶', label: 'เล่นต่อ', act: () => yoloService.sessionAction('resume') }
+        ? { icon: 'play', label: 'เล่นต่อ', act: () => yoloService.sessionAction('resume') }
         : finished && video
-          ? { text: '▶', label: 'เล่นคลิปนี้อีกครั้ง', act: () => yoloService.startSession(video) }
+          ? { icon: 'play', label: 'เล่นคลิปนี้อีกครั้ง', act: () => yoloService.startSession(video) }
           : null
 
   return (
@@ -80,7 +81,7 @@ export default function PlayerBar() {
         disabled={busy || !playPause}
         onClick={() => playPause && void run(playPause.act)}
       >
-        {playPause?.text ?? '▶'}
+        {playPause?.icon === 'pause' ? <PauseGlyph /> : <PlayGlyph />}
       </button>
       <button
         type="button"
@@ -90,7 +91,7 @@ export default function PlayerBar() {
         disabled={busy || !active}
         onClick={() => void run(() => yoloService.sessionAction('stop'))}
       >
-        ■
+        <StopGlyph />
       </button>
       <span className="dc-mono yc-player-time">{clock(shown)}</span>
       <input

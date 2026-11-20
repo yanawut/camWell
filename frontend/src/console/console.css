@@ -22,18 +22,18 @@
 .dc-muted-12 { font-size: 12px; color: var(--text-muted); }
 .dc-text { color: var(--text); }
 .dc-w500 { font-weight: 500; }
-.dc-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+.dc-dot { width: 7px; height: 7px; border-radius: 0; flex-shrink: 0; display: inline-block; }
 .dc-dot-8 { width: 8px; height: 8px; }
 .dc-dot-6 { width: 6px; height: 6px; }
 .dc-badge {
   font: 600 10px/1 ui-monospace, Consolas, monospace;
   padding: 4px 6px;
-  border-radius: 4px;
+  border-radius: 0;
   background: var(--text);
-  color: #fff;
+  color: var(--rx-paper);
   letter-spacing: 0.06em;
 }
-.dc-badge-sm { font-size: 9px; padding: 3px 4px; border-radius: 3px; }
+.dc-badge-sm { font-size: 9px; padding: 3px 4px; border-radius: 0; }
 
 /* --- sidebar --- */
 .dc-aside {
@@ -61,14 +61,14 @@
   width: 40px;
   height: 40px;
   place-items: center;
-  border-radius: 10px;
-  background: #2563eb;
-  color: #fff;
+  border-radius: 0;
+  background: color-mix(in srgb, var(--rx-ink) 7%, var(--rx-paper));
+  color: var(--rx-paper);
   font-size: 22px;
   font-weight: 800;
 }
 .dc-brand-copy { display: flex; flex-direction: column; gap: 2px; }
-.dc-brand-copy > span { color: #60a5fa; font-size: 10px; font-weight: 700; letter-spacing: .08em; }
+.dc-brand-copy > span { color: var(--rx-ink); font-size: 10px; font-weight: 700; letter-spacing: .08em; }
 .dc-nav { padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; }
 .dc-nav-item {
   display: flex;
@@ -78,7 +78,7 @@
   width: 100%;
   text-align: left;
   border: none;
-  border-radius: 8px;
+  border-radius: 0;
   padding: 9px 12px;
   font: inherit;
   font-size: 14px;
@@ -87,7 +87,7 @@
   color: var(--text);
 }
 .dc-nav-item:hover { background: var(--bg); }
-.dc-nav-item.active { background: #eff6ff; color: #1d4ed8; font-weight: 600; }
+.dc-nav-item.active { background: var(--rx-paper); color: var(--rx-ink); font-weight: 600; }
 .dc-services {
   margin-top: auto;
   border-top: 1px solid var(--border);
@@ -126,13 +126,13 @@
   align-items: center;
   min-height: 38px;
   margin-top: 8px;
-  border: 1px solid #34435b;
-  border-radius: 8px;
+  border: 1px solid var(--rx-ink);
+  border-radius: 0;
   padding: 0 10px;
-  color: #d6deea;
+  color: var(--rx-ink);
   text-decoration: none;
 }
-.dc-back-link:hover { background: #1d293e; color: #fff; }
+.dc-back-link:hover { background: var(--rx-ink); color: var(--rx-paper); }
 .dc-kv { display: flex; flex-direction: column; gap: 1px; }
 .dc-kv .dc-mono { overflow-wrap: anywhere; }
 
@@ -157,12 +157,12 @@
   display: flex;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 0;
   padding: 2px;
 }
 .dc-segment button {
   border: none;
-  border-radius: 6px;
+  border-radius: 0;
   padding: 5px 10px;
   font: inherit;
   font-size: 12px;
@@ -170,7 +170,7 @@
   background: transparent;
   color: var(--text);
 }
-.dc-segment button.active { background: #fff; box-shadow: 0 1px 2px rgba(17, 24, 39, 0.12); }
+.dc-segment button.active { background: var(--rx-paper); box-shadow: none; }
 .dc-segment button:disabled { cursor: not-allowed; opacity: 0.6; }
 .dc-check { display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; }
 .dc-check-divider { padding-left: 14px; border-left: 1px solid var(--border); }
@@ -180,7 +180,7 @@
   gap: 6px;
   padding: 5px 10px;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: 0;
   font-size: 12px;
 }
 
@@ -197,7 +197,7 @@
 .dc-main .break-banner { margin: 0; }
 .dc-stack { display: flex; flex-direction: column; gap: 20px; }
 .dc-stack[hidden] { display: none; }
-.dc-card { background: var(--panel-bg); border: 1px solid var(--border); border-radius: 12px; }
+.dc-card { background: var(--panel-bg); border: 1px solid var(--border); border-radius: 0; }
 .dc-pad { padding: 16px 18px; }
 .dc-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .dc-h2 { margin: 0; font-size: 15px; }
@@ -208,18 +208,18 @@
 .dc-warn-note {
   margin: 0;
   font-size: 12px;
-  color: #7c2d12;
-  background: #fff7ed;
-  border: 1px solid #fdba74;
-  border-radius: 8px;
+  color: var(--rx-stamp);
+  background: var(--rx-paper);
+  border: 1px solid var(--rx-stamp);
+  border-radius: 0;
   padding: 8px 10px;
 }
 .dc-btn {
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--rx-paper);
   color: var(--text);
   padding: 6px 12px;
-  border-radius: 6px;
+  border-radius: 0;
   cursor: pointer;
   font-size: 13px;
 }
@@ -241,7 +241,7 @@
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   background: var(--panel-bg);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 0;
   overflow: hidden;
 }
 .dc-stat {
@@ -266,15 +266,15 @@
 }
 .dc-add-cam {
   align-self: flex-start;
-  border: 1px dashed #c9ccd3;
+  border: 1px dashed var(--rx-rule-soft);
   background: transparent;
   color: var(--text);
   padding: 8px 14px;
-  border-radius: 8px;
+  border-radius: 0;
   cursor: pointer;
   font-size: 13px;
 }
-.dc-add-cam:hover { background: #fff; }
+.dc-add-cam:hover { background: var(--rx-paper); }
 
 /* --- camera card --- */
 .dc-cam { overflow: hidden; display: flex; flex-direction: column; }
@@ -291,7 +291,7 @@
   color: var(--text-muted);
   padding: 4px 6px;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -305,7 +305,7 @@
 .dc-cam .posture-monitor > .secondary-button:first-of-type {
   border-color: var(--accent);
   background: var(--accent);
-  color: #fff;
+  color: var(--rx-paper);
 }
 /* ชิปอยู่บนสุด — ดันแบนเนอร์แจ้งเตือนของ CameraStage ลงมาใต้ชิป */
 .dc-cam .banner-alert { top: 44px; }
@@ -317,10 +317,10 @@
 .dc-chips { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; gap: 6px; flex-wrap: wrap; }
 .dc-chip {
   font: 500 11px/1 ui-monospace, Consolas, monospace;
-  color: #fff;
-  background: rgba(17, 24, 39, 0.85);
+  color: var(--rx-paper);
+  background: color-mix(in srgb, var(--rx-ink) 85%, transparent);
   padding: 5px 7px;
-  border-radius: 5px;
+  border-radius: 0;
 }
 .dc-chip-rec { font-weight: 600; background: var(--danger); padding: 5px 8px; }
 .dc-features {
@@ -331,12 +331,12 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1px;
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
+  background: color-mix(in srgb, var(--rx-paper) 12%, transparent);
+  border-radius: 0;
   overflow: hidden;
 }
 .dc-feature {
-  background: rgba(17, 24, 39, 0.9);
+  background: color-mix(in srgb, var(--rx-ink) 90%, transparent);
   padding: 7px 9px;
   display: flex;
   flex-direction: column;
@@ -345,12 +345,12 @@
 }
 .dc-feature-key {
   font: 10px/1.2 ui-monospace, Consolas, monospace;
-  color: #9ca3af;
+  color: var(--rx-ink);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.dc-feature-value { font: 600 14px/1.2 ui-monospace, Consolas, monospace; color: #fff; }
+.dc-feature-value { font: 600 14px/1.2 ui-monospace, Consolas, monospace; color: var(--rx-paper); }
 .dc-cam-info {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -363,15 +363,15 @@
 .dc-toggle-row { display: flex; gap: 4px; flex-wrap: wrap; }
 .dc-toggle {
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 0;
   padding: 5px 10px;
   font: 500 12px/1.2 ui-monospace, Consolas, monospace;
   cursor: pointer;
-  background: #fff;
+  background: var(--rx-paper);
   color: var(--text);
 }
 .dc-toggle-sm { padding: 5px 9px; font-size: 11px; }
-.dc-toggle.on { background: var(--text); color: #fff; border-color: var(--text); }
+.dc-toggle.on { background: var(--text); color: var(--rx-paper); border-color: var(--text); }
 .dc-toggle:disabled { cursor: not-allowed; }
 .dc-rec-box {
   display: flex;
@@ -380,15 +380,15 @@
   gap: 12px;
   padding: 12px 14px;
   border: 1px solid var(--border);
-  border-radius: 10px;
-  background: #f9fafb;
+  border-radius: 0;
+  background: var(--rx-paper);
 }
 .dc-rec-count { font: 600 22px/1.2 ui-monospace, Consolas, monospace; }
 .dc-rec-btn {
   border: none;
-  color: #fff;
+  color: var(--rx-paper);
   padding: 9px 14px;
-  border-radius: 8px;
+  border-radius: 0;
   cursor: pointer;
   font-size: 13px;
   font-weight: 600;
@@ -399,9 +399,9 @@
 .dc-pre {
   margin: 0;
   padding: 12px 14px;
-  background: #0b0d12;
-  color: #e5e7eb;
-  border-radius: 8px;
+  background: var(--rx-ink);
+  color: var(--rx-ink);
+  border-radius: 0;
   font: 11px/1.6 ui-monospace, Consolas, monospace;
   overflow: auto;
 }
@@ -429,14 +429,14 @@
 }
 .dc-filter {
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--rx-paper);
   color: var(--text);
   padding: 5px 12px;
-  border-radius: 999px;
+  border-radius: 0;
   cursor: pointer;
   font-size: 12px;
 }
-.dc-filter.on { background: var(--text); color: #fff; border-color: var(--text); }
+.dc-filter.on { background: var(--text); color: var(--rx-paper); border-color: var(--text); }
 .dc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .dc-table th {
   text-align: left;
@@ -445,15 +445,15 @@
   font-size: 12px;
   font-weight: 500;
   color: var(--text-muted);
-  background: #f9fafb;
+  background: var(--rx-paper);
 }
 .dc-table td { padding: 9px 10px; border-bottom: 1px solid var(--border); }
 .dc-table th:first-child,
 .dc-table td:first-child { padding-left: 18px; }
 .dc-table th:last-child,
 .dc-table td:last-child { padding-right: 18px; }
-.dc-table tbody tr:hover { background: #f9fafb; }
-.dc-cat { font-size: 12px; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.dc-table tbody tr:hover { background: var(--rx-paper); }
+.dc-cat { font-size: 12px; padding: 2px 8px; border-radius: 0; white-space: nowrap; }
 .dc-table-foot {
   margin: 0;
   padding: 12px 18px;
@@ -486,11 +486,11 @@
   gap: 10px;
   align-items: flex-start;
   padding: 12px 16px;
-  border: 1px solid #fdba74;
-  background: #fff7ed;
-  border-radius: 10px;
+  border: 1px solid var(--rx-stamp);
+  background: var(--rx-paper);
+  border-radius: 0;
   font-size: 13px;
-  color: #7c2d12;
+  color: var(--rx-stamp);
 }
 
 /* --- จอกว้าง: คอลัมน์เกณฑ์การตรวจจับข้างหน้าภาพรวม --- */
@@ -521,41 +521,100 @@
   .dc-main { padding: 16px 16px 32px; }
 }
 
-/* Keep the technical workspace distinct from the everyday monitoring screens. */
+/* =====================================================================
+ * ซองยา: Console (MediaPipe และ YOLO)
+ * แถบข้าง = คอลัมน์พิมพ์บนกระดาษ คั่นด้วยเส้นหมึกหนา; ส่วนชื่อด้านบนเป็นแผ่นหมึกแบบแถบหัวซอง
+ * สถานะ (จุด/ข้อความ) อยู่บนกระดาษ: ปกติ = น้ำเงินปากกา, เตือน/ผิดพลาด = แดง
+ * ===================================================================== */
 .dc-aside {
-  background: #10182b;
-  border-right-color: #27334a;
-  color: #edf2fb;
+  border-right: 2px solid var(--rx-ink);
+  background: transparent;
+  color: var(--rx-ink);
 }
 
-.dc-brand,
+.dc-brand {
+  border-bottom: 0;
+  background: var(--rx-band);
+  color: var(--rx-band-fg);
+}
+
+.dc-brand-name {
+  color: var(--rx-band-fg);
+  font: 700 22px / 1.1 var(--rx-display);
+  letter-spacing: 0.04em;
+}
+
+.dc-brand-copy > span {
+  color: var(--rx-band-fg);
+  font-family: var(--rx-display);
+}
+
+.dc-brand-mark {
+  border: 2px solid var(--rx-band-fg);
+  background: transparent;
+  color: var(--rx-band-fg);
+  font-family: var(--rx-display);
+}
+
 .dc-services,
 .dc-aside-footer {
-  border-color: #27334a;
+  border-color: var(--rx-ink);
 }
 
-.dc-brand-name,
 .dc-aside .dc-w500,
-.dc-kv .dc-mono {
-  color: #edf2fb;
-}
-
+.dc-kv .dc-mono,
 .dc-aside .dc-muted-12,
 .dc-aside .dc-section-label,
 .dc-service-detail,
 .dc-aside-footer,
 .dc-kv {
-  color: #91a0b8;
+  color: var(--rx-ink);
 }
 
 .dc-nav-item {
-  color: #aab7cc;
+  color: var(--rx-ink);
+  font-family: var(--rx-display);
+  font-weight: 600;
 }
 
-.dc-nav-item:hover,
+.dc-nav-item:hover {
+  background: color-mix(in srgb, var(--rx-ink) 7%, transparent);
+}
+
 .dc-nav-item.active {
-  background: #202c42;
-  color: #6fa3ff;
+  background: var(--rx-ink);
+  color: var(--rx-paper);
+}
+
+.dc-nav-item.active * {
+  color: var(--rx-paper);
+}
+
+.dc-back-link {
+  border: 2px solid var(--rx-ink);
+  font-family: var(--rx-display);
+  font-weight: 600;
+}
+
+/* หัวหน้า console */
+.dc-header {
+  border-bottom: 2px solid var(--rx-ink);
+  background: var(--rx-fiber), var(--rx-paper);
+}
+
+.dc-card {
+  border: 2px solid var(--rx-ink);
+  background: transparent;
+}
+
+.dc-h2 {
+  font: 700 18px / 1.3 var(--rx-display);
+}
+
+.dc-badge {
+  border-radius: 0;
+  background: var(--rx-ink);
+  color: var(--rx-paper);
 }
 
 /* --- สลับ engine (MediaPipe ↔ YOLO) — อยู่ใต้ brand ของทั้งสอง console --- */
@@ -565,8 +624,94 @@
   flex-direction: column;
   gap: 6px;
 }
-.dc-engine .dc-segment { background: #1a2438; border-color: #27334a; }
-.dc-engine .dc-segment button { flex: 1; color: #aab7cc; }
-.dc-engine .dc-segment button.active { background: #2b3a55; color: #fff; box-shadow: none; }
-.dc-engine .dc-segment button:not(.active):hover:not(:disabled) { background: #202c42; color: #fff; }
-.dc-engine .dc-muted-12 { color: #91a0b8; }
+.dc-engine .dc-segment { background: transparent; border: 2px solid var(--rx-ink); }
+.dc-engine .dc-segment button { flex: 1; color: var(--rx-ink); }
+.dc-engine .dc-segment button.active { background: var(--rx-ink); color: var(--rx-paper); box-shadow: none; }
+.dc-engine .dc-segment button:not(.active):hover:not(:disabled) { background: color-mix(in srgb, var(--rx-ink) 8%, transparent); color: var(--rx-ink); }
+.dc-engine .dc-muted-12 { color: var(--rx-ink); }
+
+/* ---------- ซองยา: ปุ่ม แผงสถิติ และตัวเลือกใน console ---------- */
+.dc-segment {
+  border: 2px solid var(--rx-ink);
+  background: transparent;
+  padding: 0;
+}
+
+.dc-segment button {
+  color: var(--rx-ink);
+  font-family: var(--rx-display);
+  font-weight: 600;
+}
+
+.dc-segment button.active {
+  background: var(--rx-ink);
+  color: var(--rx-paper);
+}
+
+.dc-segment button:not(.active):hover:not(:disabled) {
+  background: color-mix(in srgb, var(--rx-ink) 8%, transparent);
+}
+
+.dc-btn {
+  min-height: 36px;
+  border: 2px solid var(--rx-ink);
+  background: transparent;
+  color: var(--rx-ink);
+  font-family: var(--rx-display);
+  font-weight: 600;
+}
+
+.dc-btn:hover:not(:disabled) {
+  background: var(--rx-ink);
+  color: var(--rx-paper);
+}
+
+.dc-pill {
+  border: 1.5px solid var(--rx-ink);
+  background: transparent;
+  font-family: var(--rx-display);
+}
+
+/* แถบสถิติ: แถวเดียวในกรอบหมึก คั่นด้วยเส้นบาง (เหมือนช่องสถิติหน้าอื่น) */
+.dc-statbar {
+  border: 2px solid var(--rx-ink);
+  background: transparent;
+}
+
+.dc-stat {
+  border-right-color: var(--rx-rule-soft);
+}
+
+.dc-cam-head {
+  border-bottom: 2px solid var(--rx-ink);
+}
+
+.dc-cam .posture-monitor > .secondary-button:first-of-type {
+  border-color: var(--rx-ink);
+  background: var(--rx-ink);
+  color: var(--rx-paper);
+}
+
+.dc-chip {
+  font-family: var(--rx-display);
+  font-weight: 600;
+}
+
+.dc-chip-rec {
+  background: var(--rx-stamp);
+  color: var(--rx-paper);
+}
+
+.dc-dot {
+  outline: 1px solid color-mix(in srgb, var(--rx-ink) 40%, transparent);
+}
+
+.dc-check {
+  padding-block: 6px;
+}
+
+/* ค่าสถิติ: Anuphan ตัวเลขเรียงหลัก (monospace สงวนไว้ให้ค่าดิบ/เส้นทางไฟล์ในบรรทัดเล็ก) */
+.dc-stat-value {
+  font: 700 26px / 1.2 var(--rx-display);
+  font-variant-numeric: tabular-nums;
+}

@@ -9,10 +9,10 @@ interface Props {
 }
 
 const CATEGORY_STYLE: Record<AlertCategory, { bg: string; color: string }> = {
-  posture: { bg: '#eff6ff', color: '#1d4ed8' },
-  fatigue: { bg: '#fff7ed', color: '#c2410c' },
-  distance: { bg: '#f0fdf4', color: '#15803d' },
-  fall: { bg: '#fef2f2', color: '#b91c1c' },
+  posture: { bg: 'transparent', color: 'var(--rx-ink)' },
+  fatigue: { bg: 'transparent', color: 'var(--rx-ink)' },
+  distance: { bg: 'transparent', color: 'var(--rx-ink)' },
+  fall: { bg: 'var(--rx-stamp)', color: 'var(--rx-paper)' },
 }
 
 const CATEGORIES = Object.keys(CATEGORY_STYLE) as AlertCategory[]

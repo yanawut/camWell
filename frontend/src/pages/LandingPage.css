@@ -1,23 +1,5 @@
-/*
- * หน้าแรก = ซองยา/ฉลากยาแผ่นเดียว
- * หมึกพิมพ์สีเดียว (--rx-ink) ใช้กับทุกเส้น กรอบ และตัวอักษร
- * สีอื่นมีแค่รอยปากกาลูกลื่น (--rx-pen) และตรายาง/การเตือน (--rx-stamp)
- * ธีมมืด = พิมพ์กลับสี: พื้นเป็นหมึกเขียวเข้ม ตัวพิมพ์และแถบหัวซองเป็นสีกระดาษ
- */
+/* หน้าแรก = ซองยา/ฉลากยาแผ่นเดียว — token และชิ้นส่วนที่ใช้ร่วมกันอยู่ใน envelope/envelope.css */
 .rx {
-  --rx-paper: #f8faf7;
-  --rx-ink: #0b6b47;
-  --rx-rule-soft: color-mix(in srgb, var(--rx-ink) 30%, var(--rx-paper));
-  --rx-pen: #1f3fbf;
-  --rx-stamp: #c62b28;
-  --rx-band: #0b6b47;
-  --rx-band-fg: #f8faf7;
-  --rx-fiber: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .2 0 0 0 0 .3 0 0 0 0 .26 0 0 0 .025 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  --rx-display: 'Anuphan', 'IBM Plex Sans Thai', system-ui, sans-serif;
-  --rx-form: 'Sarabun', 'IBM Plex Sans Thai Looped', system-ui, sans-serif;
-  --rx-hand: 'Sriracha', 'Sarabun', cursive;
-  --rx-gutter: clamp(16px, 5vw, 72px);
-
   min-height: 100vh;
   min-height: 100dvh;
   display: flex;
@@ -25,25 +7,6 @@
   background: var(--rx-fiber), var(--rx-paper);
   color: var(--rx-ink);
   font: 400 17px/1.65 var(--rx-form);
-}
-
-:root[data-theme='dark'] .rx {
-  --rx-paper: #0a4630;
-  --rx-ink: #f8faf7;
-  --rx-pen: #b4c3ff;
-  --rx-stamp: #ff9d8f;
-  --rx-band: #f8faf7;
-  --rx-band-fg: #0a4630;
-  --rx-fiber: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .75 0 0 0 0 .9 0 0 0 0 .82 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-
-.rx ::selection {
-  background: color-mix(in srgb, var(--rx-pen) 28%, transparent);
-}
-
-.rx :focus-visible {
-  outline: 3px solid var(--rx-pen);
-  outline-offset: 3px;
 }
 
 .rx h1,
@@ -56,30 +19,6 @@
 
 .rx p {
   text-wrap: pretty;
-}
-
-.rx-glyph {
-  flex: none;
-}
-
-/* วลีไทยไม่ขาดกลาง (ดู Phrases ใน LandingPage.tsx) */
-.rx-ph {
-  white-space: nowrap;
-}
-
-.rx-hand {
-  color: var(--rx-pen);
-  font-family: var(--rx-hand);
-  font-weight: 400;
-}
-
-.rx-visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
 }
 
 /* ---------- แถบหัวซอง ---------- */
@@ -202,21 +141,6 @@
   padding: 0 var(--rx-gutter);
 }
 
-.rx-field {
-  display: flex;
-  align-items: baseline;
-  gap: 14px;
-  margin: 0;
-  padding-bottom: 4px;
-  border-bottom: 1.5px solid var(--rx-ink);
-  font: 600 17px/1.2 var(--rx-display);
-}
-
-.rx-field .rx-hand {
-  font-size: 26px;
-  line-height: 1.25;
-}
-
 .rx-fields {
   display: flex;
   flex-wrap: wrap;
@@ -337,23 +261,6 @@
   }
 }
 
-.rx-secondary {
-  display: inline-flex;
-  align-items: center;
-  min-height: 52px;
-  padding: 0 22px;
-  border: 2px solid var(--rx-ink);
-  color: var(--rx-ink);
-  font: 600 19px/1 var(--rx-display);
-  text-decoration: none;
-  transition: background-color 0.15s ease, color 0.15s ease;
-}
-
-.rx-secondary:hover {
-  background: var(--rx-ink);
-  color: var(--rx-paper);
-}
-
 /* ตารางวิธีใช้ */
 .rx-dosage {
   width: 100%;
@@ -413,92 +320,6 @@
 .rx-fine {
   margin: 10px 0 0;
   font-size: 14px;
-}
-
-/* คำมั่นเรื่องความเป็นส่วนตัว: แผ่นพิมพ์ทึบสีหมึก (กลับสีในธีมมืดเอง)
-   สีแดงสงวนไว้ให้ตรายางและการเตือนเท่านั้น จึงไม่ใช้กับเรื่องดี */
-.rx-promise {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  margin-top: 24px;
-  padding: 18px 20px 20px;
-  background: var(--rx-ink);
-  color: var(--rx-paper);
-}
-
-.rx-promise .rx-glyph {
-  margin-top: 3px;
-}
-
-.rx-promise p {
-  margin: 0;
-  font: 700 clamp(20px, 1.75vw, 24px)/1.45 var(--rx-display);
-}
-
-/* ---------- ช่องติ๊ก + รอยปากกา ---------- */
-.rx-box {
-  position: relative;
-  display: inline-block;
-  flex: none;
-  width: 26px;
-  height: 26px;
-  border: 2px solid var(--rx-ink);
-  vertical-align: middle;
-}
-
-.rx-box svg {
-  position: absolute;
-  overflow: visible;
-  fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.rx-box path {
-  stroke-dasharray: 1;
-  stroke-dashoffset: 0;
-}
-
-.rx-box.is-tick svg {
-  top: -11px;
-  left: -1px;
-  width: 32px;
-  height: 32px;
-  stroke: var(--rx-pen);
-  stroke-width: 3.2;
-}
-
-.rx-box.is-ring svg {
-  top: -13px;
-  left: -13px;
-  width: 48px;
-  height: 48px;
-  stroke: var(--rx-stamp);
-  stroke-width: 2.6;
-}
-
-.rx-box.is-strike svg {
-  top: 0;
-  left: -8px;
-  width: 38px;
-  height: 22px;
-  stroke: var(--rx-pen);
-  stroke-width: 3;
-}
-
-/* รอยปากกาบนตารางวิธีใช้ วาดทีละช่องตอนเปิดหน้า ก่อนตรายางประทับ */
-.rx-box.is-drawn path {
-  animation: rx-draw 0.38s cubic-bezier(0.65, 0, 0.35, 1) calc(0.3s + var(--rx-order, 0) * 0.14s) both;
-}
-
-@keyframes rx-draw {
-  from {
-    stroke-dashoffset: 1;
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
 }
 
 /* ---------- ส่วนถัดลงมาของฉลาก ---------- */
@@ -591,30 +412,6 @@
   gap: 10px;
 }
 
-.rx-legend .rx-box {
-  width: 20px;
-  height: 20px;
-}
-
-.rx-legend .rx-box.is-tick svg {
-  top: -9px;
-  width: 26px;
-  height: 26px;
-}
-
-.rx-legend .rx-box.is-ring svg {
-  top: -11px;
-  left: -11px;
-  width: 38px;
-  height: 38px;
-}
-
-.rx-legend .rx-box.is-strike svg {
-  left: -6px;
-  width: 30px;
-  height: 18px;
-}
-
 .rx-log {
   width: 100%;
   border-collapse: collapse;
@@ -624,15 +421,6 @@
   padding-bottom: 14px;
   font: 600 17px/1.4 var(--rx-display);
   text-align: left;
-}
-
-.rx-sample {
-  display: inline-block;
-  margin-left: 10px;
-  padding: 1px 10px;
-  border: 1.5px solid var(--rx-ink);
-  font: 600 13px/1.5 var(--rx-display);
-  vertical-align: 2px;
 }
 
 .rx-log thead th {
@@ -703,18 +491,6 @@
   font: 700 21px/1.4 var(--rx-display);
 }
 
-/* ช่องกรอกบนฉลาก: เส้นประพิมพ์ + ค่าเขียนด้วยมือ */
-.rx-blank {
-  display: inline-block;
-  min-width: 3.2em;
-  padding: 0 0.5em;
-  border-bottom: 2px dotted var(--rx-ink);
-  font-size: 22px;
-  line-height: 1.35;
-  text-align: center;
-  white-space: nowrap;
-}
-
 .rx-steps .rx-link {
   margin-top: 0;
   justify-self: end;
@@ -778,15 +554,6 @@
 
 .rx-foot-copy {
   font-size: 14px;
-}
-
-.rx-secondary .rx-glyph {
-  margin-left: 8px;
-  transition: transform 0.16s ease;
-}
-
-.rx-secondary:hover .rx-glyph {
-  transform: translateX(3px);
 }
 
 /* ---------- จอกลาง ---------- */
@@ -996,19 +763,16 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .rx-stamp,
-  .rx-box.is-drawn path {
+  .rx-stamp {
     animation: none;
   }
 
   .rx-stamp,
   .rx-stamp .rx-glyph,
   .rx-link .rx-glyph,
-  .rx-secondary .rx-glyph,
   .rx-nav-link,
   .rx-nav-icon,
-  .rx-nav-login,
-  .rx-secondary {
+  .rx-nav-login {
     transition: none;
   }
 }

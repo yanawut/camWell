@@ -50,7 +50,7 @@
   min-width: 0;
   padding: 6px 10px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 0;
   font: inherit;
   font-size: 14px;
 }
@@ -104,7 +104,7 @@
 .people-tag {
   margin-left: 6px;
   padding: 1px 6px;
-  border-radius: 999px;
+  border-radius: 0;
   background: color-mix(in srgb, var(--accent) 12%, transparent);
   color: var(--accent);
   font-size: 11px;
@@ -115,22 +115,8 @@
   align-items: flex-end;
 }
 
-.people-page .people-stat,
-.people-page .event-log {
-  border: 2px solid #1f2937;
-  border-radius: 16px;
-}
-
 .people-page .event-log {
   overflow: hidden;
-}
-
-.directory-page .people-stat:nth-child(2) {
-  border-left: 5px solid #10b981;
-}
-
-.directory-page .people-stat:nth-child(3) {
-  border-left: 5px solid #f59e0b;
 }
 
 .people-page .people-toolbar {
@@ -141,9 +127,9 @@
 
 .people-page .people-toolbar input {
   min-height: 48px;
-  border-radius: 10px;
+  border-radius: 0;
   padding: 8px 14px;
-  background: #f8fafc;
+  background: var(--rx-paper);
 }
 
 .people-page .event-log > .panel-note,
@@ -153,7 +139,7 @@
 }
 
 .people-page .people-table-wrap th {
-  background: #f9fafc;
+  background: var(--rx-paper);
   color: var(--text-muted);
   font-size: 12px;
   font-weight: 700;
@@ -162,19 +148,15 @@
 .people-page .people-table-wrap th,
 .people-page .people-table-wrap td {
   padding: 14px 16px;
-  border-bottom: 1px solid #edf0f4;
+  border-bottom: 1px solid var(--rx-rule-soft);
 }
 
 .people-page .people-table-wrap thead th {
-  border-bottom: 2px solid #1f2937;
+  border-bottom: 2px solid var(--rx-ink);
 }
 
 .people-page .people-table-wrap tbody tr:hover {
-  background: #fbfcfe;
-}
-
-.people-stats {
-  gap: 16px;
+  background: var(--rx-paper);
 }
 
 .people-table-wrap td {

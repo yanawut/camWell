@@ -1,5 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import './envelope/envelope.css'
 import './index.css'
 import App from './App.tsx'
 import PeoplePage from './pages/PeoplePage.tsx'

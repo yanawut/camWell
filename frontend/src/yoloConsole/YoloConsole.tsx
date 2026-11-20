@@ -9,6 +9,7 @@ import { ACTIVE_STATES, yoloService, type SessionAction } from './yoloService'
 import type { SessionState } from './types'
 import '../console/console.css'
 import './yoloConsole.css'
+import { PauseGlyph, PlayGlyph, StopGlyph } from '../envelope/marks'
 
 type Tab = 'live' | 'floor' | 'reports'
 
@@ -71,11 +72,11 @@ function SessionControls() {
       {status.source?.label && <span className="dc-muted-12 yc-source-label">{status.source.label}</span>}
       {accuracy !== undefined && <span className="dc-muted-12 dc-mono">state_accuracy {accuracy.toFixed(4)}</span>}
       {state === 'paused' ? (
-        <button type="button" className="dc-btn" disabled={busy} onClick={() => act('resume')}>▶ เล่นต่อ</button>
+        <button type="button" className="dc-btn" disabled={busy} onClick={() => act('resume')}><PlayGlyph />เล่นต่อ</button>
       ) : (
-        <button type="button" className="dc-btn" disabled={busy || state !== 'running'} onClick={() => act('pause')}>❚❚ หยุดชั่วคราว</button>
+        <button type="button" className="dc-btn" disabled={busy || state !== 'running'} onClick={() => act('pause')}><PauseGlyph />หยุดชั่วคราว</button>
       )}
-      <button type="button" className="dc-btn" disabled={busy || !active} onClick={() => act('stop')}>■ จบ</button>
+      <button type="button" className="dc-btn" disabled={busy || !active} onClick={() => act('stop')}><StopGlyph />จบ</button>
       {canRestart && (
         <button type="button" className="dc-btn" disabled={busy} onClick={() => void run(() => yoloService.startSession(lastSpec))}>
           ↻ เริ่มใหม่
@@ -132,7 +133,7 @@ function ServiceStatus() {
 function NavBadge({ tab }: { tab: Tab }) {
   const state = useYoloLive((s) => s.status.state)
   if (tab !== 'live') return null
-  return <span className="dc-mono-11 dc-muted">{state === 'running' ? '● LIVE' : state}</span>
+  return <span className="dc-mono-11 dc-muted">{state === 'running' ? 'LIVE' : state}</span>
 }
 
 /** ก่อนสลับกลับ MediaPipe: สั่ง yolo-backend หยุด session ที่ค้างอยู่ — ไม่งั้น GPU ยังวิเคราะห์ต่อทั้งที่ไม่มีใครดู */

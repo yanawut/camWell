@@ -181,7 +181,7 @@ export default function DevConsole(props: DevConsoleProps) {
   ]
 
   const nav: [Tab, string, string][] = [
-    ['monitor', 'Monitor', recorder.recording ? '● REC' : `${cameraSlots.length} cam`],
+    ['monitor', 'Monitor', recorder.recording ? 'REC' : `${cameraSlots.length} cam`],
     ['thresholds', 'Thresholds', ''],
     ['events', 'Events', String(events.length)],
     ['people', 'People', String(enrolledPeople.length)],
@@ -385,7 +385,7 @@ export default function DevConsole(props: DevConsoleProps) {
         <main className="dc-main">
           {props.fallAlerts.map((alert) => (
             <div key={alert.id} className="fall-alert-banner">
-              <span>🚨 {alert.message}</span>
+              <span>{alert.message}</span>
               <button type="button" onClick={() => props.onAcknowledgeFall(alert.id)}>
                 รับทราบ
               </button>
@@ -393,7 +393,7 @@ export default function DevConsole(props: DevConsoleProps) {
           ))}
           {props.breakMessage && (
             <div className="break-banner">
-              <span>🧘 {props.breakMessage}</span>
+              <span>{props.breakMessage}</span>
               <button type="button" onClick={props.onDismissBreak}>
                 รับทราบ
               </button>

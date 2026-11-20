@@ -43,34 +43,35 @@ const CATEGORIES: AlertCategory[] = ['posture', 'fatigue', 'distance', 'fall']
 type PeopleViewMode = 'cards' | 'table'
 type RiskFilter = 'all' | 'high' | 'moderate' | 'low' | 'chronic'
 
+// สีจุดอาการตามระดับ (token ของซองยา — เปลี่ยนตามธีมเอง): ไม่มี = เส้นจาง, ต่ำ = หมึก, ปานกลาง = แดงจาง, สูง = แดง
 const ZONE_STROKE: Record<ZoneSeverity, string> = {
-  none: '#cbd5e1',
-  low: '#10b981',
-  moderate: '#f59e0b',
-  high: '#ef4444',
+  none: 'var(--rx-rule-soft)',
+  low: 'var(--rx-ink)',
+  moderate: 'color-mix(in srgb, var(--rx-stamp) 55%, var(--rx-paper))',
+  high: 'var(--rx-stamp)',
 }
 
 function UpperBodySymptomMap({ zones }: { zones: UpperBodyZones }) {
   return (
     <div className="reports-body-map" title="แผนภาพจุดเฝ้าระวังอาการส่วนบน (ศีรษะ/ตา · คอ · บ่า/ไหล่ · หลัง)">
       <svg viewBox="0 0 120 132" className="reports-body-svg" aria-label="แผนภาพจุดอาการ">
-        <circle cx="60" cy="24" r="15" fill="none" stroke="#64748b" strokeWidth="2.5" />
-        <circle cx="60" cy="22" r="5" fill={ZONE_STROKE[zones.head]} />
-        <line x1="60" y1="39" x2="60" y2="54" stroke={ZONE_STROKE[zones.neck]} strokeWidth="7" strokeLinecap="round" />
+        <circle cx="60" cy="24" r="15" fill="none" style={{ stroke: 'var(--rx-ink)' }} strokeWidth="2.5" />
+        <circle cx="60" cy="22" r="5" style={{ fill: ZONE_STROKE[zones.head] }} />
+        <line x1="60" y1="39" x2="60" y2="54" style={{ stroke: ZONE_STROKE[zones.neck] }} strokeWidth="7" strokeLinecap="round" />
         <path
           d="M26 62 Q60 50 94 62"
           fill="none"
-          stroke={ZONE_STROKE[zones.shoulders]}
+          style={{ stroke: ZONE_STROKE[zones.shoulders] }}
           strokeWidth="8"
           strokeLinecap="round"
         />
-        <rect x="44" y="64" width="32" height="52" rx="10" fill="none" stroke={ZONE_STROKE[zones.back]} strokeWidth="4" />
+        <rect x="44" y="64" width="32" height="52" rx="10" fill="none" style={{ stroke: ZONE_STROKE[zones.back] }} strokeWidth="4" />
         <line
           x1="60"
           y1="68"
           x2="60"
           y2="112"
-          stroke={ZONE_STROKE[zones.back]}
+          style={{ stroke: ZONE_STROKE[zones.back] }}
           strokeWidth="4"
           strokeDasharray="4 3"
         />

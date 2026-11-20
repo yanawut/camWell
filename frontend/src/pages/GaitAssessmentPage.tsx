@@ -704,7 +704,7 @@ export default function GaitAssessmentPage() {
                       <article key={person.trackId} className="gait-person-block">
                         <div className="gait-person-header">
                           <span className="gait-person-badge" style={{ borderColor: person.color, color: person.color }}>
-                            ● {person.label}
+                            <span className="gait-person-dot" aria-hidden="true" />{person.label}
                           </span>
                           <span className="gait-person-sub">
                             {person.fullBodyVisible ? 'เห็นเต็มตัว ✓' : 'เห็นยังไม่ถึงข้อเท้า'}
@@ -848,7 +848,7 @@ export default function GaitAssessmentPage() {
                       <article key={entry.trackId} className="gait-person-block">
                         <div className="gait-person-header">
                           <span className="gait-person-badge" style={{ borderColor: entry.color, color: entry.color }}>
-                            ● {entry.label}
+                            <span className="gait-person-dot" aria-hidden="true" />{entry.label}
                           </span>
                         </div>
                         <div className="gait-metrics-grid">
@@ -922,7 +922,7 @@ export default function GaitAssessmentPage() {
                       <article key={entry.trackId} className="gait-person-block">
                         <div className="gait-person-header">
                           <span className="gait-person-badge" style={{ borderColor: entry.color, color: entry.color }}>
-                            ● {entry.label}
+                            <span className="gait-person-dot" aria-hidden="true" />{entry.label}
                           </span>
                           <span className="gait-person-sub">
                             {entry.result.metrics.sampleCount} เฟรม · {entry.result.metrics.durationSec.toFixed(1)} วิ

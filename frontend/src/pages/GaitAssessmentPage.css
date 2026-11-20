@@ -30,7 +30,7 @@
 
 .gait-tab-btn {
   padding: 9px 14px;
-  border-radius: 10px;
+  border-radius: 0;
   border: 1px solid var(--border);
   background: var(--panel-bg);
   color: inherit;
@@ -49,7 +49,7 @@
 .gait-tab-btn.is-active {
   background: var(--accent);
   border-color: var(--accent);
-  color: #ffffff;
+  color: var(--rx-paper);
 }
 
 .gait-mode-hint {
@@ -106,7 +106,7 @@
 
 .gait-small-btn {
   padding: 6px 12px;
-  border-radius: 8px;
+  border-radius: 0;
   border: 1px solid var(--border);
   background: var(--panel-bg);
   color: inherit;
@@ -119,13 +119,13 @@
 .gait-small-btn.is-active {
   background: var(--accent);
   border-color: var(--accent);
-  color: #ffffff;
+  color: var(--rx-paper);
 }
 
 .gait-select {
   padding: 7px 10px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--panel-bg);
   color: inherit;
   font: inherit;
@@ -137,7 +137,7 @@
   display: inline-flex;
   align-items: center;
   padding: 6px 12px;
-  border-radius: 8px;
+  border-radius: 0;
   border: 1px dashed var(--accent);
   color: var(--accent);
   font-size: 12px;
@@ -156,24 +156,24 @@
 
 .gait-banner {
   padding: 10px 12px;
-  border-radius: 10px;
-  background: rgba(59, 130, 246, 0.08);
+  border-radius: 0;
+  background: color-mix(in srgb, color-mix(in srgb, var(--rx-ink) 7%, var(--rx-paper)) 8%, transparent);
   color: var(--accent);
   font-size: 13px;
   font-weight: 500;
 }
 
 .gait-banner.is-error {
-  background: rgba(239, 68, 68, 0.1);
-  color: #b91c1c;
+  background: color-mix(in srgb, var(--rx-stamp) 10%, transparent);
+  color: var(--rx-stamp);
 }
 
 .gait-video-frame {
   position: relative;
   width: 100%;
   aspect-ratio: 4 / 3;
-  background: #0b0d12;
-  border-radius: 12px;
+  background: var(--rx-ink);
+  border-radius: 0;
   overflow: hidden;
 }
 
@@ -199,20 +199,20 @@
   left: 10px;
   bottom: 10px;
   padding: 4px 10px;
-  border-radius: 999px;
+  border-radius: 0;
   font-size: 12px;
   font-weight: 600;
   backdrop-filter: blur(6px);
 }
 
 .gait-visibility-pill.is-ok {
-  background: rgba(16, 185, 129, 0.86);
-  color: #ffffff;
+  background: color-mix(in srgb, var(--rx-ink) 86%, transparent);
+  color: var(--rx-paper);
 }
 
 .gait-visibility-pill.is-warn {
-  background: rgba(15, 23, 42, 0.78);
-  color: #fde68a;
+  background: color-mix(in srgb, var(--rx-ink) 78%, transparent);
+  color: var(--rx-stamp);
 }
 
 .gait-result-stack {
@@ -248,7 +248,7 @@
 
 .gait-metric-card {
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 0;
   padding: 10px 12px;
   background: var(--bg);
   color: var(--text);
@@ -281,8 +281,7 @@
 
 .gait-finding-ok {
   padding: 12px 14px;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--good) 14%, var(--panel-bg));
+  border-radius: 0;
   color: var(--good);
   font-size: 13px;
   font-weight: 600;
@@ -299,8 +298,7 @@
 
 .gait-finding-item {
   border: 1px solid var(--border);
-  border-left: 4px solid var(--border);
-  border-radius: 10px;
+  border-radius: 0;
   padding: 10px 12px;
   background: var(--panel-bg);
   color: var(--text);
@@ -316,26 +314,6 @@
   line-height: 1.45;
 }
 
-.gait-finding-item.is-mild {
-  border-left-color: #3b82f6;
-  background: color-mix(in srgb, var(--accent) 10%, var(--panel-bg));
-}
-
-.gait-finding-item.is-moderate {
-  border-left-color: #f59e0b;
-  background: color-mix(in srgb, var(--warn) 12%, var(--panel-bg));
-}
-
-.gait-finding-item.is-high {
-  border-left-color: #ef4444;
-  background: color-mix(in srgb, var(--danger) 12%, var(--panel-bg));
-}
-
-.gait-finding-item.is-ok {
-  border-left-color: #10b981;
-  background: color-mix(in srgb, var(--good) 12%, var(--panel-bg));
-}
-
 .gait-finding-title-row {
   display: flex;
   align-items: center;
@@ -347,15 +325,15 @@
   font-size: 11px;
   font-weight: 700;
   padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(148, 163, 184, 0.18);
+  border-radius: 0;
+  background: color-mix(in srgb, color-mix(in srgb, var(--rx-ink) 7%, var(--rx-paper)) 18%, transparent);
   color: var(--text);
   white-space: nowrap;
 }
 
 .gait-phase-box {
   padding: 12px 14px;
-  border-radius: 10px;
+  border-radius: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -381,21 +359,13 @@
 
 .gait-person-block {
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 0;
   padding: 12px 14px;
   background: var(--panel-bg);
   color: var(--text);
   display: flex;
   flex-direction: column;
   gap: 10px;
-}
-
-:root[data-theme='dark'] .gait-person-block {
-  background: #1c283d;
-}
-
-:root[data-theme='dark'] .gait-metric-card {
-  background: #141e30;
 }
 
 .gait-person-header {
@@ -410,14 +380,166 @@
   align-items: center;
   gap: 4px;
   padding: 3px 10px;
-  border-radius: 999px;
+  border-radius: 0;
   border: 1.5px solid;
   font-size: 13px;
   font-weight: 700;
-  background: rgba(15, 23, 42, 0.03);
+  background: color-mix(in srgb, var(--rx-ink) 3%, transparent);
 }
 
 .gait-person-sub {
   font-size: 12px;
   color: var(--text-muted);
+}
+
+/* ---------- ซองยา: หน้าท่ายืนและท่าเดิน ---------- */
+.gait-tab-btn,
+.gait-small-btn {
+  min-height: 40px;
+  border: 2px solid var(--rx-ink);
+  background: transparent;
+  color: var(--rx-ink);
+  font-family: var(--rx-display);
+}
+
+.gait-tab-btn {
+  font-size: 15px;
+}
+
+.gait-tab-btn:hover,
+.gait-small-btn:hover {
+  border-color: var(--rx-ink);
+  background: color-mix(in srgb, var(--rx-ink) 8%, transparent);
+  color: var(--rx-ink);
+}
+
+.gait-tab-btn.is-active,
+.gait-small-btn.is-active {
+  border-color: var(--rx-ink);
+  background: var(--rx-ink);
+  color: var(--rx-paper);
+}
+
+.gait-mode-hint,
+.gait-metric-card span,
+.gait-person-sub {
+  color: var(--rx-ink);
+}
+
+.gait-panel-head h2 {
+  font: 700 20px / 1.3 var(--rx-display);
+}
+
+.gait-custom-source .camera-source-selector {
+  background: color-mix(in srgb, var(--rx-ink) 6%, transparent);
+}
+
+/* ช่องตัวเลขผลวัด: ช่องพิมพ์ในกรอบหมึกบาง ตัวเลขด้วย Anuphan */
+.gait-metric-card,
+.gait-person-block {
+  border: 1.5px solid var(--rx-ink);
+  background: transparent;
+}
+
+.gait-metric-card strong {
+  font: 700 22px / 1.2 var(--rx-display);
+  font-variant-numeric: tabular-nums;
+}
+
+.gait-person-badge {
+  background: transparent;
+  font-family: var(--rx-display);
+}
+
+/* ป้ายบนวิดีโอ: แผ่นหมึก (ไม่ใช้กระจกเบลอ) */
+.gait-visibility-pill {
+  backdrop-filter: none;
+  font-family: var(--rx-display);
+}
+
+.gait-visibility-pill.is-ok {
+  background: var(--rx-ink);
+  color: var(--rx-paper);
+}
+
+.gait-visibility-pill.is-warn {
+  background: var(--rx-stamp);
+  color: var(--rx-paper);
+}
+
+/* พื้นวิดีโอว่าง: หมึกจาง (วิดีโอจริงทับเต็มกรอบเมื่อมีภาพ) */
+.gait-video-frame {
+  border: 2px solid var(--rx-ink);
+  background: color-mix(in srgb, var(--rx-ink) 4%, var(--rx-paper));
+}
+
+/* หน้านี้มี class people-page ติดมา (ได้กฎ .people-page .panel { padding: 0 } ของตารางรายชื่อ) — คืนระยะขอบแผงให้เท่าแผงอื่น */
+.people-page.gait-page .panel {
+  padding: 18px 20px;
+}
+
+/* แหล่งภาพกำหนดเอง: ไม่ซ้อนกรอบ — ตัวเลือกแหล่งภาพอยู่บนแผ่นเดียวกับแผงกล้อง */
+.gait-custom-source .camera-source-selector,
+.people-page.gait-page .gait-custom-source .camera-source-selector.panel {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+/* แถบข้อความ: ข้อมูล = กรอบหมึก, ผิดพลาด = แผ่นแดงทึบ (แบบเดียวกับหน้าตั้งค่ากล้อง) */
+.gait-banner {
+  border: 1.5px solid var(--rx-ink);
+  background: transparent;
+  color: var(--rx-ink);
+  font-family: var(--rx-display);
+  font-weight: 600;
+}
+
+.gait-banner.is-error {
+  border-color: var(--rx-stamp);
+  background: var(--rx-stamp);
+  color: var(--rx-paper);
+}
+
+/* ผลตรวจ: กรอบเต็ม + ระดับตามไวยากรณ์ป้าย (ไม่มีแถบสีด้านเดียว ไม่มีพื้นสี)
+   สูง = กรอบแดงหนา, ปานกลาง = กรอบแดง, เล็กน้อย = กรอบหมึกเส้นประ, ปกติ = กรอบหมึก */
+.gait-finding-item,
+.gait-finding-item.is-mild,
+.gait-finding-item.is-moderate,
+.gait-finding-item.is-high,
+.gait-finding-item.is-ok {
+  border: 1.5px solid var(--rx-ink);
+  background: transparent;
+}
+
+.gait-finding-item.is-mild {
+  border-style: dashed;
+}
+
+.gait-finding-item.is-moderate {
+  border: 2px solid var(--rx-stamp);
+}
+
+.gait-finding-item.is-high {
+  border: 3px solid var(--rx-stamp);
+}
+
+.gait-finding-item p {
+  color: var(--rx-ink);
+}
+
+.gait-finding-ok {
+  border: 1.5px solid var(--rx-ink);
+  background: transparent;
+  color: var(--rx-pen);
+  font-family: var(--rx-display);
+}
+
+/* จุดสีประจำคน (ตรงกับสีโครงร่างบนวิดีโอ) — สี่เหลี่ยมพิมพ์ ไม่ใช่สัญลักษณ์ตัวอักษร */
+.gait-person-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 6px;
+  background: currentColor;
 }

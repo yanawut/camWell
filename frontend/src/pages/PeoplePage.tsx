@@ -6,6 +6,7 @@ import { ALERT_CATEGORY_LABELS_TH, type AlertCategory } from '../types/alerts'
 import '../App.css'
 import './PeoplePage.css'
 import AppNavigation from '../components/AppNavigation'
+import { WarnGlyph } from '../envelope/marks'
 
 // หน้ารายชื่อบุคคลที่ลงทะเบียนใบหน้าไว้ใน DB (camwell-backend) — เปิดผ่าน /?people แยกจากหน้ากล้อง
 // ไม่โหลดโมเดล AI/กล้องเลย จึงเปิดดู/จัดการรายชื่อจากเครื่องไหนก็ได้ที่ต่อ backend ตัวเดียวกัน
@@ -190,7 +191,7 @@ export default function PeoplePage() {
       </div>
 
       <p className="pdpa-note">
-        ⚠️ Face descriptor เป็นข้อมูลชีวภาพตาม PDPA — หน้านี้ไม่แสดง descriptor ดิบ (อยู่บน backend ที่เดียว) การลบจะลบ
+        <WarnGlyph /> Face descriptor เป็นข้อมูลชีวภาพตาม PDPA — หน้านี้ไม่แสดง descriptor ดิบ (อยู่บน backend ที่เดียว) การลบจะลบ
         ข้อมูลใบหน้าของคนนั้นทั้งหมดถาวร
       </p>
       </div>

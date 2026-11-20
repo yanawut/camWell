@@ -6,6 +6,7 @@ import type { CameraSlot } from '../types/cameraSource'
 import type { PersonSummary } from '../types/person'
 import type { PostureThresholds } from '../types/posture'
 import type { PoseModelVariant } from '../hooks/usePoseLandmarker'
+import { RecordGlyph, StopGlyph } from '../envelope/marks'
 
 interface Props {
   cameraSlots: CameraSlot[]
@@ -54,7 +55,7 @@ export default function RecorderPanel({
   const readyText =
     peopleInFrame === 1 ? 'พร้อม (1 คนในเฟรม)' : `ต้องมี 1 คนในเฟรม (ตอนนี้ ${peopleInFrame} คน)`
   const statusText = recording
-    ? `● บันทึก ${label} จาก ${recSlot?.label ?? recCameraId} · ~12/วิ`
+    ? `บันทึก ${label} จาก ${recSlot?.label ?? recCameraId} · ~12/วิ`
     : `samples · ${recSlot?.label ?? '—'} ${readyText}`
   const statusColor = recording ? 'var(--danger)' : peopleInFrame === 1 && !recCameraBroken ? 'var(--good)' : 'var(--warn)'
 
@@ -171,7 +172,7 @@ export default function RecorderPanel({
           disabled={!recording && (recCameraBroken || modelMismatch)}
           onClick={toggleRecording}
         >
-          {recording ? '■ หยุดบันทึก' : '● เริ่มบันทึก'}
+          {recording ? <><StopGlyph />หยุดบันทึก</> : <><RecordGlyph />เริ่มบันทึก</>}
         </button>
       </div>
 

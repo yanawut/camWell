@@ -12,6 +12,7 @@ import { ALERT_LABELS_TH } from '../types/alerts'
 import type { PostureFeatures } from '../types/posture'
 import type { PoseModelVariant } from '../hooks/usePoseLandmarker'
 import type { SkeletonMode } from '../lib/skeletonOverlay'
+import { RecordGlyph } from '../envelope/marks'
 
 interface Props extends DevConsoleProps {
   hidden: boolean
@@ -132,7 +133,7 @@ export default function MonitorTab(props: Props) {
                     </span>
                     {isRec && (
                       <span className="dc-chip dc-chip-rec">
-                        ● REC {recorder.label} · {recorder.sampleCount.toLocaleString()}
+                        <RecordGlyph size={12} />REC {recorder.label} · {recorder.sampleCount.toLocaleString()}
                       </span>
                     )}
                   </div>

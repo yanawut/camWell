@@ -1,5 +1,8 @@
-import { Fragment, type CSSProperties, type ReactNode } from 'react'
+import { Fragment } from 'react'
+import { MARK_LABELS, type MarkState } from '../envelope/markLabels'
+import { Arrow, LockGlyph, Mark, Phrases, ThemeGlyph } from '../envelope/marks'
 import { useTheme } from '../hooks/useTheme'
+import '../envelope/envelope.css'
 import './LandingPage.css'
 
 // หน้า index (/) — ออกแบบเป็น "ซองยา/ฉลากยา" ของร้านขายยาไทยแผ่นเดียวทั้งหน้า: พิมพ์หมึกเขียวสีเดียว
@@ -9,68 +12,6 @@ import './LandingPage.css'
 
 const DASHBOARD_HREF = '?dashboard'
 const CAMERA_HREF = '?camera'
-
-/** สถานะของช่องติ๊กบนฉลาก ใช้ความหมายเดียวกันทั้งหน้า */
-type MarkState = 'empty' | 'tick' | 'ring' | 'strike'
-
-const MARK_LABELS: Record<MarkState, string> = {
-  empty: 'ไม่เตือน',
-  tick: 'เรียบร้อย',
-  ring: 'เตือน',
-  strike: 'คลี่คลายแล้ว',
-}
-
-/** ช่องสี่เหลี่ยมพิมพ์ + รอยปากกาวาดเป็นเส้น (ไม่ใช่ไอคอนสำเร็จรูป) — order ใช้ไล่จังหวะตอนวาดเข้า */
-function Mark({ state, order, label }: { state: MarkState; order?: number; label?: string }) {
-  const style = order === undefined ? undefined : ({ '--rx-order': order } as CSSProperties)
-  // label="" = เครื่องหมายประกอบ (ข้อความข้าง ๆ บอกความหมายแล้ว) ให้โปรแกรมอ่านหน้าจอข้ามไป
-  const a11y = label === '' ? { 'aria-hidden': true as const } : { role: 'img', 'aria-label': label ?? MARK_LABELS[state] }
-  return (
-    <span className={`rx-box is-${state}${order === undefined ? '' : ' is-drawn'}`} style={style} {...a11y}>
-      {state === 'tick' && (
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path pathLength={1} d="M3.6 13.2c1.9 1.4 3.6 3.4 5.1 6.1C11.4 12.6 15.6 6.9 21.4 2.2" />
-        </svg>
-      )}
-      {state === 'ring' && (
-        <svg viewBox="0 0 40 40" aria-hidden="true">
-          <path pathLength={1} d="M22.5 4.2c8.6.6 14.2 6.4 13.4 14.6-.8 8.6-8.4 15.4-17.2 14.8C10 33 4.6 27 5.4 19.2 6.2 10.8 12.6 4.4 21 3.9c1.6 0 3 .3 4.4.8" />
-        </svg>
-      )}
-      {state === 'strike' && (
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path pathLength={1} d="M2.5 13.4c5.6-1.2 12.4-2.2 19-2.6" />
-        </svg>
-      )}
-    </span>
-  )
-}
-
-/**
- * ตัดบรรทัดเฉพาะที่ช่องว่างระหว่างวลี (แบบการจัดหน้าภาษาไทย) — เบราว์เซอร์ตัดคำไทยด้วยพจนานุกรม
- * ทำให้วลีอย่าง "ไหล่เอียง" หรือ "ปิดได้" ขาดกลางบรรทัด
- */
-function Phrases({ text }: { text: string }) {
-  return text.split(' ').map((phrase, i) => (
-    <Fragment key={i}>
-      {i > 0 && ' '}
-      <span className="rx-ph">{phrase}</span>
-    </Fragment>
-  ))
-}
-
-/** ไอคอนลายเส้นในแถบหัวซอง (สลับธีม) และลูกศรในลิงก์ */
-function Glyph({ children, size = 20 }: { children: ReactNode; size?: number }) {
-  return (
-    <svg className="rx-glyph" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      {children}
-    </svg>
-  )
-}
-
-function Arrow({ size = 18 }: { size?: number }) {
-  return <Glyph size={size}><path d="M5 12h14M13 6l6 6-6 6" /></Glyph>
-}
 
 // "วิธีใช้": สิ่งที่กล้องดู และนานแค่ไหนถึงเตือน (ค่าเริ่มต้น)
 const DOSAGE: { mark: MarkState; name: string; what: string; dose: string }[] = [
@@ -132,7 +73,7 @@ export default function LandingPage() {
   const themeLabel = `เปลี่ยนเป็นโหมด${theme === 'dark' ? 'สว่าง' : 'มืด'}`
 
   return (
-    <div className="rx">
+    <div className="rx rx-tokens">
       <header className="rx-band">
         <div className="rx-band-inner">
           <a className="rx-shop" href="./">
@@ -143,16 +84,7 @@ export default function LandingPage() {
             <a className="rx-nav-link" href="#how">วิธีใช้</a>
             <a className="rx-nav-link" href="#privacy">ความเป็นส่วนตัว</a>
             <button className="rx-nav-icon" type="button" onClick={toggleTheme} aria-label={themeLabel} title={themeLabel}>
-              <Glyph>
-                {theme === 'dark' ? (
-                  <>
-                    <circle cx="12" cy="12" r="4" />
-                    <path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4" />
-                  </>
-                ) : (
-                  <path d="M20 14.2A8 8 0 1 1 9.8 4a6.4 6.4 0 0 0 10.2 10.2z" />
-                )}
-              </Glyph>
+              <ThemeGlyph dark={theme === 'dark'} />
             </button>
             <a className="rx-nav-login" href={DASHBOARD_HREF}>เข้าสู่ระบบ</a>
           </nav>
@@ -201,10 +133,7 @@ export default function LandingPage() {
             <p className="rx-fine">ตัวเลขบนฉลากคือค่าเริ่มต้น ปรับได้ในหน้าตั้งค่า</p>
             {/* คำมั่นข้อสำคัญที่สุดของ Camwell — เป็นเรื่องดี จึงพิมพ์เป็นแผ่นหมึกทึบ ไม่ใช่กล่องคำเตือนสีแดง */}
             <aside className="rx-promise" id="privacy" aria-label="ความเป็นส่วนตัว">
-              <Glyph size={26}>
-                <rect x="5" y="10.5" width="14" height="9.5" rx="1.5" />
-                <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5M12 14.5v2" />
-              </Glyph>
+              <LockGlyph />
               <p><strong>ความเป็นส่วนตัว:</strong> <Phrases text="ประมวลผลบนเครื่องของคุณ — ไม่ส่งภาพวิดีโอขึ้นคลาวด์" /></p>
             </aside>
           </div>
@@ -232,7 +161,7 @@ export default function LandingPage() {
             <h2 id="log-title" className="rx-heading">เตือนเฉพาะอาการที่ค้าง</h2>
             <p className="rx-legend" aria-label="ความหมายของเครื่องหมาย">
               {(['empty', 'ring', 'strike', 'tick'] as const).map((state) => (
-                <span key={state}><Mark state={state} label="" />{MARK_LABELS[state]}</span>
+                <span key={state}><Mark state={state} label="" small />{MARK_LABELS[state]}</span>
               ))}
             </p>
           </div>

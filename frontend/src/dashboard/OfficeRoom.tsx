@@ -1,28 +1,39 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { PersonSummary } from '../types/person'
-import { lookFromSeed } from './pixelLook'
+import { Mark, ZzMark } from '../envelope/marks'
 
-// ผังห้อง 2D: กล้องหนึ่งตัวต่อหนึ่งห้อง และจัดคนที่ตรวจพบลงที่นั่งเดิม
-// (เข้ามา = เด้งขึ้น, ออกจากเฟรม = ค่อยๆ จางหาย) ภาพวาดปรับขนาดด้วย viewBox
+// ห้องหนึ่งห้อง = กล้องหนึ่งตัว วาดเป็นผังห้องมองจากด้านบน ลายเส้นหมึกเดียวแบบพิมพ์บนฉลาก
+// คนที่ตรวจพบนั่งประจำโต๊ะเดิม (เข้า = ค่อย ๆ ปรากฏ, ออกจากเฟรม = ค่อย ๆ จางหาย)
+// ข้างผังมีตารางรายชื่อคนในห้อง ให้อ่านสถานะได้โดยไม่ต้องไล่หาในภาพ
 
-const ROOM_W = 400
-const ROOM_H = 240
-const WALL_H = 105
+const PLAN_W = 400
+const PLAN_H = 250
 const LEAVE_ANIMATION_MS = 700
+const NO_FALLS: string[] = []
 
 interface Seat {
-  /** จุดกึ่งกลางแนวนอนของตัวละคร/โต๊ะ */
+  /** จุดกึ่งกลางของคน (ตำแหน่งเก้าอี้) ในพิกัดผัง */
   cx: number
-  /** ขอบบนของหัวตัวละคร */
-  top: number
+  cy: number
+  /** ป้ายชื่ออยู่ใต้หรือเหนือเก้าอี้ — เลือกฝั่งที่ไม่ทับเฟอร์นิเจอร์ แม้ผังถูกย่อบนจอแคบ */
+  tag: 'below' | 'above'
 }
 
-// โต๊ะ 4 ตัว (2 แถว × 2 คอลัมน์) = จำนวนคนสูงสุดที่ตรวจได้ต่อกล้อง (MAX_TRACKED_PEOPLE)
-const SEATS: Seat[] = [
-  { cx: 88, top: 140 },
-  { cx: 312, top: 78 },
-  { cx: 312, top: 150 },
-  { cx: 88, top: 78 },
+// 4 ที่นั่งต่อห้อง = จำนวนคนสูงสุดที่ตรวจได้ต่อกล้อง (MAX_TRACKED_PEOPLE) — ลำดับ = ลำดับที่คนใหม่ได้นั่ง
+// แถวบนอยู่สูงพอให้ป้ายชื่อใต้เก้าอี้ไม่ชนโต๊ะแถวล่าง (ผังกว้างแค่ ~280px บนจอ 320px)
+const OFFICE_SEATS: Seat[] = [
+  { cx: 99, cy: 78, tag: 'below' },
+  { cx: 301, cy: 78, tag: 'below' },
+  { cx: 99, cy: 188, tag: 'below' },
+  { cx: 301, cy: 188, tag: 'below' },
+]
+
+// ห้องประชุม: แถวบนติดโต๊ะประชุม ป้ายชื่อจึงอยู่เหนือเก้าอี้
+const MEETING_SEATS: Seat[] = [
+  { cx: 160, cy: 62, tag: 'above' },
+  { cx: 240, cy: 62, tag: 'above' },
+  { cx: 160, cy: 190, tag: 'below' },
+  { cx: 240, cy: 190, tag: 'below' },
 ]
 
 type RoomVariant = 'office' | 'meeting'
@@ -42,7 +53,7 @@ interface SeatingState {
  * จัดที่นั่งให้คนในเฟรม: คนเดิม (trackId เดิม) นั่งที่เดิมตลอด คนใหม่ได้โต๊ะว่างตัวแรก คนที่หายไปจากเฟรม
  * ถูกทำเครื่องหมาย leaving ไว้ก่อน (ให้เล่น animation จางหาย) แล้วค่อยลบทิ้งใน effect
  */
-function nextSeating(seated: Seated[], people: PersonSummary[]): Seated[] {
+function nextSeating(seated: Seated[], people: PersonSummary[], seatCount: number): Seated[] {
   const byTrack = new Map(people.map((p) => [p.trackId, p]))
   let next: Seated[] = seated.map((s) => {
     const current = byTrack.get(s.person.trackId)
@@ -53,7 +64,13 @@ function nextSeating(seated: Seated[], people: PersonSummary[]): Seated[] {
   for (const person of people) {
     if (seatedIds.has(person.trackId)) continue
     const taken = new Set(next.filter((s) => !s.leaving).map((s) => s.seat))
-    const free = SEATS.findIndex((_, i) => !taken.has(i))
+    let free = -1
+    for (let i = 0; i < seatCount; i += 1) {
+      if (!taken.has(i)) {
+        free = i
+        break
+      }
+    }
     if (free === -1) continue
     // โต๊ะนี้อาจยังมีคนที่กำลังจางหายค้างอยู่ — ให้คนใหม่นั่งแทนเลย
     next = [...next.filter((s) => s.seat !== free), { person, seat: free, leaving: false }]
@@ -61,94 +78,96 @@ function nextSeating(seated: Seated[], people: PersonSummary[]): Seated[] {
   return next
 }
 
-function statusBubble(person: PersonSummary): { text: string; title: string; tone: 'alert' | 'tired' } | null {
-  if (person.postureAlertActive) return { text: '!', title: person.postureStatus, tone: 'alert' }
-  if (person.fatigueActive) return { text: 'Zz', title: 'ความเหนื่อยล้า/ง่วง', tone: 'tired' }
-  if (person.distanceActive) return { text: '!', title: 'นั่งใกล้จอเกินไป', tone: 'alert' }
-  return null
+/** อาการที่กำลังเตือนอยู่ของคนหนึ่งคน (เตือนแล้ว = ค้างนานพอตามเกณฑ์) */
+function activeIssues(person: PersonSummary): string[] {
+  const issues: string[] = []
+  if (person.postureAlertActive) issues.push(person.postureStatus)
+  if (person.distanceActive) issues.push('นั่งใกล้จอเกินไป')
+  if (person.fatigueActive) issues.push('ความเหนื่อยล้า/ง่วง')
+  return issues
 }
 
-/** ระดับสีของป้ายจำนวนแจ้งเตือนวันนี้: 0 = เขียว (ว่าง ไม่มีตัวเลข), 1–10 = ส้ม, เกิน 10 = แดง */
+/** ระดับจำนวนแจ้งเตือนวันนี้: 0 = ไม่มี, 1–10 = มีบ้าง, เกิน 10 = มาก (วงแดง) */
 function countLevel(count: number): 'none' | 'some' | 'many' {
   if (count === 0) return 'none'
   return count <= 10 ? 'some' : 'many'
 }
 
-/** พื้นหลังห้องทำงานและห้องประชุมตามภาพ Stitch */
-function RoomBackground({ variant }: { variant: RoomVariant }) {
-  const meeting = variant === 'meeting'
-  const floorLines: ReactNode[] = []
-  for (let x = 0; x <= ROOM_W; x += 32) floorLines.push(<line key={`x-${x}`} x1={x} y1={WALL_H + 2} x2={x} y2={ROOM_H} />)
-  for (let y = WALL_H + 2; y <= ROOM_H; y += 32) floorLines.push(<line key={`y-${y}`} x1={0} y1={y} x2={ROOM_W} y2={y} />)
+/** ผนัง หน้าต่าง ประตู และกริดพื้น (เหมือนกันทุกห้อง) */
+function PlanShell({ children }: { children: ReactNode }) {
+  const grid: ReactNode[] = []
+  for (let x = 20; x < PLAN_W; x += 20) grid.push(<line key={`x${x}`} x1={x} y1={6} x2={x} y2={PLAN_H - 6} />)
+  for (let y = 20; y < PLAN_H; y += 20) grid.push(<line key={`y${y}`} x1={6} y1={y} x2={PLAN_W - 6} y2={y} />)
+  return (
+    <>
+      <g className="plan-grid">{grid}</g>
+      {children}
+      {/* ผนัง */}
+      <rect className="plan-wall" x="6" y="6" width={PLAN_W - 12} height={PLAN_H - 12} />
+      {/* หน้าต่างบนผนังด้านบน: เว้นผนังแล้วลากเส้นคู่ */}
+      <g className="plan-window">
+        <rect className="plan-paper" x="70" y="3" width="80" height="6" />
+        <rect className="plan-paper" x="250" y="3" width="80" height="6" />
+        <path d="M70 4.2h80M70 7.8h80M250 4.2h80M250 7.8h80M70 3v6M150 3v6M250 3v6M330 3v6" />
+      </g>
+      {/* ประตูผนังด้านล่าง: บานประตู + เส้นโค้งวงเปิด */}
+      <rect className="plan-paper" x="178" y={PLAN_H - 9} width="40" height="6" />
+      <path className="plan-door" d={`M178 ${PLAN_H - 6}V${PLAN_H - 44}A38 38 0 0 1 216 ${PLAN_H - 6}`} />
+    </>
+  )
+}
+
+function OfficeFurniture() {
+  return (
+    <g className="plan-furniture">
+      {OFFICE_SEATS.map(({ cx, cy }) => {
+        const x = cx - 55
+        const y = cy - 52
+        return (
+          <g key={`${cx}-${cy}`}>
+            <rect className="plan-desk" x={x} y={y} width="110" height="34" />
+            <rect className="plan-screen" x={cx - 15} y={y + 5} width="30" height="5" />
+            <rect className="plan-keys" x={cx - 13} y={y + 19} width="26" height="7" />
+            <rect className="plan-chair" x={cx - 12} y={cy - 11} width="24" height="22" />
+          </g>
+        )
+      })}
+      {/* ต้นไม้มุมห้อง */}
+      <g className="plan-plant">
+        <circle cx="366" cy="216" r="11" />
+        <path d="M366 205v22M355 216h22M358 208l16 16M374 208l-16 16" />
+      </g>
+    </g>
+  )
+}
+
+function MeetingFurniture() {
+  return (
+    <g className="plan-furniture">
+      <rect className="plan-desk" x="112" y="86" width="176" height="78" />
+      {[...MEETING_SEATS, { cx: 96, cy: 125 }, { cx: 304, cy: 125 }].map(({ cx, cy }) => (
+        <rect key={`${cx}-${cy}`} className="plan-chair" x={cx - 12} y={cy - 11} width="24" height="22" />
+      ))}
+      {/* จอนำเสนอบนผนังซ้าย */}
+      <rect className="plan-screen" x="10" y="95" width="5" height="60" />
+    </g>
+  )
+}
+
+/** คนมองจากด้านบน: ไหล่ (วงรีทึบ) + ศีรษะ */
+function PersonMark({ cx, cy, alert }: { cx: number; cy: number; alert: boolean }) {
   return (
     <g>
-      <rect width={ROOM_W} height={WALL_H} fill="#cbd5e1" />
-      <rect y={WALL_H - 3} width={ROOM_W} height={5} fill="#475569" />
-      <rect y={WALL_H + 2} width={ROOM_W} height={ROOM_H - WALL_H - 2} fill={meeting ? '#e7e7e9' : '#e5cb9b'} />
-      <g stroke={meeting ? '#d2d2d7' : '#c8a878'} strokeOpacity={meeting ? '.7' : '.5'} strokeWidth=".7">{floorLines}</g>
-      <rect x="170" y="17" width="62" height="50" fill="#fff" stroke="#475569" strokeWidth="3" />
-      <rect x="174" y="21" width="27" height="42" fill="#93c5fd" />
-      <rect x="204" y="21" width="24" height="42" fill="#93c5fd" />
-      <path d="M202 21v42" stroke="#475569" strokeWidth="3" />
-      {meeting ? (
-        <g fill="#a89f91" opacity=".6" stroke="#a8a29e">
-          <rect x="28" y={WALL_H + 12} width="74" height="38" />
-          <rect x="28" y={ROOM_H - 58} width="74" height="38" />
-          <rect x="298" y={WALL_H + 12} width="74" height="38" />
-        </g>
-      ) : (
-        <>
-          <rect x="24" y="44" width="84" height="49" rx="2" fill="#fff" stroke="#cbd5e1" strokeWidth="2" />
-          <rect x="32" y="53" width="60" height="10" rx="1" fill="none" stroke="#3b82f6" />
-          <rect x="32" y="69" width="61" height="4" rx="2" fill="#ef4444" />
-          <rect x="32" y="78" width="43" height="4" rx="2" fill="#14b8a6" />
-          <rect x="336" y="28" width="26" height="38" fill="#fff" stroke="#334155" strokeWidth="2" />
-          <path d="M347 36v16m-7 7h14" stroke="#64748b" strokeWidth="2" />
-          <path d="M362 183l-12 34h24z" fill="#059669" />
-        </>
+      <ellipse className="plan-shoulders" cx={cx} cy={cy + 2.5} rx="13" ry="7.5" />
+      <circle className="plan-head" cx={cx} cy={cy - 1} r="6.5" />
+      {alert && (
+        <path
+          className="plan-ring"
+          pathLength={1}
+          transform={`translate(${cx - 22} ${cy - 22}) scale(1.1)`}
+          d="M22.5 4.2c8.6.6 14.2 6.4 13.4 14.6-.8 8.6-8.4 15.4-17.2 14.8C10 33 4.6 27 5.4 19.2 6.2 10.8 12.6 4.4 21 3.9c1.6 0 3 .3 4.4.8"
+        />
       )}
-    </g>
-  )
-}
-
-function MeetingFallZone() {
-  return (
-    <g>
-      <rect x="288" y="160" width="46" height="34" rx="5" fill="#243642" />
-      <rect x="270" y="187" width="84" height="34" rx="2" fill="#8c6b61" stroke="#dc2626" strokeWidth="2" />
-    </g>
-  )
-}
-
-function Chair({ cx, top }: Seat) {
-  return (
-    <g>
-      <rect x={cx - 23} y={top + 8} width="46" height="34" rx="5" fill="#243642" />
-      <rect x={cx - 19} y={top + 11} width="38" height="27" rx="4" fill="#314b5a" />
-    </g>
-  )
-}
-
-function Desk({ cx, top }: Seat) {
-  const y = top + 30
-  return (
-    <g>
-      <rect x={cx + 8} y={y - 23} width="19" height="17" rx="1" fill="#374151" />
-      <rect x={cx + 11} y={y - 20} width="13" height="11" fill="#bfdbfe" />
-      <rect x={cx + 15} y={y - 6} width="5" height="6" fill="#475569" />
-      <rect x={cx - 42} y={y} width="84" height="8" rx="2" fill="#7a5948" stroke="#543b2e" strokeWidth="2" />
-      <rect x={cx - 42} y={y + 8} width="84" height="26" fill="#7a5948" stroke="#543b2e" strokeWidth="2" />
-    </g>
-  )
-}
-
-function PersonAvatar({ person, cx, top }: { person: PersonSummary; cx: number; top: number }) {
-  const look = lookFromSeed(person.employeeId ?? person.trackId)
-  return (
-    <g transform={`translate(${cx - 17} ${top})`}>
-      <circle cx="17" cy="17" r="10" fill={look.shirt} />
-      <circle cx="17" cy="13" r="3" fill={look.skin} />
-      <path d="M10.5 24c.5-3.8 2.6-6 6.5-6s6 2.2 6.5 6" fill="#fff" />
     </g>
   )
 }
@@ -158,8 +177,8 @@ interface Props {
   title: string
   people: PersonSummary[]
   variant?: RoomVariant
-  hasFallAlert?: boolean
-  fallAlertCount?: number
+  /** ข้อความของเหตุการณ์ล้มที่ยังไม่รับทราบในห้องนี้ */
+  fallMessages?: string[]
   onOpenCamera: () => void
   /** จำนวนครั้งที่ถูกแจ้งเตือนวันนี้ของแต่ละคน (key = employeeId) — คนที่ยังระบุตัวตนไม่ได้จะไม่มีตัวเลข */
   alertCounts: Map<string, number>
@@ -170,22 +189,23 @@ export default function OfficeRoom({
   title,
   people,
   variant = 'office',
-  hasFallAlert = false,
-  fallAlertCount = 0,
+  fallMessages = NO_FALLS,
   onOpenCamera,
   alertCounts,
 }: Props) {
+  const seats = variant === 'meeting' ? MEETING_SEATS : OFFICE_SEATS
+  const hasFallAlert = fallMessages.length > 0
   const [state, setState] = useState<SeatingState>({ prevPeople: null, seated: [] })
 
   // ปรับที่นั่งระหว่าง render เมื่อรายชื่อคนเปลี่ยน (รูปแบบ "adjust state on prop change" ของ React) แทนการใช้
-  // effect ที่จะทำให้ตัวละครโผล่ช้าไป 1 render
+  // effect ที่จะทำให้คนโผล่ช้าไป 1 render
   let seated = state.seated
   if (people !== state.prevPeople) {
-    seated = nextSeating(state.seated, people)
+    seated = nextSeating(state.seated, people, seats.length)
     setState({ prevPeople: people, seated })
   }
 
-  // ลบตัวละครที่จางหายเสร็จแล้วออก
+  // ลบคนที่จางหายเสร็จแล้วออก
   const leavingKey = seated
     .filter((s) => s.leaving)
     .map((s) => s.person.trackId)
@@ -202,78 +222,105 @@ export default function OfficeRoom({
     return () => window.clearTimeout(timer)
   }, [leavingKey])
 
-  const present = seated.filter((s) => !s.leaving).length
-  // ท่านั่ง/ความเหนื่อยล้าแสดงบนตัวบุคคล; สถานะห้องเปลี่ยนเป็น WARNING เฉพาะเมื่อมีเหตุหกล้ม
-  const hasActiveAlert = hasFallAlert
+  const present = seated.filter((s) => !s.leaving)
+  const alerting = present.filter((s) => activeIssues(s.person).length > 0).length
+  const headingId = id ? `${id}-title` : undefined
+  const todayCount = (person: PersonSummary) => (person.employeeId ? (alertCounts.get(person.employeeId) ?? 0) : null)
+
+  let status: { mark: 'ring' | 'tick' | 'empty'; text: string; tone?: 'alert' }
+  if (hasFallAlert) status = { mark: 'ring', text: 'ตรวจพบการล้ม · เปิดภาพสดเพื่อตรวจสอบ', tone: 'alert' }
+  else if (alerting > 0) status = { mark: 'ring', text: `มีคน ${present.length} คน · เตือนอยู่ ${alerting} คน`, tone: 'alert' }
+  else if (present.length > 0) status = { mark: 'tick', text: `มีคน ${present.length} คน · ปกติทุกคน` }
+  else status = { mark: 'empty', text: 'ว่าง' }
+
+  // ตารางรายชื่อ: คนที่มีอาการค้างขึ้นก่อน
+  const roster = [...present].sort((a, b) => activeIssues(b.person).length - activeIssues(a.person).length)
 
   return (
-    <section id={id} className={`dash-room-card ${hasActiveAlert ? 'has-active-alert' : ''}`}>
-      <header className="dash-room-header">
+    <section id={id} className={`dash-room${hasFallAlert ? ' is-fall' : ''}`} aria-labelledby={headingId}>
+      <header className="dash-room-head">
         <div className="dash-room-heading">
-          <h2>{title}</h2>
-          <span className={`dash-room-count ${hasActiveAlert ? 'is-warning' : present > 0 ? 'is-occupied' : ''}`}>
-            {hasActiveAlert ? `WARNING · ${Math.max(fallAlertCount, 1)} คน` : present > 0 ? `OCCUPIED · ${present} คน` : 'ว่าง'}
-          </span>
+          <h2 id={headingId}>{title}</h2>
+          <p className={`dash-room-status${status.tone === 'alert' ? ' is-alert' : ''}`}>
+            <Mark state={status.mark} label="" small />
+            {status.text}
+          </p>
         </div>
-        <span className="dash-room-menu" aria-hidden="true">⋮</span>
+        <button type="button" className={hasFallAlert ? 'dash-open-live is-fall' : 'rx-secondary is-small'} onClick={onOpenCamera}>
+          {hasFallAlert ? 'เปิดภาพสดทันที' : 'ดูภาพสด'}
+        </button>
       </header>
-      <div className="dash-room">
-        <svg viewBox={`0 0 ${ROOM_W} ${ROOM_H}`} role="img" aria-label={`${title}: ${present} คน`}>
-          <RoomBackground variant={variant} />
-          {SEATS.map((seat, i) => {
-            const occupant = seated.find((s) => s.seat === i)
-            return (
-              <g key={i}>
-                {variant === 'office' && <Chair {...seat} />}
-                {occupant && (
-                  <g key={occupant.person.trackId} className={`dash-char ${occupant.leaving ? 'is-leaving' : ''}`}>
-                    <PersonAvatar person={occupant.person} cx={seat.cx} top={seat.top} />
-                  </g>
-                )}
-                {variant === 'office' && <Desk {...seat} />}
+
+      <div className="dash-room-body">
+        <div className="dash-plan">
+          <svg viewBox={`0 0 ${PLAN_W} ${PLAN_H}`} role="img" aria-label={`ผัง${title}: ${present.length > 0 ? `มีคน ${present.length} คน` : 'ว่าง'}`}>
+            <PlanShell>{variant === 'meeting' ? <MeetingFurniture /> : <OfficeFurniture />}</PlanShell>
+            {seated.map(({ person, seat, leaving }) => (
+              <g key={person.trackId} className={`plan-person${leaving ? ' is-leaving' : ''}`}>
+                <PersonMark {...seats[seat]} alert={!leaving && activeIssues(person).length > 0} />
               </g>
+            ))}
+          </svg>
+          {/* ชื่อเป็น HTML ทับบนผัง (ตัวอักษรคมชัดกว่าวาดใน SVG ที่ถูกย่อ/ขยาย) */}
+          {seated.map(({ person, seat, leaving }) => {
+            const { cx, cy, tag } = seats[seat]
+            const count = todayCount(person)
+            const alert = activeIssues(person).length > 0
+            return (
+              <div
+                key={person.trackId}
+                className={`plan-tag is-${tag}${leaving ? ' is-leaving' : ''}${alert ? ' is-alert' : ''}`}
+                style={{ left: `${(cx / PLAN_W) * 100}%`, top: `${((tag === 'below' ? cy + 15 : cy - 15) / PLAN_H) * 100}%` }}
+                title={activeIssues(person).join(' · ') || person.postureStatus}
+              >
+                <span className="plan-name">{person.label}</span>
+                {person.fatigueActive && <ZzMark label="ความเหนื่อยล้า" />}
+                {count !== null && count > 0 && (
+                  <span className={`plan-count is-${countLevel(count)}`} aria-label={`แจ้งเตือนวันนี้ ${count} ครั้ง`}>{count}</span>
+                )}
+              </div>
             )
           })}
-          {variant === 'meeting' && hasFallAlert && <MeetingFallZone />}
-        </svg>
-        {/* ป้ายชื่อ + ฟองสถานะเป็น HTML ทับบน SVG (ตัวอักษรคมชัดกว่าวาดใน SVG ที่ถูกขยาย) */}
-        {seated.map(({ person, seat, leaving }) => {
-          const { cx, top } = SEATS[seat]
-          const bubble = statusBubble(person)
-          const todayCount = person.employeeId ? (alertCounts.get(person.employeeId) ?? 0) : null
-          return (
-            <div
-              key={person.trackId}
-              className={`dash-tag ${leaving ? 'is-leaving' : ''}`}
-              style={{ left: `${(cx / ROOM_W) * 100}%`, top: `${((top - 1) / ROOM_H) * 100}%` }}
-            >
-              {bubble && !leaving && (
-                <span className={`dash-bubble is-${bubble.tone}`} title={bubble.title}>
-                  {bubble.text}
-                </span>
-              )}
-              <span className="dash-name" title={person.postureStatus}>
-                {person.label}
-                {todayCount !== null && (
-                  <span
-                    className={`dash-count is-${countLevel(todayCount)}`}
-                    title={todayCount === 0 ? 'วันนี้ยังไม่ถูกแจ้งเตือน' : `ถูกแจ้งเตือนวันนี้ ${todayCount} ครั้ง`}
-                  >
-                    {todayCount > 0 ? todayCount : ''}
-                  </span>
-                )}
-              </span>
-            </div>
-          )
-        })}
-        {variant === 'meeting' && hasFallAlert && (
-          <span className="dash-meeting-fall-tag">ตรวจพบการล้ม! (FALL)</span>
-        )}
+        </div>
+
+        <div className="dash-roster">
+          <table>
+            <caption>คนในห้องนี้</caption>
+            <thead className="rx-visually-hidden">
+              <tr><th scope="col">สถานะ</th><th scope="col">ชื่อและอาการ</th><th scope="col">แจ้งเตือนวันนี้</th></tr>
+            </thead>
+            <tbody>
+              {fallMessages.map((message, i) => (
+                <tr key={`fall-${i}`} className="is-fall">
+                  <td><Mark state="ring" label="ตรวจพบการล้ม" small /></td>
+                  <th scope="row">
+                    <span className="dash-roster-name">ตรวจพบการล้ม</span>
+                    <span className="dash-roster-what">{message}</span>
+                  </th>
+                  <td className="rx-hand dash-roster-count is-many">ทันที</td>
+                </tr>
+              ))}
+              {roster.map(({ person }) => {
+                const issues = activeIssues(person)
+                const count = todayCount(person)
+                return (
+                  <tr key={person.trackId} className={issues.length > 0 ? 'is-alert' : undefined}>
+                    <td><Mark state={issues.length > 0 ? 'ring' : 'tick'} label={issues.length > 0 ? 'มีอาการค้าง' : 'ปกติ'} small /></td>
+                    <th scope="row">
+                      <span className="dash-roster-name">{person.label}</span>
+                      <span className="dash-roster-what">{issues.length > 0 ? issues.join(' · ') : 'ท่าทางปกติ'}</span>
+                    </th>
+                    <td className={`rx-hand dash-roster-count${count !== null && countLevel(count) === 'many' ? ' is-many' : ''}`}>
+                      {count === null ? 'ยังไม่ระบุตัว' : `${count} ครั้ง`}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+          {roster.length === 0 && !hasFallAlert && <p className="dash-roster-empty">ยังไม่มีคนในห้องนี้</p>}
+        </div>
       </div>
-      <footer className={`dash-room-foot ${hasFallAlert ? 'is-alert' : ''}`}>
-        <span>{hasFallAlert ? 'ตรวจพบการล้ม — ตรวจสอบภาพสด' : '🔒 วิดีโอประมวลผลในเครื่อง'}</span>
-        <button type="button" onClick={onOpenCamera}>{hasFallAlert ? 'เปิดไลฟ์' : 'ดูภาพสด'}</button>
-      </footer>
     </section>
   )
 }

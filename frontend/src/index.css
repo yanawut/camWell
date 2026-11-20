@@ -1,38 +1,33 @@
+/*
+ * ฐานของทุกหน้า: โลกภาพ "ซองยาประจำออฟฟิศ" (token อยู่ใน envelope/envelope.css ที่ :root)
+ * token ชุดเดิม (--bg, --text, --accent, ...) ยังมีไว้ให้ CSS เดิมใช้ได้ แต่ชี้ไปที่ค่าของซองยาทั้งหมด
+ * ธีมมืดไม่ต้องกำหนดซ้ำ: --rx-* พิมพ์กลับสีเองที่ :root[data-theme='dark']
+ */
 :root {
-  --bg: #f6f8fb;
-  --panel-bg: #ffffff;
-  --border: #e1e6ee;
-  --text: #151d32;
-  --text-muted: #5f6e88;
-  --accent: #397cf6;
-  /* พื้นของปุ่มหลักและตัวอักษรบนพื้นนั้น — เข้มกว่า --accent เพื่อให้ตัวอักษรอ่านชัด (4.5:1 ขึ้นไป) */
-  --accent-fill: #2466e0;
-  --on-accent: #ffffff;
-  --focus-ring: #2466e0;
-  --good: #16a34a;
-  --warn: #f97316;
-  --danger: #dc2626;
-  --font-body: 'IBM Plex Sans Thai Looped', system-ui, 'Segoe UI', sans-serif;
-  --font-heading: 'IBM Plex Sans Thai', system-ui, 'Segoe UI', sans-serif;
+  --bg: var(--rx-paper);
+  --panel-bg: var(--rx-paper);
+  /* เส้นคั่นบาง (แถวตาราง ช่องแบ่ง) — กรอบหลักของแผงใช้ --rx-ink โดยตรง */
+  --border: var(--rx-rule-soft);
+  /* หมึกเดียว: ข้อความรองใช้หมึกเดียวกัน แยกลำดับด้วยขนาดและน้ำหนักแทนสีจาง */
+  --text: var(--rx-ink);
+  --text-muted: var(--rx-ink);
+  --accent: var(--rx-ink);
+  --accent-fill: var(--rx-ink);
+  --on-accent: var(--rx-paper);
+  --focus-ring: var(--rx-pen);
+  /* สถานะ: เรียบร้อย = ปากกาน้ำเงิน, เตือน/อันตราย = แดงตรายาง */
+  --good: var(--rx-pen);
+  --warn: var(--rx-stamp);
+  --danger: var(--rx-stamp);
+  --font-body: var(--rx-form);
+  --font-heading: var(--rx-display);
   color-scheme: light;
-  font: 15px/1.5 var(--font-body);
+  font: 16px/1.55 var(--font-body);
   color: var(--text);
-  background: var(--bg);
+  background: var(--rx-fiber), var(--rx-paper);
 }
 
 :root[data-theme='dark'] {
-  --bg: #0f172a;
-  --panel-bg: #182235;
-  --border: #334155;
-  --text: #e5edf8;
-  --text-muted: #9aa9bd;
-  --accent: #72a7ff;
-  --accent-fill: #72a7ff;
-  --on-accent: #0b1730;
-  --focus-ring: #a8c8ff;
-  --good: #4ade80;
-  --warn: #fb923c;
-  --danger: #f87171;
   color-scheme: dark;
 }
 
@@ -43,7 +38,8 @@
 body {
   margin: 0;
   min-width: 320px;
-  background: var(--bg);
+  background: var(--rx-fiber), var(--rx-paper);
+  color: var(--rx-ink);
 }
 
 h1,
@@ -53,6 +49,7 @@ h4,
 h5,
 h6 {
   font-family: var(--font-heading);
+  font-weight: 700;
 }
 
 #root {
@@ -72,111 +69,125 @@ textarea {
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--accent) 30%, transparent);
+  background: color-mix(in srgb, var(--rx-pen) 28%, transparent);
 }
 
-:root[data-theme='dark'] .app-nav,
-:root[data-theme='dark'] .camera-cell,
-:root[data-theme='dark'] .panel,
-:root[data-theme='dark'] .dash-room-card,
-:root[data-theme='dark'] .dash-notice:not(.dash-notice-break),
-:root[data-theme='dark'] .dc-card {
-  background-color: var(--panel-bg);
-  border-color: var(--border);
-  color: var(--text);
+/* ---------- ช่องกรอกแบบพิมพ์: กรอบหมึกเหลี่ยม พื้นกระดาษ ---------- */
+input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+select,
+textarea {
+  border: 1.5px solid var(--rx-ink);
+  border-radius: 0;
+  background-color: var(--rx-paper);
+  color: var(--rx-ink);
 }
 
-:root[data-theme='dark'] .camera-status-bar,
-:root[data-theme='dark'] .camera-source-local,
-:root[data-theme='dark'] .camera-source-ip,
-:root[data-theme='dark'] .settings-panel > .settings-checkbox,
-:root[data-theme='dark'] .dash-toggle,
-:root[data-theme='dark'] .dash-link,
-:root[data-theme='dark'] .dash-room-header,
-:root[data-theme='dark'] .dash-room-card.has-active-alert .dash-room-header,
-:root[data-theme='dark'] .dash-room-foot:not(.is-alert),
-:root[data-theme='dark'] .dash-room-foot button,
-:root[data-theme='dark'] .dash-legend,
-:root[data-theme='dark'] .people-page .people-toolbar input,
-:root[data-theme='dark'] .people-page .people-table-wrap th,
-:root[data-theme='dark'] .dc-rec-box,
-:root[data-theme='dark'] .dc-table th,
-:root[data-theme='dark'] .dc-table tbody tr:hover {
-  background-color: #202c40;
+input::placeholder,
+textarea::placeholder {
+  color: color-mix(in srgb, var(--rx-ink) 88%, var(--rx-paper));
 }
 
-:root[data-theme='dark'] input:not([type='checkbox']):not([type='radio']):not([type='range']),
-:root[data-theme='dark'] select,
-:root[data-theme='dark'] textarea {
-  background-color: var(--panel-bg);
-  border-color: var(--border);
-  color: var(--text);
+input:disabled,
+select:disabled,
+textarea:disabled,
+button:disabled {
+  cursor: not-allowed;
 }
 
-:root[data-theme='dark'] .app-nav-links > a:not(.app-nav-console),
-:root[data-theme='dark'] .app-nav-theme,
-:root[data-theme='dark'] .dc-btn,
-:root[data-theme='dark'] .dc-toggle,
-:root[data-theme='dark'] .dc-filter,
-:root[data-theme='dark'] .dc-segment button.active {
-  background-color: var(--panel-bg);
-  color: var(--text);
+/* ช่องติ๊กทุกช่องเป็นช่องพิมพ์ + รอยติ๊กปากกาน้ำเงิน (ยังเป็น checkbox จริง) */
+input[type='checkbox'] {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  border: 2px solid var(--rx-ink);
+  border-radius: 0;
+  background: transparent no-repeat center / 17px 17px;
+  cursor: pointer;
+  vertical-align: middle;
+  appearance: none;
 }
 
-:root[data-theme='dark'] .app-nav-links > a:not(.app-nav-console) {
-  color: var(--text-muted);
+input[type='checkbox']:checked {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3.6 13.2c1.9 1.4 3.6 3.4 5.1 6.1C11.4 12.6 15.6 6.9 21.4 2.2' fill='none' stroke='%231f3fbf' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
-:root[data-theme='dark'] .app-nav-links > a:not(.app-nav-console):hover,
-:root[data-theme='dark'] .app-nav-links > a.is-active {
-  color: var(--accent);
+:root[data-theme='dark'] input[type='checkbox']:checked {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3.6 13.2c1.9 1.4 3.6 3.4 5.1 6.1C11.4 12.6 15.6 6.9 21.4 2.2' fill='none' stroke='%23b4c3ff' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
-:root[data-theme='dark'] .app-brand-mark {
-  color: var(--on-accent);
+input[type='checkbox']:disabled {
+  opacity: 0.45;
 }
 
-/* การ์ดห้อง pixel art (Dashboard และภาพตัวอย่างหน้าแรก) ในธีมมืด */
-:root[data-theme='dark'] .dash-room-card {
-  box-shadow: 6px 7px 0 rgba(0, 0, 0, 0.3);
+/* radio และ slider คงรูปแบบมาตรฐาน (ผู้ใช้คุ้น) แต่ใช้สีหมึก */
+input[type='radio'],
+input[type='range'] {
+  accent-color: var(--rx-ink);
 }
 
-:root[data-theme='dark'] .dash-room-header {
-  border-bottom-color: var(--border);
+/* ตัวเลขในตารางและสถิติเรียงหลักตรงกัน */
+table {
+  font-variant-numeric: tabular-nums;
 }
 
-:root[data-theme='dark'] .dash-room-count.is-occupied {
-  color: var(--good);
+/* พื้นที่กดขั้นต่ำ ~24px+ สำหรับตัวเลือกและลิงก์ในตาราง (ไม่เปลี่ยนเลย์เอาต์ ขยายด้วย padding) */
+input[type='radio'] {
+  width: 18px;
+  height: 18px;
 }
 
-:root[data-theme='dark'] .dash-room-count.is-warning,
-:root[data-theme='dark'] .dash-room-card.has-active-alert .dash-room-header {
-  color: var(--danger);
+label:has(> input[type='radio']),
+label:has(> input[type='checkbox']) {
+  padding-block: 6px;
+  cursor: pointer;
 }
 
-:root[data-theme='dark'] .dash-room-foot button {
-  border-color: var(--border);
+.link-button,
+.people-alert-link,
+.alerts-person-link {
+  display: inline-block;
+  padding-block: 6px;
 }
 
-/* ภาพห้องวาดด้วยสีสว่างคงที่ — หรี่ลงเล็กน้อยไม่ให้จ้าบนพื้นมืด */
-:root[data-theme='dark'] .dash-room svg {
-  filter: brightness(0.86) saturate(0.94);
+/* ปุ่มเลือกไฟล์ของเบราว์เซอร์ = ปุ่มรองกรอบหมึก */
+input[type='file'] {
+  color: var(--rx-ink);
 }
 
-:root[data-theme='dark'] .people-page .people-table-wrap td,
-:root[data-theme='dark'] .people-page .people-table-wrap th,
-:root[data-theme='dark'] .people-page .people-table-wrap thead th {
-  border-color: var(--border);
+input[type='file']::file-selector-button {
+  min-height: 36px;
+  margin-right: 10px;
+  border: 2px solid var(--rx-ink);
+  border-radius: 0;
+  padding: 0 12px;
+  background: transparent;
+  color: var(--rx-ink);
+  cursor: pointer;
+  font: 600 14px / 1 var(--rx-display);
 }
 
-:root[data-theme='dark'] .people-page .people-table-wrap tbody tr:hover {
-  background: #202c40;
+input[type='file']::file-selector-button:hover {
+  background: var(--rx-ink);
+  color: var(--rx-paper);
 }
 
-:root[data-theme='dark'] .alerts-row-fall td {
-  background: #40252e;
+/* radio: วงหมึกพิมพ์ (กลับสีเองในธีมมืด) จุดในเป็นหมึกทึบเมื่อเลือก — คงรูปวงกลมตามแบบแผนของ radio */
+input[type='radio'] {
+  flex: none;
+  margin: 0;
+  border: 2px solid var(--rx-ink);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  vertical-align: middle;
+  appearance: none;
 }
 
-:root[data-theme='dark'] .dc-segment button.active {
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+input[type='radio']:checked {
+  background: radial-gradient(circle, var(--rx-ink) 0 4px, transparent 4.5px);
+}
+
+input[type='radio']:disabled {
+  opacity: 0.45;
 }
