@@ -16,8 +16,6 @@ export default function CameraSourceSelector({ value, onChange, title, headerExt
   const sourceName = useId()
   // ช่องกรอก URL กล้อง IP แยกสถานะไว้ต่างหาก เพื่อให้พิมพ์ได้ลื่นๆ ก่อนกด "เชื่อมต่อ" จริง
   const [ipUrlDraft, setIpUrlDraft] = useState(value.ipUrl ?? '')
-  const [rtspUrlDraft, setRtspUrlDraft] = useState(value.rtspUrl ?? '')
-  const normalizedRtspUrl = normalizeStreamUrl(rtspUrlDraft)
   const [go2rtcUrlDraft, setGo2rtcUrlDraft] = useState(value.go2rtcUrl ?? '')
   const normalizedGo2rtcUrl = normalizeStreamUrl(go2rtcUrlDraft)
 
@@ -99,41 +97,6 @@ export default function CameraSourceSelector({ value, onChange, title, headerExt
           <p className="panel-note">
             ใช้ได้เฉพาะกล้องที่ส่งภาพแบบ MJPEG ผ่าน HTTP โดยตรง (เช่น ESP32-CAM, mjpg-streamer, กล้อง IP บางรุ่นที่มีโหมดนี้)
           </p>
-        </div>
-      )}
-
-      <div className="settings-row">
-        <label>
-          <input
-            type="radio"
-            name={sourceName}
-            checked={value.kind === 'rtsp'}
-            onChange={() => onChange({ kind: 'rtsp', rtspUrl: value.rtspUrl })}
-          />
-          {' '}กล้องเครือข่าย (RTSP / go2rtc ผ่าน vision service ในเครื่อง)
-        </label>
-      </div>
-
-      {value.kind === 'rtsp' && (
-        <div className="camera-source-ip">
-          <input
-            type="text"
-            autoComplete="off"
-            spellCheck={false}
-            aria-label="RTSP URL"
-            placeholder="rtsp://user:password@192.168.1.50:554/path หรือ http://go2rtc:1984/stream.html?src=cam"
-            value={rtspUrlDraft}
-            onChange={(e) => setRtspUrlDraft(e.target.value)}
-          />
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={() => normalizedRtspUrl && onChange({ kind: 'rtsp', rtspUrl: normalizedRtspUrl })}
-            disabled={!normalizedRtspUrl}
-          >
-            เชื่อมต่อ
-          </button>
-          <p className="panel-note">รองรับ RTSP กล้องโดยตรง, go2rtc `stream.html?src=...` และ go2rtc MJPEG URL · URL/รหัสผ่านจะถูกเก็บใน browser storage ของเครื่องนี้ โปรดเก็บ URL เป็นความลับและ encode อักขระพิเศษในชื่อผู้ใช้/รหัสผ่าน</p>
         </div>
       )}
 

@@ -1,7 +1,7 @@
 // ค่าคงที่กลางสำหรับโหมดการตรวจจับ ใช้ร่วมกันทั้ง pose landmarker และ face-api
 //   - workstation: 1 กล้อง 1 คน (โน้ตบุ๊ก/คอมตั้งโต๊ะส่วนตัว) — เร็วที่สุดและเป็นค่าเริ่มต้น
 //   - multi: กล้องตัวเดียวดูหลายคนพร้อมกัน — ใช้ทรัพยากรมากขึ้นตามจำนวนคน
-//   - unlimited: ไม่จำกัดจำนวนคน — YOLO / face-api รับทุกคนที่เจอในเฟรม ส่วน MediaPipe ต้องระบุ numPoses
+//   - unlimited: ไม่จำกัดจำนวนคน — face-api รับทุกคนที่เจอในเฟรม ส่วน MediaPipe ต้องระบุ numPoses
 //     เป็นตัวเลขตายตัว จึงใช้เพดาน MEDIAPIPE_MAX_POSES แทน
 
 export type DetectionMode = 'workstation' | 'multi' | 'unlimited'

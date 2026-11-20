@@ -12,9 +12,6 @@ dist
 dist-ssr
 *.local
 .env
-yolo-backend/.venv/
-yolo-backend/**/__pycache__/
-yolo-backend/**/*.pyc
 
 # โมเดล AI / WASM runtime ที่ดาวน์โหลด/คัดลอกอัตโนมัติผ่าน postinstall (frontend/scripts/setup-assets.mjs)
 # ไม่ commit เพราะเป็นไฟล์ binary ขนาดใหญ่และสร้างใหม่ได้เสมอหลัง npm install

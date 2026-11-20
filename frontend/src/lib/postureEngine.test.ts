@@ -82,15 +82,6 @@ describe('PostureEngine', () => {
     expect(started[0].event.type).toBe('leaning')
   })
 
-  it('uses the YOLO track id when one is supplied', () => {
-    const engine = new PostureEngine('camera-1')
-    const first = engine.processPoseFrame([LEANING], [], FRAME, 0, SETTINGS, ['42'])
-    const next = engine.processPoseFrame([LEANING], [], FRAME, 1_000, SETTINGS, ['42'])
-
-    expect(first.people[0].trackId).toBe('yolo-camera-1-42')
-    expect(next.people[0].trackId).toBe(first.people[0].trackId)
-  })
-
   it('emits exactly one posture end event when an alerted track goes stale', () => {
     const engine = new PostureEngine('camera-1')
     let startedId: string | undefined

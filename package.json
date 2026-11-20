@@ -2,7 +2,6 @@
   "name": "camwell",
   "private": true,
   "scripts": {
-    "dev:all": "node scripts/dev-all.mjs",
-    "dev:vision": ".\\yolo-backend\\.venv\\Scripts\\python.exe -m uvicorn app.main:app --app-dir yolo-backend --host 127.0.0.1 --port 8001"
+    "dev:all": "node scripts/dev-all.mjs"
   }
 }

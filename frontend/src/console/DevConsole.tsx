@@ -156,7 +156,7 @@ export default function DevConsole(props: DevConsoleProps) {
   const services: { name: string; detail: string; status: string; color: string }[] = [
     {
       name: 'Pose Landmarker',
-      detail: `${poseModelFileName(poseModel)} · numPoses ${poseModel === 'yolo' && detectionMode === 'unlimited' ? 'ไม่จำกัด' : landmarkerNumPosesFor(detectionMode)} · ${delegates}`,
+      detail: `${poseModelFileName(poseModel)} · numPoses ${landmarkerNumPosesFor(detectionMode)} · ${delegates}`,
       status: poseStatus,
       color: statusColor(poseStatus),
     },
@@ -269,7 +269,7 @@ export default function DevConsole(props: DevConsoleProps) {
                   type="button"
                   className={detectionMode === 'unlimited' ? 'active' : ''}
                   onClick={() => onDetectionModeChange('unlimited')}
-                  title="รับทุกคนที่เจอในเฟรม (YOLO ไม่จำกัดจริง · MediaPipe สูงสุด 20 คน) — ยิ่งคนเยอะยิ่งช้าลง"
+                  title="รับทุกคนที่เจอในเฟรม (MediaPipe สูงสุด 20 คน) — ยิ่งคนเยอะยิ่งช้าลง"
                 >
                   ไม่จำกัด
                 </button>

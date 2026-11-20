@@ -9,8 +9,7 @@ import {
   type MultiPersonRombergEntry,
   type TrackedGaitPersonSnapshot,
 } from '../lib/multiPersonGait'
-import { rtspStreamUrl, startRtspCamera, stopRtspCamera } from '../services/yoloPoseClient'
-import { DEFAULT_CAMERA_SOURCE, type CameraSlot, type CameraSource } from '../types/cameraSource'
+import { DEFAULT_CAMERA_SOURCE, restoreCameraSource, type CameraSlot, type CameraSource } from '../types/cameraSource'
 import type { Point } from '../types/posture'
 import '../App.css'
 import './PeoplePage.css'
@@ -20,7 +19,6 @@ type AssessmentMode = 'standing_front' | 'standing_side' | 'romberg' | 'gait'
 type RombergPhase = 'idle' | 'eyes_open' | 'eyes_closed' | 'done'
 
 const CAMERA_SLOTS_STORAGE_KEY = 'camwell:camera-slots:v1'
-const GAIT_RTSP_CAMERA_ID = 'gait-assessment'
 const ROMBERG_PHASE_SEC = 10
 const GAIT_RECORD_SEC = 8
 const POSE_COUNT_OPTIONS = [
@@ -58,22 +56,23 @@ function loadSavedCameraSlots(): CameraSlot[] {
     if (!raw) return []
     const parsed = JSON.parse(raw)
     if (!Array.isArray(parsed)) return []
-    return parsed.filter(
-      (item): item is CameraSlot =>
-        !!item &&
-        typeof item === 'object' &&
-        typeof item.id === 'string' &&
-        typeof item.label === 'string' &&
-        !!item.source &&
-        typeof item.source.kind === 'string',
-    )
+    return parsed
+      .filter(
+        (item): item is CameraSlot =>
+          !!item &&
+          typeof item === 'object' &&
+          typeof item.id === 'string' &&
+          typeof item.label === 'string' &&
+          !!item.source &&
+          typeof item.source.kind === 'string',
+      )
+      .map((slot) => ({ ...slot, source: restoreCameraSource(slot.source) }))
   } catch {
     return []
   }
 }
 
 function sourceKindTag(source: CameraSource): string {
-  if (source.kind === 'rtsp') return 'RTSP/go2rtc'
   if (source.kind === 'ip-mjpeg') return 'IP MJPEG'
   if (source.kind === 'go2rtc') return 'ลิงก์ go2rtc'
   return 'เว็บแคม/USB'
@@ -174,7 +173,6 @@ export default function GaitAssessmentPage() {
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
   const [videoName, setVideoName] = useState<string | null>(null)
   const [streamError, setStreamError] = useState<string | null>(null)
-  const [rtspReady, setRtspReady] = useState(false)
 
   // สถานะบุคคลที่ตรวจจับได้ในเฟรมปัจจุบัน + ผลที่บันทึกค้างไว้
   const [livePeople, setLivePeople] = useState<TrackedGaitPersonSnapshot[]>([])
@@ -222,7 +220,7 @@ export default function GaitAssessmentPage() {
     return customSource
   }, [sourceSelection, savedSlots, customSource])
 
-  const activeKind: 'local' | 'ip-mjpeg' | 'rtsp' | 'go2rtc' | 'video' = activeCameraSource ? activeCameraSource.kind : 'video'
+  const activeKind: CameraSource['kind'] | 'video' = activeCameraSource ? activeCameraSource.kind : 'video'
 
   // เชื่อมต่อแหล่งภาพตามชนิดที่เลือก และรีเซ็ต tracker เมื่อเปลี่ยนแหล่งกล้อง
   useEffect(() => {
@@ -232,16 +230,11 @@ export default function GaitAssessmentPage() {
     corsErrorStickyRef.current = false
     multiTrackerRef.current.clearAll()
 
-    if (activeKind !== 'rtsp') {
-      stopRtspCamera(GAIT_RTSP_CAMERA_ID)
-    }
-
     if (activeKind === 'local' && videoEl) {
       videoEl.removeAttribute('src')
       if (!navigator.mediaDevices?.getUserMedia) {
         queueMicrotask(() => {
           if (active) {
-            setRtspReady(false)
             setStreamError('เบราว์เซอร์ไม่รองรับการใช้งานกล้อง')
           }
         })
@@ -264,12 +257,10 @@ export default function GaitAssessmentPage() {
           mediaStream = stream
           videoEl.srcObject = stream
           void videoEl.play().catch(() => undefined)
-          setRtspReady(false)
           setStreamError(null)
         })
         .catch((err: unknown) => {
           if (!active) return
-          setRtspReady(false)
           setStreamError(err instanceof Error ? err.message : 'เปิดกล้องไม่สำเร็จ')
         })
     } else if (activeKind === 'video' && videoEl) {
@@ -284,49 +275,18 @@ export default function GaitAssessmentPage() {
       }
       queueMicrotask(() => {
         if (active) {
-          setRtspReady(false)
           setStreamError(null)
         }
       })
-    } else if (activeKind === 'rtsp') {
-      const rtspUrl = activeCameraSource?.rtspUrl
-      if (!rtspUrl) {
-        queueMicrotask(() => {
-          if (active) {
-            setRtspReady(false)
-            setStreamError('ยังไม่ได้ระบุ RTSP / go2rtc URL')
-          }
-        })
-      } else {
-        queueMicrotask(() => {
-          if (active) {
-            setRtspReady(false)
-            setStreamError(null)
-          }
-        })
-        void startRtspCamera(GAIT_RTSP_CAMERA_ID, rtspUrl)
-          .then(() => {
-            if (active) setRtspReady(true)
-          })
-          .catch((err: unknown) => {
-            if (active) {
-              setStreamError(
-                `เชื่อมต่อ RTSP/go2rtc ไม่สำเร็จ: ${err instanceof Error ? err.message : 'ตรวจสอบ URL และ vision service'}`,
-              )
-            }
-          })
-      }
     } else if (activeKind === 'go2rtc') {
       queueMicrotask(() => {
         if (active) {
-          setRtspReady(false)
-          setStreamError('หน้านี้ยังไม่รองรับแหล่งภาพ "ลิงก์ go2rtc" — ใช้ตัวเลือก RTSP / go2rtc แทน')
+          setStreamError('หน้านี้ยังไม่รองรับแหล่งภาพ "ลิงก์ go2rtc" — ใช้กล้องในเครื่อง กล้อง IP (MJPEG) หรือไฟล์วิดีโอแทน')
         }
       })
     } else {
       queueMicrotask(() => {
         if (active) {
-          setRtspReady(false)
           setStreamError(activeCameraSource?.ipUrl ? null : 'ยังไม่ได้ระบุ URL ของกล้อง IP (MJPEG)')
         }
       })
@@ -341,11 +301,8 @@ export default function GaitAssessmentPage() {
         videoEl.srcObject.getTracks().forEach((t) => t.stop())
         videoEl.srcObject = null
       }
-      if (activeKind === 'rtsp') {
-        stopRtspCamera(GAIT_RTSP_CAMERA_ID)
-      }
     }
-  }, [activeKind, activeCameraSource?.deviceId, activeCameraSource?.ipUrl, activeCameraSource?.rtspUrl, videoUrl])
+  }, [activeKind, activeCameraSource?.deviceId, activeCameraSource?.ipUrl, videoUrl])
 
   useEffect(() => {
     return () => {
@@ -353,12 +310,7 @@ export default function GaitAssessmentPage() {
     }
   }, [videoUrl])
 
-  const mjpegImgSrc =
-    activeKind === 'ip-mjpeg'
-      ? (activeCameraSource?.ipUrl ?? '')
-      : activeKind === 'rtsp' && rtspReady
-        ? rtspStreamUrl(GAIT_RTSP_CAMERA_ID)
-        : ''
+  const mjpegImgSrc = activeKind === 'ip-mjpeg' ? (activeCameraSource?.ipUrl ?? '') : ''
 
   // Loop ตรวจจับ Pose หลายคนพร้อมกัน
   useEffect(() => {
@@ -374,7 +326,7 @@ export default function GaitAssessmentPage() {
       const landmarker = landmarkerRef.current
       if (!canvas || !landmarker || corsErrorStickyRef.current) return
 
-      const useImg = activeKind === 'ip-mjpeg' || activeKind === 'rtsp'
+      const useImg = activeKind === 'ip-mjpeg'
       const source: HTMLVideoElement | HTMLImageElement | null = useImg ? imgRef.current : videoRef.current
       if (!source) return
 
@@ -403,7 +355,7 @@ export default function GaitAssessmentPage() {
       } catch (err) {
         if (isCorsLikeError(err)) {
           corsErrorStickyRef.current = true
-          setStreamError('อ่านภาพกล้อง IP-MJPEG เข้า AI ไม่ได้เพราะ CORS — แนะนำใช้โหมด RTSP ผ่าน vision service')
+          setStreamError('อ่านภาพกล้อง IP-MJPEG เข้า AI ไม่ได้เพราะ CORS — ต้องเปิด CORS ที่กล้อง')
         }
         return
       }
@@ -565,7 +517,7 @@ export default function GaitAssessmentPage() {
   }
 
   const activeTabInfo = MODE_TABS.find((t) => t.id === mode)!
-  const useImgElement = activeKind === 'ip-mjpeg' || activeKind === 'rtsp'
+  const useImgElement = activeKind === 'ip-mjpeg'
 
   return (
     <>
@@ -678,9 +630,6 @@ export default function GaitAssessmentPage() {
             {modelStatus === 'loading' && <div className="gait-banner">กำลังโหลดโมเดล Pose 33 จุด ({maxPoses} คน)...</div>}
             {modelError && <div className="gait-banner is-error">โหลดโมเดลไม่สำเร็จ: {modelError}</div>}
             {streamError && <div className="gait-banner is-error">{streamError}</div>}
-            {activeKind === 'rtsp' && !rtspReady && !streamError && (
-              <div className="gait-banner">กำลังเชื่อมต่อสตรีม RTSP / go2rtc ผ่าน vision service...</div>
-            )}
             {sourceSelection === 'video' && !videoUrl && (
               <div className="gait-banner">เลือกไฟล์วิดีโอคนยืนหรือเดินเพื่อให้ระบบวิเคราะห์ Skeleton และ Gait Cycle</div>
             )}
@@ -695,7 +644,7 @@ export default function GaitAssessmentPage() {
                     crossOrigin="anonymous"
                     alt="ภาพจากกล้องเครือข่าย"
                     onError={() =>
-                      setStreamError('โหลดภาพจากกล้องไม่ได้ — ตรวจสอบ URL, CORS หรือว่าเปิด vision service อยู่')
+                      setStreamError('โหลดภาพจากกล้องไม่ได้ — ตรวจสอบ URL และ CORS ของกล้อง')
                     }
                   />
                 ) : null

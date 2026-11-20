@@ -8,19 +8,19 @@ export type LandmarkerStatus = 'loading' | 'ready' | 'error'
 export type PoseDelegate = 'GPU' | 'CPU'
 
 /** รุ่นของ Pose Landmarker — ทุกรุ่นให้ landmark 33 จุดรูปแบบเดียวกัน ต่างกันที่ความแม่นยำ/ความเร็ว */
-export const POSE_MODELS = ['lite', 'full', 'heavy', 'yolo'] as const
+export const POSE_MODELS = ['lite', 'full', 'heavy'] as const
 export type PoseModelVariant = (typeof POSE_MODELS)[number]
-export const DEFAULT_POSE_MODEL: PoseModelVariant = 'yolo'
+export const DEFAULT_POSE_MODEL: PoseModelVariant = 'lite'
 
 export function poseModelFileName(model: PoseModelVariant): string {
-  return model === 'yolo' ? 'yolov8m-pose.pt · local service' : `pose_landmarker_${model}.task`
+  return `pose_landmarker_${model}.task`
 }
 
 const WASM_BASE_PATH = `${import.meta.env.BASE_URL}wasm`
 
 /**
  * @param numPoses จำนวนคนสูงสุดที่ให้โมเดลหา — เปลี่ยนค่าแล้วโมเดลจะถูกสร้างใหม่อัตโนมัติ
- * @param model รุ่นที่เลือก; โหมด yolo ใช้ lite เป็น fallback — เปลี่ยนค่าแล้วโมเดลจะถูกสร้างใหม่อัตโนมัติ
+ * @param model รุ่นที่เลือก — เปลี่ยนค่าแล้วโมเดลจะถูกสร้างใหม่อัตโนมัติ
  */
 export function usePoseLandmarker(numPoses: number, model: PoseModelVariant = DEFAULT_POSE_MODEL) {
   const landmarkerRef = useRef<PoseLandmarker | null>(null)
@@ -30,8 +30,7 @@ export function usePoseLandmarker(numPoses: number, model: PoseModelVariant = DE
 
   useEffect(() => {
     let cancelled = false
-    const landmarkerModel = model === 'yolo' ? 'lite' : model
-    const modelPath = `${import.meta.env.BASE_URL}models/${poseModelFileName(landmarkerModel)}`
+    const modelPath = `${import.meta.env.BASE_URL}models/${poseModelFileName(model)}`
 
     async function init() {
       setStatus('loading')
@@ -77,7 +76,7 @@ export function usePoseLandmarker(numPoses: number, model: PoseModelVariant = DE
           setError(
             err instanceof Error
               ? err.message
-              : `โหลดโมเดลไม่สำเร็จ - ตรวจสอบว่ารัน \`npm run setup:assets\` แล้ว และมีไฟล์ public/models/${poseModelFileName(landmarkerModel)}`,
+              : `โหลดโมเดลไม่สำเร็จ - ตรวจสอบว่ารัน \`npm run setup:assets\` แล้ว และมีไฟล์ public/models/${poseModelFileName(model)}`,
           )
           setStatus('error')
         }

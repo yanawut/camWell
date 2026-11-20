@@ -7,7 +7,13 @@ import EnrollmentPanel from './components/EnrollmentPanel'
 import DatasetRecorderPanel from './components/DatasetRecorderPanel'
 import AttendancePanel from './components/AttendancePanel'
 import { DEFAULT_THRESHOLDS, type PostureThresholds } from './types/posture'
-import { MAX_CAMERA_SLOTS, createCameraSlot, type CameraSlot, type CameraSource } from './types/cameraSource'
+import {
+  MAX_CAMERA_SLOTS,
+  createCameraSlot,
+  restoreCameraSource,
+  type CameraSlot,
+  type CameraSource,
+} from './types/cameraSource'
 import {
   DEFAULT_BREAK_THRESHOLDS,
   DEFAULT_DISTANCE_THRESHOLDS,
@@ -116,7 +122,9 @@ function CameraApp() {
       const saved = localStorage.getItem(CAMERA_SLOTS_STORAGE_KEY)
       if (saved) {
         const parsed = JSON.parse(saved) as CameraSlot[]
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed.slice(0, MAX_CAMERA_SLOTS)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.slice(0, MAX_CAMERA_SLOTS).map((slot) => ({ ...slot, source: restoreCameraSource(slot.source) }))
+        }
       }
     } catch {
       // ค่าที่เก็บไว้เสีย/อ่านไม่ออก — ใช้ค่าเริ่มต้นกล้องเดียวด้านล่างแทน
