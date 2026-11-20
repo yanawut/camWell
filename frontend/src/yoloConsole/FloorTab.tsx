@@ -340,144 +340,148 @@ function ZonesCard({ draft, update, endGesture }: CardProps) {
   }
 
   return (
-    <div className="dc-card dc-pad">
+    <div className="dc-card dc-pad yc-zones-card">
       <div className="dc-card-head dc-col yc-stack-head">
         <h2 className="dc-h2">โซน</h2>
         <span className="dc-muted-12">
           โซนแบ่งเต็มพื้นเสมอ ลากเส้นแบ่งเพื่อปรับสัดส่วน ลากโซนไปวางบนอีกโซนเพื่อย้าย ส่วนมืดอยู่นอกกรอบ
         </span>
       </div>
-      <div
-        ref={plan}
-        className="yc-plan"
-        style={{ width: `min(100%, calc(${PLAN_MAX_HEIGHT_PX}px * ${ratio}))`, aspectRatio: String(ratio) }}
-        onPointerMove={onPointerMove}
-        onPointerUp={() => finishDrag(true)}
-        onPointerCancel={() => finishDrag(false)}
-      >
-        {draft.zones.map((zone, i) => {
-          const [x0, y0, x1, y1] = zone.box
-          return (
+      <div className="yc-zones-body">
+        <div
+          ref={plan}
+          className="yc-plan"
+          style={{ width: `min(100%, calc(${PLAN_MAX_HEIGHT_PX}px * ${ratio}))`, aspectRatio: String(ratio) }}
+          onPointerMove={onPointerMove}
+          onPointerUp={() => finishDrag(true)}
+          onPointerCancel={() => finishDrag(false)}
+        >
+          {draft.zones.map((zone, i) => {
+            const [x0, y0, x1, y1] = zone.box
+            return (
+              <div
+                key={zone.name}
+                className="yc-plan-zone"
+                style={{
+                  left: percent(x0),
+                  top: percent(y0),
+                  width: percent(x1 - x0),
+                  height: percent(y1 - y0),
+                  background: zoneColor(i, 0.25),
+                  color: zoneColor(i),
+                }}
+                onPointerDown={(e) => startDrag(e, { kind: 'zone', name: zone.name })}
+              >
+                {zone.name}
+              </div>
+            )
+          })}
+          <svg aria-hidden className="yc-plan-svg" viewBox={`0 0 ${GRID} ${GRID}`} preserveAspectRatio="none">
+            {Array.from({ length: GRID - 1 }, (_, i) => i + 1).map((i) => (
+              <g key={i} stroke="currentColor" strokeOpacity={i % 2 ? 0.08 : 0.2}>
+                <line x1={i} y1={0} x2={i} y2={GRID} vectorEffect="non-scaling-stroke" />
+                <line x1={0} y1={i} x2={GRID} y2={i} vectorEffect="non-scaling-stroke" />
+              </g>
+            ))}
+            {frame.length >= 3 && (
+              <>
+                <path
+                  d={`M0 0H${GRID}V${GRID}H0Z M${frame.map((p) => p.join(' ')).join('L')}Z`}
+                  fill="rgb(0 0 0 / 0.6)"
+                  fillRule="evenodd"
+                />
+                <polygon points={toPoints(frame)} fill="none" stroke="white" strokeWidth={2} vectorEffect="non-scaling-stroke" />
+              </>
+            )}
+          </svg>
+          {dropBox && (
             <div
-              key={zone.name}
-              className="yc-plan-zone"
+              className="yc-plan-drop"
               style={{
-                left: percent(x0),
-                top: percent(y0),
-                width: percent(x1 - x0),
-                height: percent(y1 - y0),
-                background: zoneColor(i, 0.25),
-                color: zoneColor(i),
+                left: percent(dropBox[0]),
+                top: percent(dropBox[1]),
+                width: percent(dropBox[2] - dropBox[0]),
+                height: percent(dropBox[3] - dropBox[1]),
               }}
-              onPointerDown={(e) => startDrag(e, { kind: 'zone', name: zone.name })}
-            >
-              {zone.name}
-            </div>
-          )
-        })}
-        <svg aria-hidden className="yc-plan-svg" viewBox={`0 0 ${GRID} ${GRID}`} preserveAspectRatio="none">
-          {Array.from({ length: GRID - 1 }, (_, i) => i + 1).map((i) => (
-            <g key={i} stroke="currentColor" strokeOpacity={i % 2 ? 0.08 : 0.2}>
-              <line x1={i} y1={0} x2={i} y2={GRID} vectorEffect="non-scaling-stroke" />
-              <line x1={0} y1={i} x2={GRID} y2={i} vectorEffect="non-scaling-stroke" />
-            </g>
-          ))}
-          {frame.length >= 3 && (
-            <>
-              <path
-                d={`M0 0H${GRID}V${GRID}H0Z M${frame.map((p) => p.join(' ')).join('L')}Z`}
-                fill="rgb(0 0 0 / 0.6)"
-                fillRule="evenodd"
-              />
-              <polygon points={toPoints(frame)} fill="none" stroke="white" strokeWidth={2} vectorEffect="non-scaling-stroke" />
-            </>
-          )}
-        </svg>
-        {dropBox && (
-          <div
-            className="yc-plan-drop"
-            style={{
-              left: percent(dropBox[0]),
-              top: percent(dropBox[1]),
-              width: percent(dropBox[2] - dropBox[0]),
-              height: percent(dropBox[3] - dropBox[1]),
-            }}
-          />
-        )}
-        {lines.map((line) => {
-          const vertical = line.axis === 'x'
-          return (
-            <div
-              key={`${line.axis}:${line.before.join()}:${line.after.join()}`}
-              role="separator"
-              tabIndex={0}
-              aria-orientation={vertical ? 'vertical' : 'horizontal'}
-              aria-label={`เส้นแบ่ง ${line.before.join(', ')} กับ ${line.after.join(', ')}`}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={sharePercent(line, line.at)}
-              className={`yc-plan-divider ${vertical ? 'is-vertical' : 'is-horizontal'}`}
-              style={
-                vertical
-                  ? { left: percent(line.at), top: percent(line.from), height: percent(line.to - line.from) }
-                  : { top: percent(line.at), left: percent(line.from), width: percent(line.to - line.from) }
-              }
-              onPointerDown={(e) => startDrag(e, { kind: 'divider', divider: line, at: line.at })}
-              onKeyDown={(e) => onDividerKey(e, line)}
             />
-          )
-        })}
-        {activeLine && (
-          <span
-            className="yc-plan-share"
-            style={
-              activeLine.divider.axis === 'x'
-                ? { left: percent(activeLine.at), top: percent((activeLine.divider.from + activeLine.divider.to) / 2) }
-                : { top: percent(activeLine.at), left: percent((activeLine.divider.from + activeLine.divider.to) / 2) }
-            }
-          >
-            {sharePercent(activeLine.divider, activeLine.at)} / {100 - sharePercent(activeLine.divider, activeLine.at)}
-          </span>
-        )}
-      </div>
-
-      <form className="yc-row" onSubmit={add}>
-        <label className="yc-label" htmlFor="yc-zone-name">ชื่อโซน</label>
-        <input
-          id="yc-zone-name"
-          className="yc-input yc-grow"
-          value={name}
-          placeholder="เช่น โต๊ะทำงาน"
-          onChange={(e) => setName(e.target.value)}
-        />
-        <button type="submit" className="dc-btn" disabled={!trimmed || duplicate}>
-          + เพิ่มโซน
-        </button>
-      </form>
-      {duplicate && <p className="yc-error">มีโซนชื่อนี้แล้ว</p>}
-      {error && <p className="yc-error">{error}</p>}
-
-      <ul className="yc-zone-list">
-        {draft.zones.map(({ name: zoneName, box: [x0, y0, x1, y1] }, i) => (
-          <li key={zoneName}>
-            <i className="yc-zone-dot" style={{ background: zoneColor(i) }} />
-            <span className="dc-w500">{zoneName}</span>
-            <span className="dc-muted-12">{((x1 - x0) * (y1 - y0) * cellArea).toFixed(1)} ม²</span>
-            <button
-              type="button"
-              className="dc-link-danger yc-zone-remove"
-              aria-label={`ลบโซน ${zoneName}`}
-              disabled={draft.zones.length === 1}
-              onClick={() => {
-                const zones = removeZone(draft.zones, zoneName)
-                if (zones) update({ zones })
-              }}
+          )}
+          {lines.map((line) => {
+            const vertical = line.axis === 'x'
+            return (
+              <div
+                key={`${line.axis}:${line.before.join()}:${line.after.join()}`}
+                role="separator"
+                tabIndex={0}
+                aria-orientation={vertical ? 'vertical' : 'horizontal'}
+                aria-label={`เส้นแบ่ง ${line.before.join(', ')} กับ ${line.after.join(', ')}`}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={sharePercent(line, line.at)}
+                className={`yc-plan-divider ${vertical ? 'is-vertical' : 'is-horizontal'}`}
+                style={
+                  vertical
+                    ? { left: percent(line.at), top: percent(line.from), height: percent(line.to - line.from) }
+                    : { top: percent(line.at), left: percent(line.from), width: percent(line.to - line.from) }
+                }
+                onPointerDown={(e) => startDrag(e, { kind: 'divider', divider: line, at: line.at })}
+                onKeyDown={(e) => onDividerKey(e, line)}
+              />
+            )
+          })}
+          {activeLine && (
+            <span
+              className="yc-plan-share"
+              style={
+                activeLine.divider.axis === 'x'
+                  ? { left: percent(activeLine.at), top: percent((activeLine.divider.from + activeLine.divider.to) / 2) }
+                  : { top: percent(activeLine.at), left: percent((activeLine.divider.from + activeLine.divider.to) / 2) }
+              }
             >
-              ลบ
+              {sharePercent(activeLine.divider, activeLine.at)} / {100 - sharePercent(activeLine.divider, activeLine.at)}
+            </span>
+          )}
+        </div>
+
+        <div className="yc-zones-side">
+          <form className="yc-row" onSubmit={add}>
+            <label className="yc-label" htmlFor="yc-zone-name">ชื่อโซน</label>
+            <input
+              id="yc-zone-name"
+              className="yc-input yc-grow"
+              value={name}
+              placeholder="เช่น โต๊ะทำงาน"
+              onChange={(e) => setName(e.target.value)}
+            />
+            <button type="submit" className="dc-btn" disabled={!trimmed || duplicate}>
+              + เพิ่มโซน
             </button>
-          </li>
-        ))}
-      </ul>
+          </form>
+          {duplicate && <p className="yc-error">มีโซนชื่อนี้แล้ว</p>}
+          {error && <p className="yc-error">{error}</p>}
+
+          <ul className="yc-zone-list">
+            {draft.zones.map(({ name: zoneName, box: [x0, y0, x1, y1] }, i) => (
+              <li key={zoneName}>
+                <i className="yc-zone-dot" style={{ background: zoneColor(i) }} />
+                <span className="dc-w500">{zoneName}</span>
+                <span className="dc-muted-12">{((x1 - x0) * (y1 - y0) * cellArea).toFixed(1)} ม²</span>
+                <button
+                  type="button"
+                  className="dc-link-danger yc-zone-remove"
+                  aria-label={`ลบโซน ${zoneName}`}
+                  disabled={draft.zones.length === 1}
+                  onClick={() => {
+                    const zones = removeZone(draft.zones, zoneName)
+                    if (zones) update({ zones })
+                  }}
+                >
+                  ลบ
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
     </div>
   )
 }

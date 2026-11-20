@@ -1,5 +1,8 @@
 /* YOLO Console — ใช้โครงและสีของ Dev Console (console.css) เพิ่มเฉพาะส่วนที่ต่าง */
 
+/* ใช้เต็มความกว้างจอเหมือนต้นแบบ Room Analytics — Dev Console จำกัดไว้ 1440px */
+.yc-root .dc-main { max-width: none; }
+
 /* --- ทั่วไป --- */
 .yc-row { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; margin-top: 12px; }
 .yc-row.yc-tight { margin-top: 0; gap: 6px; }
@@ -88,8 +91,10 @@
 .yc-swatch-trail { height: 0; border-width: 2px 0 0; border-style: dotted; border-color: var(--text-muted); }
 
 /* --- Floor & Zones --- */
+/* จุดและเส้นกรอบจับได้ในระยะตามสัดส่วนความกว้างภาพ (FloorTab: HANDLE_RADIUS / LINE_RADIUS) ภาพยิ่งใหญ่ยิ่งลากได้ง่าย
+   จึงวางโซนไว้ข้างภาพเฉพาะจอที่กว้างพอให้ภาพไม่เล็กกว่าต้นแบบ (~960px) นอกนั้นให้ภาพเต็มความกว้างแล้วโซนอยู่ด้านล่าง */
 .yc-floor-grid { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 20px; align-items: start; }
-@media (max-width: 1280px) {
+@media (max-width: 1700px) {
   .yc-floor-grid { grid-template-columns: minmax(0, 1fr); }
 }
 .yc-calib { margin-top: 12px; }
@@ -110,6 +115,17 @@
 .yc-corner legend { padding: 0; margin-bottom: 4px; }
 .yc-corner .yc-input { width: 50%; }
 .yc-field { display: flex; flex-direction: column; gap: 4px; }
+
+/* การ์ดโซนที่กว้าง (วางใต้ภาพ) ให้ผังกับปุ่ม/รายชื่ออยู่ข้างกัน การ์ดจะเตี้ยลงและอยู่ใกล้ภาพ */
+.yc-zones-card { container-type: inline-size; }
+@container (min-width: 760px) {
+  .yc-zones-body {
+    display: grid;
+    grid-template-columns: minmax(0, 560px) minmax(260px, 1fr);
+    gap: 24px;
+    align-items: start;
+  }
+}
 
 .yc-plan {
   position: relative;
