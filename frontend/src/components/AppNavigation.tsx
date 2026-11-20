@@ -1,9 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useTheme } from '../hooks/useTheme'
 
 type Page = 'dashboard' | 'camera' | 'gait' | 'people' | 'alerts' | 'report'
-type Theme = 'light' | 'dark'
-
-const THEME_STORAGE_KEY = 'camwell:theme'
 
 const LINKS: { page: Page; label: string; href: string }[] = [
   { page: 'dashboard', label: 'ภาพรวม', href: '?dashboard' },
@@ -20,18 +17,7 @@ interface Props {
 }
 
 export default function AppNavigation({ active, dashboardStats }: Props) {
-  const [theme, setTheme] = useState<Theme>(() => document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light')
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme
-  }, [theme])
-
-  const toggleTheme = () => {
-    const nextTheme = theme === 'dark' ? 'light' : 'dark'
-    localStorage.setItem(THEME_STORAGE_KEY, nextTheme)
-    document.documentElement.dataset.theme = nextTheme
-    setTheme(nextTheme)
-  }
+  const { theme, toggleTheme } = useTheme()
 
   return (
     <header className="app-nav">

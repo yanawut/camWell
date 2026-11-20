@@ -1,0 +1,423 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-21T00:00:00Z",
+  "title": "Design System: Camwell",
+  "extensions": {
+    "colorMeta": {
+      "pharmacy-green-ink": {
+        "role": "primary",
+        "displayName": "Pharmacy Green Ink",
+        "canonical": "#0b6b47",
+        "darkValue": "#f8faf7",
+        "source": "--rx-ink (.rx)",
+        "tonalRamp": [
+          "oklch(22% 0.05 160)",
+          "oklch(32% 0.07 160)",
+          "oklch(43.5% 0.09 160)",
+          "oklch(53% 0.09 160)",
+          "oklch(64% 0.08 160)",
+          "oklch(75% 0.06 160)",
+          "oklch(86% 0.035 160)",
+          "oklch(95% 0.012 160)"
+        ]
+      },
+      "envelope-paper": {
+        "role": "neutral",
+        "displayName": "Envelope Paper",
+        "canonical": "#f8faf7",
+        "darkValue": "#0a4630",
+        "source": "--rx-paper (.rx)",
+        "tonalRamp": [
+          "oklch(20% 0.008 140)",
+          "oklch(32% 0.008 140)",
+          "oklch(45% 0.008 140)",
+          "oklch(58% 0.007 140)",
+          "oklch(70% 0.006 140)",
+          "oklch(82% 0.005 140)",
+          "oklch(92% 0.004 140)",
+          "oklch(98% 0.004 140)"
+        ]
+      },
+      "rule-soft": {
+        "role": "neutral",
+        "displayName": "Soft Rule",
+        "canonical": "color-mix(in srgb, var(--rx-ink) 30%, var(--rx-paper))",
+        "resolvedLight": "#b1cfc2",
+        "resolvedDark": "#517c6c",
+        "source": "--rx-rule-soft (.rx)"
+      },
+      "ballpoint-blue": {
+        "role": "secondary",
+        "displayName": "Ballpoint Blue",
+        "canonical": "#1f3fbf",
+        "darkValue": "#b4c3ff",
+        "source": "--rx-pen (.rx)",
+        "tonalRamp": [
+          "oklch(20% 0.09 268)",
+          "oklch(30% 0.14 268)",
+          "oklch(40% 0.19 268)",
+          "oklch(50% 0.19 268)",
+          "oklch(62% 0.15 268)",
+          "oklch(74% 0.1 268)",
+          "oklch(85% 0.06 268)",
+          "oklch(95% 0.02 268)"
+        ]
+      },
+      "stamp-red": {
+        "role": "tertiary",
+        "displayName": "Stamp Red",
+        "canonical": "#c62b28",
+        "darkValue": "#ff9d8f",
+        "source": "--rx-stamp (.rx)",
+        "tonalRamp": [
+          "oklch(22% 0.07 27)",
+          "oklch(33% 0.12 27)",
+          "oklch(44% 0.16 27)",
+          "oklch(54% 0.19 27)",
+          "oklch(64% 0.17 27)",
+          "oklch(75% 0.12 27)",
+          "oklch(86% 0.07 27)",
+          "oklch(95% 0.025 27)"
+        ]
+      },
+      "reverse-ground": {
+        "role": "neutral",
+        "displayName": "Reverse Ground (dark paper)",
+        "canonical": "#0a4630",
+        "source": "--rx-paper under :root[data-theme='dark'] .rx"
+      },
+      "ballpoint-blue-reverse": {
+        "role": "secondary",
+        "displayName": "Ballpoint Blue, reverse print",
+        "canonical": "#b4c3ff",
+        "source": "--rx-pen dark"
+      },
+      "stamp-red-reverse": {
+        "role": "tertiary",
+        "displayName": "Stamp Red, reverse print",
+        "canonical": "#ff9d8f",
+        "source": "--rx-stamp dark"
+      },
+      "app-accent": {
+        "role": "primary",
+        "layer": "operate",
+        "displayName": "App Accent Blue",
+        "canonical": "#397cf6",
+        "darkValue": "#72a7ff",
+        "source": "--accent (index.css)"
+      },
+      "app-accent-fill": {
+        "role": "primary",
+        "layer": "operate",
+        "displayName": "App Accent Fill",
+        "canonical": "#2466e0",
+        "darkValue": "#72a7ff",
+        "source": "--accent-fill (index.css)"
+      },
+      "app-on-accent": {
+        "role": "neutral",
+        "layer": "operate",
+        "displayName": "On Accent",
+        "canonical": "#ffffff",
+        "darkValue": "#0b1730",
+        "source": "--on-accent"
+      },
+      "app-bg": {
+        "role": "neutral",
+        "layer": "operate",
+        "displayName": "App Background",
+        "canonical": "#f6f8fb",
+        "darkValue": "#0f172a",
+        "source": "--bg"
+      },
+      "app-panel": {
+        "role": "neutral",
+        "layer": "operate",
+        "displayName": "App Panel",
+        "canonical": "#ffffff",
+        "darkValue": "#182235",
+        "source": "--panel-bg"
+      },
+      "app-border": {
+        "role": "neutral",
+        "layer": "operate",
+        "displayName": "App Border",
+        "canonical": "#e1e6ee",
+        "darkValue": "#334155",
+        "source": "--border"
+      },
+      "app-text": {
+        "role": "neutral",
+        "layer": "operate",
+        "displayName": "App Text",
+        "canonical": "#151d32",
+        "darkValue": "#e5edf8",
+        "source": "--text"
+      },
+      "app-text-muted": {
+        "role": "neutral",
+        "layer": "operate",
+        "displayName": "App Muted Text",
+        "canonical": "#5f6e88",
+        "darkValue": "#9aa9bd",
+        "source": "--text-muted"
+      },
+      "app-good": {
+        "role": "status",
+        "layer": "operate",
+        "displayName": "Good",
+        "canonical": "#16a34a",
+        "darkValue": "#4ade80",
+        "source": "--good"
+      },
+      "app-warn": {
+        "role": "status",
+        "layer": "operate",
+        "displayName": "Warn",
+        "canonical": "#f97316",
+        "darkValue": "#fb923c",
+        "source": "--warn"
+      },
+      "app-danger": {
+        "role": "status",
+        "layer": "operate",
+        "displayName": "Danger",
+        "canonical": "#dc2626",
+        "darkValue": "#f87171",
+        "source": "--danger"
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display (Anuphan 700)",
+        "purpose": "The one headline on the envelope sheet."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Section headings sitting on a 2px ink rule."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Sub-headings within one side of the envelope."
+      },
+      "lead": {
+        "displayName": "Lead (Sarabun)",
+        "purpose": "Single lead line under the display, max 34em."
+      },
+      "body": {
+        "displayName": "Form Text (Sarabun)",
+        "purpose": "Running text on the label."
+      },
+      "label": {
+        "displayName": "Printed Label (Anuphan 600)",
+        "purpose": "Field labels, nav, legend, table heads."
+      },
+      "hand": {
+        "displayName": "Hand (Sriracha, ballpoint blue)",
+        "purpose": "Values written into fields, doses, log results, step blanks."
+      },
+      "app-body": {
+        "displayName": "App Body (Operate)",
+        "purpose": "Body text on app screens."
+      },
+      "app-heading": {
+        "displayName": "App Heading (Operate)",
+        "purpose": "Headings on app screens."
+      }
+    },
+    "shadows": [
+      {
+        "name": "app-panel-ambient",
+        "layer": "operate",
+        "value": "0 2px 4px rgba(22, 34, 57, 0.045)",
+        "purpose": "Operate-layer panels (.panel, 14px radius). Not used on the envelope."
+      },
+      {
+        "name": "stamp-hover-in-motion",
+        "value": "0 14px 22px -10px color-mix(in srgb, var(--rx-ink) 45%, transparent)",
+        "purpose": "Only at the start of the stamp-press keyframe while the stamp hovers above the paper; removed by 55%. No resting shadows exist on the envelope."
+      }
+    ],
+    "motion": [
+      {
+        "name": "stamp-press",
+        "value": "0.5s cubic-bezier(0.16, 1, 0.3, 1) 1.1s backwards",
+        "purpose": "Stamp lifts at -6deg/1.1x, presses to 0.97 with a darker ink wash, settles at -3deg. Runs once after the ticks finish."
+      },
+      {
+        "name": "tick-draw",
+        "value": "0.38s cubic-bezier(0.65, 0, 0.35, 1), delay 0.3s + order * 0.14s",
+        "purpose": "Stroke-dashoffset draw of hand marks in the dosage table."
+      },
+      {
+        "name": "stamp-hover",
+        "value": "transform 0.16s cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Stamp straightens and sinks on hover/press."
+      },
+      {
+        "name": "fill-swap",
+        "value": "0.15s ease",
+        "purpose": "Outline buttons fill on hover; nav underline fades in."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "prefers-reduced-motion: reduce",
+        "purpose": "Disables stamp-press, tick-draw and all hover transitions on the envelope."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "hero-stack",
+        "value": "1024px"
+      },
+      {
+        "name": "mobile",
+        "value": "760px"
+      },
+      {
+        "name": "dosage-blocks",
+        "value": "520px"
+      },
+      {
+        "name": "narrow",
+        "value": "400px"
+      }
+    ],
+    "theme": {
+      "attribute": "html[data-theme='light'|'dark']",
+      "storageKey": "camwell:theme",
+      "behaviour": "Follows prefers-color-scheme until toggled; choice persisted in localStorage and synced across tabs; set before first paint by an inline script in index.html."
+    },
+    "texture": {
+      "name": "paper-fibre",
+      "value": "SVG feTurbulence fractalNoise, baseFrequency .85, 2 octaves, 180px tile; alpha .025 light / .05 dark",
+      "purpose": "Layered under the paper colour on the envelope ground."
+    }
+  },
+  "components": [
+    {
+      "name": "Rubber Stamp (primary)",
+      "kind": "button",
+      "refersTo": "stamp-button",
+      "description": "The one primary action per envelope screen: a red double-bordered stamp set at -3deg.",
+      "html": "<a class=\"ds-stamp\" href=\"#\"><span class=\"ds-stamp-face\">เข้าสู่ระบบ <svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12h14M13 6l6 6-6 6\"/></svg></span></a>",
+      "css": ".ds-stamp { display: inline-block; padding: 5px; border: 3px solid #c62b28; border-radius: 8px; background: color-mix(in srgb, #c62b28 5%, transparent); color: #c62b28; text-decoration: none; transform: rotate(-3deg); transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.16s ease; } .ds-stamp-face { display: flex; align-items: center; gap: 12px; padding: 12px 26px 14px; border: 1.5px solid #c62b28; border-radius: 4px; font: 700 28px/1.2 'Anuphan', 'IBM Plex Sans Thai', system-ui, sans-serif; letter-spacing: 0.02em; white-space: nowrap; } .ds-stamp-face svg { margin-top: 4px; transition: transform 0.16s ease; } .ds-stamp:hover { background: color-mix(in srgb, #c62b28 11%, transparent); transform: rotate(-1.5deg) translateY(1px); } .ds-stamp:hover svg { transform: translateX(3px); } .ds-stamp:active { transform: rotate(-1.5deg) translateY(2px) scale(0.98); } .ds-stamp:focus-visible { outline: 3px solid #1f3fbf; outline-offset: 3px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Square ink-outlined action that fills solid ink on hover.",
+      "html": "<a class=\"ds-btn-secondary\" href=\"#\">ตั้งค่ากล้อง</a>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; min-height: 52px; padding: 0 22px; border: 2px solid #0b6b47; border-radius: 0; color: #0b6b47; font: 600 19px/1 'Anuphan', 'IBM Plex Sans Thai', system-ui, sans-serif; text-decoration: none; transition: background-color 0.15s ease, color 0.15s ease; } .ds-btn-secondary:hover { background: #0b6b47; color: #f8faf7; } .ds-btn-secondary:focus-visible { outline: 3px solid #1f3fbf; outline-offset: 3px; }"
+    },
+    {
+      "name": "Header Band",
+      "kind": "nav",
+      "refersTo": "header-band",
+      "description": "Full-width solid-ink envelope flap with shop name, text links, theme toggle and an outlined login.",
+      "html": "<header class=\"ds-band\"><a class=\"ds-band-shop\" href=\"#\">CAMWELL <span>ฉลากดูแลสุขภาพในที่ทำงาน</span></a><nav class=\"ds-band-nav\"><a class=\"ds-band-link\" href=\"#\">วิธีใช้</a><a class=\"ds-band-login\" href=\"#\">เข้าสู่ระบบ</a></nav></header>",
+      "css": ".ds-band { display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 76px; padding: 0 32px; background: #0b6b47; color: #f8faf7; } .ds-band-shop { display: flex; align-items: baseline; gap: 16px; color: inherit; text-decoration: none; font: 700 30px/1 'Anuphan', system-ui, sans-serif; letter-spacing: 0.04em; } .ds-band-shop span { font: 600 15px/1.2 'Anuphan', system-ui, sans-serif; letter-spacing: 0; } .ds-band-nav { display: flex; align-items: center; gap: 28px; } .ds-band-link { padding: 14px 0; color: inherit; font: 600 16px/1 'Anuphan', system-ui, sans-serif; text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 6px; text-decoration-thickness: 2px; transition: text-decoration-color 0.15s ease; } .ds-band-link:hover { text-decoration-color: currentColor; } .ds-band-login { display: inline-flex; align-items: center; min-height: 40px; padding: 0 18px; border: 2px solid #f8faf7; color: inherit; font: 700 16px/1 'Anuphan', system-ui, sans-serif; text-decoration: none; transition: background-color 0.15s ease, color 0.15s ease; } .ds-band-login:hover { background: #f8faf7; color: #0b6b47; } .ds-band a:focus-visible { outline: 3px solid #f8faf7; outline-offset: 3px; }"
+    },
+    {
+      "name": "Tick Box (four states)",
+      "kind": "custom",
+      "refersTo": "tick-box",
+      "description": "Printed 26px square with a stroke-drawn hand mark: empty, tick (blue), ring (red), strike (blue).",
+      "html": "<span class=\"ds-tick\" role=\"img\" aria-label=\"ไม่เตือน\"></span> <span class=\"ds-tick is-tick\" role=\"img\" aria-label=\"เรียบร้อย\"><svg viewBox=\"0 0 24 24\"><path d=\"M3.6 13.2c1.9 1.4 3.6 3.4 5.1 6.1C11.4 12.6 15.6 6.9 21.4 2.2\"/></svg></span> <span class=\"ds-tick is-ring\" role=\"img\" aria-label=\"เตือน\"><svg viewBox=\"0 0 40 40\"><path d=\"M22.5 4.2c8.6.6 14.2 6.4 13.4 14.6-.8 8.6-8.4 15.4-17.2 14.8C10 33 4.6 27 5.4 19.2 6.2 10.8 12.6 4.4 21 3.9c1.6 0 3 .3 4.4.8\"/></svg></span> <span class=\"ds-tick is-strike\" role=\"img\" aria-label=\"คลี่คลายแล้ว\"><svg viewBox=\"0 0 24 24\"><path d=\"M2.5 13.4c5.6-1.2 12.4-2.2 19-2.6\"/></svg></span>",
+      "css": ".ds-tick { position: relative; display: inline-block; width: 26px; height: 26px; margin: 0 14px; border: 2px solid #0b6b47; vertical-align: middle; } .ds-tick svg { position: absolute; overflow: visible; fill: none; stroke-linecap: round; stroke-linejoin: round; } .ds-tick.is-tick svg { top: -11px; left: -1px; width: 32px; height: 32px; stroke: #1f3fbf; stroke-width: 3.2; } .ds-tick.is-ring svg { top: -13px; left: -13px; width: 48px; height: 48px; stroke: #c62b28; stroke-width: 2.6; } .ds-tick.is-strike svg { top: 0; left: -8px; width: 38px; height: 22px; stroke: #1f3fbf; stroke-width: 3; }"
+    },
+    {
+      "name": "Form Field (printed label + hand value)",
+      "kind": "input",
+      "refersTo": "label",
+      "description": "Printed Anuphan label and a Sriracha ballpoint value on a 1.5px ink baseline.",
+      "html": "<p class=\"ds-field\"><span>ถึง</span><span class=\"ds-hand\">คนนั่งโต๊ะ และหัวหน้าทีม</span></p>",
+      "css": ".ds-field { display: flex; align-items: baseline; gap: 14px; margin: 0; padding-bottom: 4px; border-bottom: 1.5px solid #0b6b47; color: #0b6b47; font: 600 17px/1.2 'Anuphan', system-ui, sans-serif; } .ds-hand { color: #1f3fbf; font: 400 26px/1.25 'Sriracha', 'Sarabun', cursive; }"
+    },
+    {
+      "name": "Privacy Promise",
+      "kind": "card",
+      "refersTo": "privacy-promise",
+      "description": "Solid-ink panel carrying the binding privacy promise; never red, never labelled as a warning.",
+      "html": "<aside class=\"ds-promise\"><svg width=\"26\" height=\"26\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"5\" y=\"10.5\" width=\"14\" height=\"9.5\" rx=\"1.5\"/><path d=\"M8 10.5V8a4 4 0 0 1 8 0v2.5M12 14.5v2\"/></svg><p><strong>ความเป็นส่วนตัว:</strong> ประมวลผลบนเครื่องของคุณ — ไม่ส่งภาพวิดีโอขึ้นคลาวด์</p></aside>",
+      "css": ".ds-promise { display: flex; align-items: flex-start; gap: 14px; padding: 18px 20px 20px; background: #0b6b47; color: #f8faf7; } .ds-promise svg { margin-top: 3px; flex: none; } .ds-promise p { margin: 0; font: 700 22px/1.45 'Anuphan', system-ui, sans-serif; }"
+    },
+    {
+      "name": "Dosage Table",
+      "kind": "custom",
+      "refersTo": "pharmacy-green-ink",
+      "description": "Instruction table: ink frame, solid-ink caption bar, mark / name / hand-written dose.",
+      "html": "<table class=\"ds-dosage\"><caption>วิธีใช้ · กล้องดูให้</caption><tbody><tr><th scope=\"row\"><span class=\"ds-dosage-name\">ท่านั่ง</span><span class=\"ds-dosage-what\">คอยื่น หลังค่อม ไหล่เอียง</span></th><td class=\"ds-dosage-dose\">ค้าง 8 วินาที</td></tr><tr><th scope=\"row\"><span class=\"ds-dosage-name\">การล้ม</span><span class=\"ds-dosage-what\">ล้มหรือหลุดเฟรมกะทันหัน</span></th><td class=\"ds-dosage-dose is-alert\">ทันที</td></tr></tbody></table>",
+      "css": ".ds-dosage { width: 100%; border: 2px solid #0b6b47; border-collapse: collapse; color: #0b6b47; } .ds-dosage caption { padding: 12px 18px; background: #0b6b47; color: #f8faf7; font: 700 20px/1.3 'Anuphan', system-ui, sans-serif; text-align: left; } .ds-dosage tr { border-top: 1.5px solid #0b6b47; } .ds-dosage th, .ds-dosage td { padding: 14px 18px; text-align: left; vertical-align: middle; } .ds-dosage-name { display: block; font: 700 20px/1.3 'Anuphan', system-ui, sans-serif; } .ds-dosage-what { display: block; font: 400 15px/1.45 'Sarabun', system-ui, sans-serif; } .ds-dosage-dose { color: #1f3fbf; font: 400 20px/1.2 'Sriracha', cursive; text-align: right; white-space: nowrap; } .ds-dosage-dose.is-alert { color: #c62b28; }"
+    },
+    {
+      "name": "App Primary Button (Operate layer)",
+      "kind": "button",
+      "refersTo": "app-button-primary",
+      "description": "Incumbent app-screen primary action on the blue accent fill; not part of the envelope world.",
+      "html": "<button class=\"ds-app-btn\" type=\"button\">บันทึก</button>",
+      "css": ".ds-app-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 0 16px; border: 1px solid #397cf6; border-radius: 9px; background: #397cf6; color: #ffffff; font: 650 15px/1.5 'IBM Plex Sans Thai Looped', system-ui, sans-serif; white-space: nowrap; cursor: pointer; } .ds-app-btn:hover { background: #2466df; } .ds-app-btn:disabled { opacity: 0.55; cursor: not-allowed; } .ds-app-btn:focus-visible { outline: 3px solid #2466e0; outline-offset: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Office Medicine Envelope (ซองยาประจำออฟฟิศ)",
+    "overview": "Camwell's brand surface is one printed pharmacy envelope: a single sheet of paper, printed in one pharmacy-green ink, with a handful of marks someone made on it by hand. Every rule, box, band and letter is the same ink. The only other colours on the sheet are a ballpoint-blue pen (handwriting, tick strokes) and a red rubber stamp (the primary action, alerts that lasted). The envelope reads as care you take every day, not surveillance; information is laid out as instructions, a dosage table and a log, never as feature cards.\n\nThe system has two layers today, and they are not unified in code. The Persuade layer is the envelope world, shipped on the landing page (`/`) only; its tokens are the `--rx-*` custom properties scoped to `.rx`. The Operate layer is the incumbent app system in `frontend/src/index.css` (dashboard, camera, people, alerts, reports, gait, Dev Console, YOLO Console): a calm blue-accent panel UI on IBM Plex Sans Thai, with its own light and dark tokens on `:root`. New Persuade/brand surfaces take the envelope; new app screens keep the Operate tokens until a deliberate migration says otherwise.\n\nBoth layers share one theme mechanism: `<html data-theme=\"light|dark\">`, set before first paint by an inline script in `index.html`, following the OS until the user toggles, then persisted in `localStorage` under `camwell:theme` (`useTheme.ts`). In the envelope, dark is a reverse print: the green ink becomes the ground and paper colour becomes the type.",
+    "keyCharacteristics": [
+      "One ink, one sheet: pharmacy green on near-white paper, with a faint paper-fibre noise texture.",
+      "Hand marks in ballpoint blue: Sriracha handwriting and stroke-drawn SVG ticks, never icon-font glyphs.",
+      "One red rubber stamp per screen as the primary action; red also marks alerts that lasted. Red never carries good news.",
+      "Square printed rules and boxes; the stamp is the only rounded, rotated object.",
+      "Thai-first typesetting: phrase-level non-breaking spans so Thai phrases never split mid-word.",
+      "Dark theme is reverse print, not a dimmed palette."
+    ],
+    "rules": [
+      {
+        "name": "The One Ink Rule",
+        "body": "Everything printed on the envelope is the single ink token. A second printed colour, a tint ramp of the green, or a grey text tone breaks the envelope.",
+        "section": "colors"
+      },
+      {
+        "name": "The Two Hands Rule",
+        "body": "Blue is what a person wrote; red is what was stamped or must be heeded. Neither appears as decoration, and neither is used for printed structure.",
+        "section": "colors"
+      },
+      {
+        "name": "The Reverse Print Rule",
+        "body": "Dark theme swaps paper and ink (band becomes paper, its type becomes ground) and lifts the pen and stamp to their light reverse values. It never introduces new hues.",
+        "section": "colors"
+      },
+      {
+        "name": "The Phrase Break Rule",
+        "body": "Thai copy breaks only between phrases: each space-separated phrase is wrapped as a non-breaking span, and headings use `text-wrap: balance`, paragraphs `pretty`.",
+        "section": "typography"
+      },
+      {
+        "name": "The Written-In Rule",
+        "body": "Sriracha is reserved for values a person would fill in on the label. Printed labels, headings and instructions never use it.",
+        "section": "typography"
+      },
+      {
+        "name": "The Printed Depth Rule",
+        "body": "Hierarchy is carried by rule weight and ink fill, not elevation. No surface on the sheet carries a box-shadow at rest.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** print every rule, box and letter of an envelope surface in the single ink token, and switch it through the reverse-print dark tokens rather than per-component overrides.",
+      "**Do** keep blue for hand marks and focus, and red for the stamp and alerts that lasted. Never use red or a warning label for good news such as the privacy promise.",
+      "**Do** use the four-state tick grammar (empty / tick / ring / strike) with the same meanings wherever status is shown.",
+      "**Do** wrap Thai phrases in non-breaking spans so lines break between phrases.",
+      "**Do** show real default thresholds from code on the label, and say they are defaults.",
+      "**Do** honour `prefers-reduced-motion`: the stamp press and tick drawing are disabled, and hover transitions are removed."
+    ],
+    "donts": [
+      "**Don't** add a second printed colour, green tints, or grey text to the envelope.",
+      "**Don't** put a resting box-shadow on anything on the sheet; only the stamp's entrance shadow exists, and only in motion.",
+      "**Don't** round or rotate anything on the envelope except the stamp.",
+      "**Don't** use more than one stamp per screen.",
+      "**Don't** use icon-font or emoji glyphs for status; marks are drawn SVG strokes.",
+      "**Don't** apply the envelope tokens to app (Operate) screens, or the app's blue accent to envelope screens, until a migration decides it."
+    ]
+  }
+}

@@ -1,145 +1,297 @@
-import { useEffect, useMemo, useState } from 'react'
-import OfficeRoom from '../dashboard/OfficeRoom'
-import type { PersonSummary } from '../types/person'
-import '../App.css'
-import '../dashboard/dashboard.css'
+import { Fragment, type CSSProperties, type ReactNode } from 'react'
+import { useTheme } from '../hooks/useTheme'
 import './LandingPage.css'
 
-// หน้า index (/) — หน้าต้อนรับก่อนเข้าระบบจริง ไม่โหลดกล้องหรือโมเดล AI
-// ปุ่มเข้าสู่ระบบพาไปที่ /?dashboard (ภาพรวมห้องทำงาน)
+// หน้า index (/) — ออกแบบเป็น "ซองยา/ฉลากยา" ของร้านขายยาไทยแผ่นเดียวทั้งหน้า: พิมพ์หมึกเขียวสีเดียว
+// รอยมือ (ติ๊ก วงกลม ขีดฆ่า) เป็นปากกาลูกลื่นน้ำเงิน และตรายางแดงคือปุ่มเข้าสู่ระบบ
+// ตัวเลขบนฉลากคือค่าเริ่มต้นจริงในโค้ด (types/posture.ts, types/wellbeing.ts, types/fall.ts) — แก้ค่าเริ่มต้นที่นั่นแล้วต้องแก้ที่นี่ด้วย
+// หน้านี้ไม่โหลดกล้องหรือโมเดล AI
 
-type Theme = 'light' | 'dark'
-const THEME_STORAGE_KEY = 'camwell:theme'
 const DASHBOARD_HREF = '?dashboard'
+const CAMERA_HREF = '?camera'
 
-const FEATURES: { icon: string; title: string; body: string }[] = [
-  { icon: '🪑', title: 'ท่านั่ง', body: 'ตรวจคอยื่น หลังค่อม ไหล่เอียง จากโครงร่างร่างกายแบบเรียลไทม์' },
-  { icon: '⏱', title: 'เวลาพัก', body: 'นับเวลานั่งต่อเนื่องแยกตามกล้อง และเตือนเมื่อถึงเวลาลุกพัก' },
-  { icon: '📏', title: 'ระยะจอ', body: 'ประเมินระยะห่างจากหน้าจอ เตือนเมื่อนั่งใกล้เกินไป' },
-  { icon: '😴', title: 'ความล้า', body: 'จับสัญญาณง่วง เช่น หาวหรือหลับตานาน' },
-  { icon: '🚨', title: 'การล้ม', body: 'แจ้งเตือนทันทีเมื่อตรวจพบการล้มหรือหายออกจากเฟรมผิดปกติ' },
-  { icon: '📊', title: 'รายงานประจำวัน', body: 'สรุปการแจ้งเตือนและการเข้างานของแต่ละคนในแต่ละวัน' },
-]
+/** สถานะของช่องติ๊กบนฉลาก ใช้ความหมายเดียวกันทั้งหน้า */
+type MarkState = 'empty' | 'tick' | 'ring' | 'strike'
 
-const STEPS = [
-  { title: 'ติดตั้งกล้อง', body: 'เลือกเว็บแคมหรือกล้อง CCTV และมุมกล้องที่แนะนำ' },
-  { title: 'ลงทะเบียนบุคคล', body: 'บันทึกใบหน้าเพื่อแยกแจ้งเตือนเป็นรายคน (เลือกเปิดได้)' },
-  { title: 'ดูภาพรวม', body: 'ติดตามทุกคนในห้องบนแดชบอร์ดและประวัติแจ้งเตือน' },
-]
-
-// คนจำลองในภาพตัวอย่าง (ห้อง pixel art แบบหน้า Dashboard) — วนให้มีคนเข้า/ออกห้องเพื่อให้ภาพดูมีชีวิต
-const DEMO_PEOPLE: PersonSummary[] = [
-  { trackId: 'landing-1', label: 'สมชาย', employeeId: 'landing-1', postureStatus: 'ท่าทางปกติ', postureAlertActive: false, fatigueActive: false, distanceActive: false, yawnCount: 0 },
-  { trackId: 'landing-2', label: 'สุดา', employeeId: 'landing-2', postureStatus: 'ก้มคอ/ยื่นคอไปข้างหน้า', postureAlertActive: true, fatigueActive: false, distanceActive: false, yawnCount: 0 },
-  { trackId: 'landing-3', label: 'อนันต์', employeeId: 'landing-3', postureStatus: 'ท่าทางปกติ', postureAlertActive: false, fatigueActive: true, distanceActive: false, yawnCount: 2 },
-  { trackId: 'landing-4', label: 'วิภา', employeeId: 'landing-4', postureStatus: 'ท่าทางปกติ', postureAlertActive: false, fatigueActive: false, distanceActive: false, yawnCount: 0 },
-]
-const DEMO_ALERT_COUNTS = new Map([['landing-1', 0], ['landing-2', 3], ['landing-3', 7], ['landing-4', 1]])
-// แต่ละเฟรมคือ index ของคนที่อยู่ในห้อง
-const DEMO_FRAMES = [[0, 1, 2], [0, 1, 2, 3], [0, 2, 3], [0, 1, 3], [1, 2, 3]]
-const DEMO_TICK_MS = 3000
-
-function useDemoRoom() {
-  const [frame, setFrame] = useState(0)
-  useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    const timer = window.setInterval(() => setFrame((f) => (f + 1) % DEMO_FRAMES.length), DEMO_TICK_MS)
-    return () => window.clearInterval(timer)
-  }, [])
-  // memo ด้วย frame เพื่อให้ OfficeRoom เห็น array ใหม่เฉพาะตอนเปลี่ยนเฟรม
-  return useMemo(() => DEMO_FRAMES[frame].map((i) => DEMO_PEOPLE[i]), [frame])
+const MARK_LABELS: Record<MarkState, string> = {
+  empty: 'ไม่เตือน',
+  tick: 'เรียบร้อย',
+  ring: 'เตือน',
+  strike: 'คลี่คลายแล้ว',
 }
 
+/** ช่องสี่เหลี่ยมพิมพ์ + รอยปากกาวาดเป็นเส้น (ไม่ใช่ไอคอนสำเร็จรูป) — order ใช้ไล่จังหวะตอนวาดเข้า */
+function Mark({ state, order, label }: { state: MarkState; order?: number; label?: string }) {
+  const style = order === undefined ? undefined : ({ '--rx-order': order } as CSSProperties)
+  // label="" = เครื่องหมายประกอบ (ข้อความข้าง ๆ บอกความหมายแล้ว) ให้โปรแกรมอ่านหน้าจอข้ามไป
+  const a11y = label === '' ? { 'aria-hidden': true as const } : { role: 'img', 'aria-label': label ?? MARK_LABELS[state] }
+  return (
+    <span className={`rx-box is-${state}${order === undefined ? '' : ' is-drawn'}`} style={style} {...a11y}>
+      {state === 'tick' && (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path pathLength={1} d="M3.6 13.2c1.9 1.4 3.6 3.4 5.1 6.1C11.4 12.6 15.6 6.9 21.4 2.2" />
+        </svg>
+      )}
+      {state === 'ring' && (
+        <svg viewBox="0 0 40 40" aria-hidden="true">
+          <path pathLength={1} d="M22.5 4.2c8.6.6 14.2 6.4 13.4 14.6-.8 8.6-8.4 15.4-17.2 14.8C10 33 4.6 27 5.4 19.2 6.2 10.8 12.6 4.4 21 3.9c1.6 0 3 .3 4.4.8" />
+        </svg>
+      )}
+      {state === 'strike' && (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path pathLength={1} d="M2.5 13.4c5.6-1.2 12.4-2.2 19-2.6" />
+        </svg>
+      )}
+    </span>
+  )
+}
+
+/**
+ * ตัดบรรทัดเฉพาะที่ช่องว่างระหว่างวลี (แบบการจัดหน้าภาษาไทย) — เบราว์เซอร์ตัดคำไทยด้วยพจนานุกรม
+ * ทำให้วลีอย่าง "ไหล่เอียง" หรือ "ปิดได้" ขาดกลางบรรทัด
+ */
+function Phrases({ text }: { text: string }) {
+  return text.split(' ').map((phrase, i) => (
+    <Fragment key={i}>
+      {i > 0 && ' '}
+      <span className="rx-ph">{phrase}</span>
+    </Fragment>
+  ))
+}
+
+/** ไอคอนลายเส้นในแถบหัวซอง (สลับธีม) และลูกศรในลิงก์ */
+function Glyph({ children, size = 20 }: { children: ReactNode; size?: number }) {
+  return (
+    <svg className="rx-glyph" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {children}
+    </svg>
+  )
+}
+
+function Arrow({ size = 18 }: { size?: number }) {
+  return <Glyph size={size}><path d="M5 12h14M13 6l6 6-6 6" /></Glyph>
+}
+
+// "วิธีใช้": สิ่งที่กล้องดู และนานแค่ไหนถึงเตือน (ค่าเริ่มต้น)
+const DOSAGE: { mark: MarkState; name: string; what: string; dose: string }[] = [
+  { mark: 'tick', name: 'ท่านั่ง', what: 'คอยื่น หลังค่อม ไหล่เอียง', dose: 'ค้าง 8 วินาที' },
+  { mark: 'tick', name: 'ระยะจอ', what: 'นั่งใกล้จอเกินไป', dose: 'ค้าง 5 วินาที' },
+  { mark: 'tick', name: 'เวลาพัก', what: 'นั่งต่อเนื่องไม่ลุก', dose: 'ครบ 45 นาที' },
+  { mark: 'tick', name: 'ความล้า', what: 'หลับตานาน หาวถี่', dose: 'หลับตา 2 วินาที' },
+  { mark: 'ring', name: 'การล้ม', what: 'ล้มหรือหลุดเฟรมกะทันหัน', dose: 'ทันที' },
+]
+
+// สองด้านของซอง: ด้านคนนั่งโต๊ะ และด้านหัวหน้าทีม/HR
+const SIDES: { id: string; to: string; title: string; items: string[] }[] = [
+  {
+    id: 'side-desk',
+    to: 'คนนั่งโต๊ะ',
+    title: 'เตือนคุณ ไม่ได้ฟ้องใคร',
+    items: [
+      'เตือนบนจอที่โต๊ะคุณเอง มีเสียงประกอบที่ปิดได้',
+      'ขยับนิดเดียวไม่เตือน ต้องค้างนาน พอจะเป็นปัญหาก่อน',
+      'ลุกจากโต๊ะ 3 นาที นับว่าพักแล้ว ตัวนับเริ่มใหม่',
+      'ฟีเจอร์ใบหน้าเลือกปิดได้ ลงทะเบียนต้องให้ความยินยอม และขอลบได้ทุกเมื่อ',
+    ],
+  },
+  {
+    id: 'side-lead',
+    to: 'หัวหน้าทีม / HR',
+    title: 'เห็นทั้งห้อง เฉพาะเรื่องที่ควรรู้',
+    items: [
+      'ภาพรวมทุกห้องในหน้าเดียว ว่าใครอยู่ และใครมีอาการค้าง',
+      'การล้มขึ้นทันที เรื่องอื่นขึ้นเมื่อเป็นนานจริง แจ้งเตือนจึงไม่ท่วม',
+      'รายงานประจำวันรายคน พร้อมระดับความเสี่ยง ออฟฟิศซินโดรม',
+      'ย้อนดูประวัติแจ้งเตือน และดาวน์โหลดรายงานเป็น CSV',
+    ],
+  },
+]
+
+// บันทึกตัวอย่าง (จำลอง) ของโต๊ะหนึ่งตัว — แสดงว่าระบบปล่อยผ่านอาการสั้น ๆ และเตือนเฉพาะที่ค้าง
+const LOG: { time: string; mark: MarkState; event: string; result: string }[] = [
+  { time: '09:42', mark: 'empty', event: 'ก้มคอดูมือถือ 3 วินาที', result: 'ไม่เตือน สั้นเกินไป' },
+  { time: '10:12', mark: 'ring', event: 'คอยื่นค้าง 8 วินาที', result: 'เตือนบนจอที่โต๊ะ' },
+  { time: '10:13', mark: 'strike', event: 'กลับมานั่งตรง', result: 'การเตือนคลี่คลาย' },
+  { time: '10:55', mark: 'ring', event: 'นั่งต่อเนื่องครบ 45 นาที', result: 'เตือนให้ลุกพัก' },
+  { time: '11:01', mark: 'tick', event: 'ลุกไปเดิน 3 นาที', result: 'นับว่าพักแล้ว' },
+]
+
+// "วิธีเริ่มใช้" เขียนแบบบรรทัดวิธีใช้บนฉลาก: ค่าที่แต่ละออฟฟิศกรอกเอง เขียนด้วยลายมือบนเส้นประ
+type StepPart = string | { hand: string }
+const STEPS: { title: string; parts: StepPart[]; href?: string; link?: string }[] = [
+  { title: 'ตั้งกล้อง', parts: ['ใช้', { hand: 'เว็บแคม / USB / IP' }, 'วางตามมุมที่แนะนำ'], href: CAMERA_HREF, link: 'ตั้งค่ากล้อง' },
+  { title: 'Calibrate ท่านั่ง', parts: ['นั่งตรง', { hand: '3' }, 'วินาที ครั้งเดียวต่อกล้อง'] },
+  { title: 'ลงทะเบียนบุคคล', parts: [{ hand: 'เลือกทำ' }, 'เพื่อแยกการเตือนรายคน ต้องได้รับความยินยอมก่อน'], href: '?people', link: 'รายชื่อบุคคล' },
+  { title: 'ดูภาพรวม', parts: ['แดชบอร์ด ประวัติแจ้งเตือน และรายงาน', { hand: 'รายวัน' }], href: DASHBOARD_HREF, link: 'ภาพรวม' },
+]
+
+const TODAY = new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date())
+
 export default function LandingPage() {
-  const demoPeople = useDemoRoom()
-  const [theme, setTheme] = useState<Theme>(() => (document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'))
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme
-  }, [theme])
-
-  const toggleTheme = () => {
-    const next = theme === 'dark' ? 'light' : 'dark'
-    localStorage.setItem(THEME_STORAGE_KEY, next)
-    setTheme(next)
-  }
+  const { theme, toggleTheme } = useTheme()
+  const themeLabel = `เปลี่ยนเป็นโหมด${theme === 'dark' ? 'สว่าง' : 'มืด'}`
 
   return (
-    <div className="landing">
-      <header className="landing-nav">
-        <a className="app-brand" href="./" aria-label="Camwell">
-          <span className="app-brand-mark" aria-hidden="true">C</span>
-          <span>CAMWELL</span>
-        </a>
-        <div className="landing-nav-actions">
-          <button className="landing-ghost" type="button" onClick={toggleTheme} aria-label={`เปลี่ยนเป็นโหมด${theme === 'dark' ? 'สว่าง' : 'มืด'}`}>
-            {theme === 'dark' ? '☀' : '☾'}
-          </button>
-          <a className="landing-btn landing-btn-sm" href={DASHBOARD_HREF}>เข้าสู่ระบบ</a>
+    <div className="rx">
+      <header className="rx-band">
+        <div className="rx-band-inner">
+          <a className="rx-shop" href="./">
+            <span className="rx-shop-name">CAMWELL</span>
+            <span className="rx-shop-tag">ฉลากดูแลสุขภาพในที่ทำงาน</span>
+          </a>
+          <nav className="rx-nav" aria-label="เมนูหน้าแรก">
+            <a className="rx-nav-link" href="#how">วิธีใช้</a>
+            <a className="rx-nav-link" href="#privacy">ความเป็นส่วนตัว</a>
+            <button className="rx-nav-icon" type="button" onClick={toggleTheme} aria-label={themeLabel} title={themeLabel}>
+              <Glyph>
+                {theme === 'dark' ? (
+                  <>
+                    <circle cx="12" cy="12" r="4" />
+                    <path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4" />
+                  </>
+                ) : (
+                  <path d="M20 14.2A8 8 0 1 1 9.8 4a6.4 6.4 0 0 0 10.2 10.2z" />
+                )}
+              </Glyph>
+            </button>
+            <a className="rx-nav-login" href={DASHBOARD_HREF}>เข้าสู่ระบบ</a>
+          </nav>
         </div>
       </header>
+      <div className="rx-perf" aria-hidden="true" />
 
-      <main>
-        <section className="landing-hero">
-          <div className="landing-hero-copy">
-            <p className="landing-eyebrow">ระบบดูแลสุขภาวะในที่ทำงานด้วยกล้อง</p>
-            <h1>นั่งทำงานอย่างสุขภาพดี<br />ด้วยกล้องที่คอยดูแลคุณ</h1>
-            <p className="landing-lead">
-              Camwell วิเคราะห์ท่านั่ง ระยะจอ ความล้า และการล้มจากกล้องในห้องทำงาน
-              แล้วแจ้งเตือนอย่างนุ่มนวลก่อนที่อาการปวดเมื่อยจะสะสม
-            </p>
-            <div className="landing-cta">
-              <a className="landing-btn" href={DASHBOARD_HREF}>เข้าสู่ระบบ →</a>
-              <a className="landing-btn landing-btn-outline" href="?camera">ตั้งค่ากล้อง</a>
+      <main className="rx-sheet">
+        <section className="rx-hero" aria-labelledby="rx-title">
+          <div className="rx-hero-main">
+            <div className="rx-fields">
+              <p className="rx-field"><span>ถึง</span><span className="rx-hand">คนนั่งโต๊ะ และหัวหน้าทีม</span></p>
+              <p className="rx-field rx-field-date"><span>วันที่</span><span className="rx-hand">{TODAY}</span></p>
             </div>
-            <p className="landing-note">ประมวลผลบนเครื่องของคุณ — ไม่ส่งภาพวิดีโอขึ้นคลาวด์</p>
+            <h1 id="rx-title">กล้องที่ดูแล<br />ไม่ได้จับผิด</h1>
+            <p className="rx-lead">
+              <Phrases text="Camwell เตือนเมื่อท่านั่งผิดค้าง นานพอจะเป็นปัญหา แจ้งทันทีเมื่อมีคนล้ม และประมวลผลทุกอย่าง บนเครื่องในออฟฟิศ" />
+            </p>
+            <div className="rx-actions">
+              <a className="rx-stamp" href={DASHBOARD_HREF}>
+                <span className="rx-stamp-face">เข้าสู่ระบบ <Arrow size={24} /></span>
+              </a>
+              <a className="rx-secondary" href={CAMERA_HREF}>ตั้งค่ากล้อง</a>
+            </div>
           </div>
 
-          <div className="landing-preview">
-            <OfficeRoom
-              title="ห้องทำงาน (ตัวอย่าง)"
-              people={demoPeople}
-              alertCounts={DEMO_ALERT_COUNTS}
-              onOpenCamera={() => { window.location.href = DASHBOARD_HREF }}
-            />
+          <div className="rx-hero-side">
+            <table className="rx-dosage">
+              <caption>วิธีใช้ · กล้องดูให้</caption>
+              <thead className="rx-visually-hidden">
+                <tr><th scope="col">สถานะ</th><th scope="col">เรื่อง</th><th scope="col">เตือนเมื่อ</th></tr>
+              </thead>
+              <tbody>
+                {DOSAGE.map((row, i) => (
+                  <tr key={row.name}>
+                    <td><Mark state={row.mark} order={i} label={row.mark === 'ring' ? 'แจ้งทันที' : 'ตรวจอยู่'} /></td>
+                    <th scope="row">
+                      <span className="rx-dosage-name">{row.name}</span>
+                      <span className="rx-dosage-what"><Phrases text={row.what} /></span>
+                    </th>
+                    <td className="rx-hand rx-dosage-dose">{row.dose}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="rx-fine">ตัวเลขบนฉลากคือค่าเริ่มต้น ปรับได้ในหน้าตั้งค่า</p>
+            {/* คำมั่นข้อสำคัญที่สุดของ Camwell — เป็นเรื่องดี จึงพิมพ์เป็นแผ่นหมึกทึบ ไม่ใช่กล่องคำเตือนสีแดง */}
+            <aside className="rx-promise" id="privacy" aria-label="ความเป็นส่วนตัว">
+              <Glyph size={26}>
+                <rect x="5" y="10.5" width="14" height="9.5" rx="1.5" />
+                <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5M12 14.5v2" />
+              </Glyph>
+              <p><strong>ความเป็นส่วนตัว:</strong> <Phrases text="ประมวลผลบนเครื่องของคุณ — ไม่ส่งภาพวิดีโอขึ้นคลาวด์" /></p>
+            </aside>
           </div>
         </section>
 
-        <section className="landing-section" aria-labelledby="features-title">
-          <h2 id="features-title">สิ่งที่ Camwell ตรวจจับ</h2>
-          <div className="landing-features">
-            {FEATURES.map((f) => (
-              <article key={f.title} className="landing-card">
-                <span className="landing-card-icon" aria-hidden="true">{f.icon}</span>
-                <h3>{f.title}</h3>
-                <p>{f.body}</p>
+        <section className="rx-section" id="how" aria-labelledby="how-title">
+          <h2 id="how-title" className="rx-heading">ฉลากเดียว อ่านได้สองด้าน</h2>
+          <div className="rx-sides">
+            {SIDES.map((side) => (
+              <article key={side.id} className="rx-side" aria-labelledby={side.id}>
+                <p className="rx-field"><span>ถึง</span><span className="rx-hand">{side.to}</span></p>
+                <h3 id={side.id}>{side.title}</h3>
+                <ul className="rx-checklist">
+                  {side.items.map((item) => (
+                    <li key={item}><Mark state="tick" label="" /><span><Phrases text={item} /></span></li>
+                  ))}
+                </ul>
               </article>
             ))}
           </div>
         </section>
 
-        <section className="landing-section" aria-labelledby="steps-title">
-          <h2 id="steps-title">เริ่มใช้งานใน 3 ขั้นตอน</h2>
-          <ol className="landing-steps">
-            {STEPS.map((s, i) => (
-              <li key={s.title}>
-                <span className="landing-step-num">{i + 1}</span>
-                <div>
-                  <h3>{s.title}</h3>
-                  <p>{s.body}</p>
-                </div>
+        <section className="rx-section" id="log" aria-labelledby="log-title">
+          <div className="rx-heading-row">
+            <h2 id="log-title" className="rx-heading">เตือนเฉพาะอาการที่ค้าง</h2>
+            <p className="rx-legend" aria-label="ความหมายของเครื่องหมาย">
+              {(['empty', 'ring', 'strike', 'tick'] as const).map((state) => (
+                <span key={state}><Mark state={state} label="" />{MARK_LABELS[state]}</span>
+              ))}
+            </p>
+          </div>
+          <table className="rx-log">
+            <caption>
+              บันทึกเช้าวันหนึ่งของโต๊ะ 3 <span className="rx-sample">ตัวอย่างจำลอง</span>
+            </caption>
+            <thead>
+              <tr><th scope="col">เวลา</th><th scope="col"><span className="rx-visually-hidden">สถานะ</span></th><th scope="col">สิ่งที่กล้องเห็น</th><th scope="col">Camwell ทำอะไร</th></tr>
+            </thead>
+            <tbody>
+              {LOG.map((row) => (
+                <tr key={row.time} className={`is-${row.mark}`}>
+                  <td className="rx-log-time">{row.time}</td>
+                  <td><Mark state={row.mark} /></td>
+                  <td className="rx-log-event"><Phrases text={row.event} /></td>
+                  <td className="rx-hand rx-log-result">{row.result}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+
+        <section className="rx-section" id="start" aria-labelledby="start-title">
+          <h2 id="start-title" className="rx-heading">เริ่มใช้ 4 ขั้น</h2>
+          <ol className="rx-steps">
+            {STEPS.map((step, i) => (
+              <li key={step.title}>
+                <span className="rx-step-num" aria-hidden="true">{i + 1}</span>
+                <p className="rx-step-line">
+                  <strong>{step.title}</strong>{' '}
+                  {step.parts.map((part, j) => (
+                    <Fragment key={j}>
+                      {j > 0 && ' '}
+                      {typeof part === 'string' ? <Phrases text={part} /> : <span className="rx-blank rx-hand">{part.hand}</span>}
+                    </Fragment>
+                  ))}
+                </p>
+                {step.href && <a className="rx-link" href={step.href}>{step.link} <Arrow /></a>}
               </li>
             ))}
           </ol>
         </section>
-
-        <section className="landing-final">
-          <h2>พร้อมเริ่มดูแลทีมของคุณแล้วหรือยัง</h2>
-          <a className="landing-btn" href={DASHBOARD_HREF}>เข้าสู่ระบบ →</a>
-        </section>
       </main>
 
-      <footer className="landing-footer">© {new Date().getFullYear()} Camwell</footer>
+      <footer className="rx-foot">
+        <div className="rx-foot-inner">
+          <div className="rx-foot-shop">
+            <span className="rx-shop-name">CAMWELL</span>
+            <span>ฉลากดูแลสุขภาพในที่ทำงาน</span>
+            <span>ประมวลผลในออฟฟิศ · ภาพวิดีโอไม่ออกจากออฟฟิศ</span>
+          </div>
+          <p className="rx-field rx-foot-sign"><span>ผู้ดูแล</span><span className="rx-hand">หัวหน้าทีม / HR</span></p>
+          <div className="rx-foot-end">
+            <a className="rx-secondary" href={DASHBOARD_HREF}>เข้าสู่ระบบ <Arrow /></a>
+            <span className="rx-foot-copy">© {new Date().getFullYear()} Camwell</span>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }

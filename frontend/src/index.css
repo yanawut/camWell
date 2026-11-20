@@ -3,8 +3,12 @@
   --panel-bg: #ffffff;
   --border: #e1e6ee;
   --text: #151d32;
-  --text-muted: #66758e;
+  --text-muted: #5f6e88;
   --accent: #397cf6;
+  /* พื้นของปุ่มหลักและตัวอักษรบนพื้นนั้น — เข้มกว่า --accent เพื่อให้ตัวอักษรอ่านชัด (4.5:1 ขึ้นไป) */
+  --accent-fill: #2466e0;
+  --on-accent: #ffffff;
+  --focus-ring: #2466e0;
   --good: #16a34a;
   --warn: #f97316;
   --danger: #dc2626;
@@ -23,6 +27,9 @@
   --text: #e5edf8;
   --text-muted: #9aa9bd;
   --accent: #72a7ff;
+  --accent-fill: #72a7ff;
+  --on-accent: #0b1730;
+  --focus-ring: #a8c8ff;
   --good: #4ade80;
   --warn: #fb923c;
   --danger: #f87171;
@@ -60,8 +67,12 @@ textarea {
 }
 
 :focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--accent) 55%, white);
+  outline: 3px solid var(--focus-ring);
   outline-offset: 2px;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 :root[data-theme='dark'] .app-nav,
@@ -119,6 +130,37 @@ textarea {
 :root[data-theme='dark'] .app-nav-links > a:not(.app-nav-console):hover,
 :root[data-theme='dark'] .app-nav-links > a.is-active {
   color: var(--accent);
+}
+
+:root[data-theme='dark'] .app-brand-mark {
+  color: var(--on-accent);
+}
+
+/* การ์ดห้อง pixel art (Dashboard และภาพตัวอย่างหน้าแรก) ในธีมมืด */
+:root[data-theme='dark'] .dash-room-card {
+  box-shadow: 6px 7px 0 rgba(0, 0, 0, 0.3);
+}
+
+:root[data-theme='dark'] .dash-room-header {
+  border-bottom-color: var(--border);
+}
+
+:root[data-theme='dark'] .dash-room-count.is-occupied {
+  color: var(--good);
+}
+
+:root[data-theme='dark'] .dash-room-count.is-warning,
+:root[data-theme='dark'] .dash-room-card.has-active-alert .dash-room-header {
+  color: var(--danger);
+}
+
+:root[data-theme='dark'] .dash-room-foot button {
+  border-color: var(--border);
+}
+
+/* ภาพห้องวาดด้วยสีสว่างคงที่ — หรี่ลงเล็กน้อยไม่ให้จ้าบนพื้นมืด */
+:root[data-theme='dark'] .dash-room svg {
+  filter: brightness(0.86) saturate(0.94);
 }
 
 :root[data-theme='dark'] .people-page .people-table-wrap td,

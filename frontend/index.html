@@ -4,10 +4,23 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <script>
+      // ตั้งธีมก่อนวาดหน้าแรก (กันหน้ากะพริบ): ใช้ค่าที่ผู้ใช้เลือกไว้ ถ้ายังไม่เคยเลือกให้ตามระบบ
+      // กติกาเดียวกับ src/hooks/useTheme.ts
+      ;(function () {
+        var saved = null
+        try {
+          saved = localStorage.getItem('camwell:theme')
+        } catch (e) {}
+        var dark = saved === 'dark' || (saved !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+      })()
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai+Looped:wght@100;200;300;400;500;600;700&family=IBM+Plex+Sans+Thai:wght@100;200;300;400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai+Looped:wght@100;200;300;400;500;600;700&family=IBM+Plex+Sans+Thai:wght@100;200;300;400;500;600;700&family=Anuphan:wght@600;700&family=Sarabun:wght@400;600&family=Sriracha&display=swap"
       rel="stylesheet"
     />
     <title>Camwell — ระบบตรวจจับท่านั่ง</title>

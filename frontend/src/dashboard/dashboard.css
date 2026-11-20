@@ -507,7 +507,7 @@
   border-radius: 8px;
   padding: 0 12px;
   background: #fff;
-  color: var(--accent);
+  color: var(--accent-fill);
   cursor: pointer;
   font: inherit;
   font-weight: 700;
@@ -719,11 +719,6 @@
 
   .dash-shell {
     padding: 22px 16px 28px;
-  }
-
-  .dash-room-header {
-    align-items: flex-start;
-    flex-direction: column;
   }
 
   .dash-fall-banner {
