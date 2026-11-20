@@ -2,6 +2,8 @@ export interface YoloPerson {
   id: number
   box: [number, number, number, number]
   conf: number
+  /** Not detected this frame: shown from memory while briefly hidden, so it has no keypoints. */
+  held?: boolean
   keypoints?: [number, number, number][]
 }
 

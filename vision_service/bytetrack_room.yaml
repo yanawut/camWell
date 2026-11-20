@@ -1,0 +1,10 @@
+# Ultralytics bytetrack.yaml with fuse_score off.
+# Fusing multiplies IoU by confidence, so a seated person partly hidden by a chair (conf 0.3-0.6,
+# box shape changing between frames) fails the match, loses the track and gets a new ID.
+tracker_type: bytetrack
+track_high_thresh: 0.25
+track_low_thresh: 0.1
+new_track_thresh: 0.25
+track_buffer: 30
+match_thresh: 0.8
+fuse_score: False
