@@ -3,7 +3,10 @@
 import type { Box, Heat, ObjectClass, PersonState, Snapshot } from './types'
 
 export const LAYERS = {
-  people: 'กรอบ + ID + ท่าทาง',
+  boxes: 'กรอบคน',
+  ids: 'ID',
+  states: 'ท่าทาง',
+  skeleton: 'โครงร่าง',
   objects: 'สิ่งของ',
   trails: 'เส้นทางเดิน',
   hud: 'แถบสรุปบนภาพ',
@@ -15,7 +18,10 @@ export const LAYERS = {
 export type LayerKey = keyof typeof LAYERS
 export type Layers = Record<LayerKey, boolean>
 export const DEFAULT_LAYERS: Layers = {
-  people: true,
+  boxes: true,
+  ids: true,
+  states: true,
+  skeleton: true,
   objects: true,
   trails: true,
   hud: true,
@@ -38,13 +44,25 @@ const TEAL = 'rgb(40,210,200)'
 const FONT = '"IBM Plex Sans Thai Looped", "Leelawadee UI", sans-serif'
 const PANEL_BG = '#0d121c'
 
+/** เส้นโครงร่างของ keypoint 17 จุดแบบ COCO (ลำดับเดียวกับ ultralytics) */
+const COCO_EDGES: readonly [number, number][] = [
+  [15, 13], [13, 11], [16, 14], [14, 12], [11, 12], [5, 11], [6, 12], [5, 6], [5, 7], [6, 8],
+  [7, 9], [8, 10], [1, 2], [0, 1], [0, 2], [1, 3], [2, 4], [3, 5], [4, 6],
+]
+/** จุดที่มั่นใจต่ำกว่านี้ไม่วาด — ค่าเดียวกับที่ backend ใช้ตัดสินท่านั่ง (classify_posture kc=0.35) */
+const KPT_MIN_CONF = 0.35
+
 type Ctx = CanvasRenderingContext2D
 
-function label(ctx: Ctx, box: Box, color: string, text: string, fontPx: number, lineWidth: number) {
-  const [x1, y1, x2, y2] = box
+function outline(ctx: Ctx, [x1, y1, x2, y2]: Box, color: string, lineWidth: number) {
   ctx.strokeStyle = color
   ctx.lineWidth = lineWidth
   ctx.strokeRect(x1, y1, x2 - x1, y2 - y1)
+}
+
+/** ป้ายข้อความเหนือกรอบ (หรือในกรอบถ้าชิดขอบบนภาพ) */
+function tag(ctx: Ctx, [x1, y1]: Box, color: string, text: string, fontPx: number) {
+  ctx.strokeStyle = color
   ctx.font = `600 ${fontPx}px ${FONT}`
   const pad = Math.max(3, fontPx * 0.35)
   const w = ctx.measureText(text).width + pad * 2
@@ -68,13 +86,8 @@ function drawObjects(ctx: Ctx, snap: Snapshot, fontPx: number) {
   const seen = snap.objects.filter((o) => o.seen).sort((a, b) => a.box[3] - b.box[3])
   for (const o of seen) {
     const color = COLORS[o.cls]
-    if (o.cls === 'chair' && o.occupied) {
-      label(ctx, o.box, color, `chair #${String(o.id).padStart(2, '0')} occupied`, fontPx * 0.85, 1)
-    } else {
-      ctx.strokeStyle = color
-      ctx.lineWidth = 1
-      ctx.strokeRect(o.box[0], o.box[1], o.box[2] - o.box[0], o.box[3] - o.box[1])
-    }
+    outline(ctx, o.box, color, 1)
+    if (o.cls === 'chair' && o.occupied) tag(ctx, o.box, color, `chair #${String(o.id).padStart(2, '0')} occupied`, fontPx * 0.85)
   }
 }
 
@@ -93,17 +106,47 @@ function drawTrails(ctx: Ctx, snap: Snapshot, thick: number) {
   ctx.globalAlpha = 1
 }
 
-function drawPeople(ctx: Ctx, snap: Snapshot, fontPx: number, thick: number) {
+function drawSkeletons(ctx: Ctx, snap: Snapshot, thick: number) {
+  ctx.lineCap = 'round'
+  for (const p of snap.people) {
+    const k = p.kpts
+    if (!k || k.length !== 17) continue
+    const color = COLORS[p.state]
+    ctx.strokeStyle = color
+    ctx.lineWidth = thick + 1.5
+    ctx.beginPath()
+    for (const [a, b] of COCO_EDGES) {
+      if (k[a][2] < KPT_MIN_CONF || k[b][2] < KPT_MIN_CONF) continue
+      ctx.moveTo(k[a][0], k[a][1])
+      ctx.lineTo(k[b][0], k[b][1])
+    }
+    ctx.stroke()
+    ctx.fillStyle = '#ffffff'
+    for (const [x, y, c] of k) {
+      if (c < KPT_MIN_CONF) continue
+      ctx.beginPath()
+      ctx.arc(x, y, thick + 1.5, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }
+}
+
+function drawPeople(ctx: Ctx, snap: Snapshot, fontPx: number, thick: number, layers: Layers) {
   for (const p of [...snap.people].sort((a, b) => a.box[3] - b.box[3])) {
     const color = COLORS[p.state]
-    const id = String(p.id).padStart(2, '0')
-    label(ctx, p.box, color, `person #${id} ${p.state} ${p.conf.toFixed(2)}`, fontPx, thick + 1)
-    const bw = p.box[2] - p.box[0]
-    ctx.strokeStyle = color
-    ctx.lineWidth = 1
-    ctx.beginPath()
-    ctx.ellipse(p.ground[0], p.ground[1], Math.max(6, bw * 0.35), Math.max(3, bw * 0.1), 0, 0, Math.PI * 2)
-    ctx.stroke()
+    if (layers.boxes) {
+      outline(ctx, p.box, color, thick + 1)
+      const bw = p.box[2] - p.box[0]
+      ctx.lineWidth = 1
+      ctx.beginPath()
+      ctx.ellipse(p.ground[0], p.ground[1], Math.max(6, bw * 0.35), Math.max(3, bw * 0.1), 0, 0, Math.PI * 2)
+      ctx.stroke()
+    }
+    const parts = [
+      layers.ids ? `person #${String(p.id).padStart(2, '0')}` : null,
+      layers.states ? p.state : null,
+    ].filter((part): part is string => part !== null)
+    if (parts.length) tag(ctx, p.box, color, `${parts.join(' ')} ${p.conf.toFixed(2)}`, fontPx)
   }
 }
 
@@ -208,7 +251,8 @@ export function drawLiveFrame(ctx: Ctx, frame: CanvasImageSource, snap: Snapshot
   const thick = Math.max(1, Math.round(h / 600))
   if (layers.objects) drawObjects(ctx, snap, fontPx)
   if (layers.trails) drawTrails(ctx, snap, thick)
-  if (layers.people) drawPeople(ctx, snap, fontPx, thick)
+  if (layers.skeleton) drawSkeletons(ctx, snap, thick)
+  drawPeople(ctx, snap, fontPx, thick, layers)
   if (layers.hud) drawHud(ctx, snap)
 }
 

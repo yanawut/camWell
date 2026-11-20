@@ -15,12 +15,19 @@ def _box(b):
     return [round(float(v), 1) for v in b]
 
 
+def _kpts(kpts):
+    """17 COCO keypoints as [x, y, conf], or None for someone held from memory this frame."""
+    if kpts is None:
+        return None
+    return [[round(float(x), 1), round(float(y), 1), round(float(c), 2)] for x, y, c in kpts]
+
+
 def _person(tr):
     return dict(
         id=tr.id, state=tr.state, conf=round(tr.conf, 2), box=_box(tr.box),
         trail=[list(p) for p in tr.trail], ground=_pt(tr.ground),
         floor=_pt(tr.smooth, 2), floorTrail=[_pt(p, 2) for p in list(tr.floor_trail)[::3]],
-        speed=round(tr.speed, 2), zone=tr.zone,
+        speed=round(tr.speed, 2), zone=tr.zone, kpts=_kpts(tr.kpts),
     )
 
 

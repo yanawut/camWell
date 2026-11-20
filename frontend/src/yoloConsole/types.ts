@@ -17,6 +17,8 @@ export interface LivePerson {
   floorTrail: Point[]
   speed: number
   zone: string | null
+  /** keypoint 17 จุดแบบ COCO [x, y, conf] จาก yolov8-pose — null เมื่อเฟรมนี้ตรวจไม่เจอแต่ยังจำกรอบไว้ */
+  kpts?: [number, number, number][] | null
 }
 
 export interface LiveObject {
