@@ -4,6 +4,7 @@ import MonitorTab from './MonitorTab'
 import ThresholdsTab from './ThresholdsTab'
 import EventsTab from './EventsTab'
 import PeopleTab from './PeopleTab'
+import EngineSwitch from './EngineSwitch'
 import { useBackendHealth } from './useBackendHealth'
 import { datasetRecorder, type DatasetLabel } from '../services/datasetRecorder'
 import { usePersistentState } from '../hooks/usePersistentState'
@@ -188,6 +189,11 @@ export default function DevConsole(props: DevConsoleProps) {
 
   const healthOk = health === 200
 
+  // dataset เก็บในหน่วยความจำของแท็บ — เปลี่ยนหน้าแล้วหาย
+  const confirmLeave = () =>
+    recorder.sampleCount === 0 ||
+    window.confirm(`มี dataset ${recorder.sampleCount} sample ที่ยังไม่ได้ Export — สลับไป YOLO แล้วจะหาย ต้องการสลับต่อไหม?`)
+
   return (
     <div className="dc-root">
       <aside className="dc-aside">
@@ -200,6 +206,11 @@ export default function DevConsole(props: DevConsoleProps) {
             </span>
           </div>
         </div>
+        <EngineSwitch
+          current="mediapipe"
+          blockedReason={recorder.recording ? 'หยุดบันทึก dataset ก่อนสลับ' : null}
+          beforeLeave={confirmLeave}
+        />
         <nav className="dc-nav">
           {nav.map(([id, label, badge]) => (
             <button

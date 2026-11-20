@@ -59,6 +59,28 @@ npm run dev        # เปิด dev server (http://localhost:5173)
 |---|---|
 | `/` | หน้าหลักเดิม — กล้อง + แผงตั้งค่าความไว + ประวัติแจ้งเตือน (ใช้โมเดล `lite` และโครงร่างแบบ `basic` เสมอ) |
 | `/?console` | Dev Console — ใช้ state และ logic ชุดเดียวกับหน้าหลัก แต่จัดหน้าใหม่ + มีเครื่องมือสำหรับนักพัฒนา |
+| `/?yolo-console` | YOLO Console — วิเคราะห์ทั้งห้องด้วย `yolo-backend` (ดูหัวข้อด้านล่าง) |
+
+## YOLO Console (`/?yolo-console`)
+
+สลับจาก Dev Console ได้ที่ปุ่ม **Engine: MediaPipe / YOLO** ใน sidebar — สลับแล้วเปลี่ยนทั้งหน้า กล้องและโมเดลของหน้าเดิมถูกปิด
+กดกลับมา MediaPipe แล้ว console เดิมโหลดค่าเดิมจาก localStorage และ session ของ YOLO ถูกสั่งหยุด
+
+ต้องเปิด `yolo-backend` ไว้ด้วย (ครั้งแรกให้สร้าง `.venv` ก่อน):
+
+```bat
+py -3.12 -m venv yolo-backend\.venv
+yolo-backend\.venv\Scripts\python.exe -m pip install -r yolo-backend\requirements.txt
+npm run dev:yolo
+```
+
+`npm run dev:all` เปิดให้ด้วยถ้ามี `yolo-backend\.venv` แล้ว — frontend เรียก `/yolo/...` และ Vite ส่งต่อไปที่ `127.0.0.1:8000`
+(`frontend/vite.config.ts`) backend รับเฉพาะหน้าเว็บที่เปิดจาก `localhost:5173` จึงต้องเปิด dev server ที่พอร์ตนี้
+
+- **Live** — แหล่งภาพ: ไฟล์วิดีโอ, ไฟล์รูปภาพ, กล้อง browser, go2rtc, Simulator · ภาพสดพร้อมกรอบคน/สิ่งของ/เส้นทางเดิน,
+  แผงสถิติ, heatmap, ผังพื้น · หยุดชั่วคราว/จบ/เริ่มใหม่
+- **Floor & Zones** — calibrate พื้น (ลาก 4 มุม คลิกบนเส้นกรอบเพื่อเพิ่มจุด) และแบ่งโซน บันทึกลง `yolo-backend/data/settings.json`
+- **Reports** — รายงานของทุก session ที่จบแล้ว + ดาวน์โหลด `tracks.csv`
 
 ## Dev Console (`/?console`)
 

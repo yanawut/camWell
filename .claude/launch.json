@@ -8,6 +8,12 @@
       "port": 4000
     },
     {
+      "name": "yolo-backend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:yolo"],
+      "port": 8000
+    },
+    {
       "name": "frontend",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "frontend", "run", "dev"],

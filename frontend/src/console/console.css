@@ -557,3 +557,16 @@
   background: #202c42;
   color: #6fa3ff;
 }
+
+/* --- สลับ engine (MediaPipe ↔ YOLO) — อยู่ใต้ brand ของทั้งสอง console --- */
+.dc-engine {
+  padding: 12px 20px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dc-engine .dc-segment { background: #1a2438; border-color: #27334a; }
+.dc-engine .dc-segment button { flex: 1; color: #aab7cc; }
+.dc-engine .dc-segment button.active { background: #2b3a55; color: #fff; box-shadow: none; }
+.dc-engine .dc-segment button:not(.active):hover:not(:disabled) { background: #202c42; color: #fff; }
+.dc-engine .dc-muted-12 { color: #91a0b8; }

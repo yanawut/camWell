@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import CameraStage from './components/CameraStage'
 import CameraSourceSelector from './components/CameraSourceSelector'
 import SettingsPanel from './components/SettingsPanel'
@@ -40,6 +40,9 @@ import { listEnrolledPeople, removePerson, renamePerson } from './services/faceE
 import { usePersistentState } from './hooks/usePersistentState'
 import './App.css'
 
+// โหลดเฉพาะตอนเปิด /?yolo-console — หน้าอื่นไม่ต้องดาวน์โหลดโค้ดส่วนนี้
+const YoloConsole = lazy(() => import('./yoloConsole/YoloConsole'))
+
 // ponytail: เปิด Dev Console ได้ทุก build ผ่าน /?console — กำหนดสิทธิ์ใหม่เมื่อออกจากช่วง dev
 const IS_DEV_CONSOLE = new URLSearchParams(window.location.search).has('console')
 // หน้าแรก (/) = LandingPage (main.tsx) — Dashboard ห้องทำงาน pixel art อยู่ที่ /?dashboard
@@ -63,6 +66,13 @@ export default function App() {
   if (page.has('people')) return <PeoplePage />
   if (page.has('report')) return <ReportsPage />
   if (page.has('gait')) return <GaitAssessmentPage />
+  if (page.has('yolo-console')) {
+    return (
+      <Suspense fallback={null}>
+        <YoloConsole />
+      </Suspense>
+    )
+  }
   return <CameraApp />
 }
 

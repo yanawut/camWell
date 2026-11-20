@@ -1,3 +1,7 @@
 .venv/
 __pycache__/
 *.pyc
+.pytest_cache/
+# ไฟล์ที่ backend สร้างตอนใช้งาน: รายงานของแต่ละ session และไฟล์ที่อัปโหลด
+data/reports/
+data/uploads/
