@@ -6,7 +6,7 @@ import EventLog from './components/EventLog'
 import EnrollmentPanel from './components/EnrollmentPanel'
 import DatasetRecorderPanel from './components/DatasetRecorderPanel'
 import AttendancePanel from './components/AttendancePanel'
-import { DEFAULT_THRESHOLDS, type PostureThresholds } from './types/posture'
+import { DEFAULT_THRESHOLDS } from './types/posture'
 import {
   MAX_CAMERA_SLOTS,
   createCameraSlot,
@@ -14,15 +14,8 @@ import {
   type CameraSlot,
   type CameraSource,
 } from './types/cameraSource'
-import {
-  DEFAULT_BREAK_THRESHOLDS,
-  DEFAULT_DISTANCE_THRESHOLDS,
-  DEFAULT_FATIGUE_THRESHOLDS,
-  type BreakThresholds,
-  type DistanceThresholds,
-  type FatigueThresholds,
-} from './types/wellbeing'
-import { DEFAULT_FALL_THRESHOLDS, type FallThresholds } from './types/fall'
+import { DEFAULT_BREAK_THRESHOLDS, DEFAULT_DISTANCE_THRESHOLDS, DEFAULT_FATIGUE_THRESHOLDS } from './types/wellbeing'
+import { DEFAULT_FALL_THRESHOLDS } from './types/fall'
 import type { AlertEvent } from './types/alerts'
 import type { EnrolledPerson } from './types/identity'
 import type { PersonSummary } from './types/person'
