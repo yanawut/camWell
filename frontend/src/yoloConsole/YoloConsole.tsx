@@ -1,9 +1,13 @@
 import { useState } from 'react'
 import EngineSwitch from '../console/EngineSwitch'
 import { usePersistentState } from '../hooks/usePersistentState'
+import AlertsTab from './AlertsTab'
+import DailyTab from './DailyTab'
+import FacesTab from './FacesTab'
 import FloorTab from './FloorTab'
 import LiveTab from './LiveTab'
 import ReportsTab from './ReportsTab'
+import { Toaster } from './ui'
 import { useYoloLive } from './useYoloLive'
 import { ACTIVE_STATES, yoloService, type SessionAction } from './yoloService'
 import type { SessionState } from './types'
@@ -11,14 +15,18 @@ import '../console/console.css'
 import './yoloConsole.css'
 import { PauseGlyph, PlayGlyph, StopGlyph } from '../envelope/marks'
 
-type Tab = 'live' | 'floor' | 'reports'
+type Tab = 'live' | 'settings' | 'faces' | 'alerts' | 'daily' | 'reports'
 
+// ลำดับและชื่อเมนูตามต้นแบบ Cam-Well-YoLo-ByteTrack/frontend/src/router.tsx (ต้นแบบวางเมนูไว้ด้านบน ที่นี่อยู่ด้านซ้าย)
 const TABS: Record<Tab, [nav: string, title: string, subtitle: string]> = {
-  live: ['Live', 'Live Room Analytics', 'ภาพสดจาก yolo-backend พร้อมผลวิเคราะห์ทั้งห้อง'],
-  floor: ['Floor & Zones', 'Floor & Zones', 'ตั้งพื้นห้องเป็นเมตรและแบ่งโซน — ใช้แปลงตำแหน่งในภาพเป็นตำแหน่งบนพื้น'],
-  reports: ['Reports', 'Reports', 'รายงานของทุก session ที่จบแล้ว'],
+  live: ['หน้าหลัก', 'Live Room Analytics', 'ภาพสดจาก yolo-backend พร้อมผลวิเคราะห์ทั้งห้องและการแจ้งเตือนสุขภาพ'],
+  settings: ['ตั้งค่า', 'ตั้งค่า', 'ตั้งพื้นห้องเป็นเมตร แบ่งโซน และปรับเกณฑ์การแจ้งเตือน'],
+  faces: ['ใบหน้า', 'ลงทะเบียนใบหน้า', 'คนที่ลงทะเบียนจะขึ้นชื่อบนกรอบในหน้าหลัก ระบบที่กำลังวิเคราะห์อยู่ใช้รายชื่อใหม่ทันทีหลังกดอัปเดต'],
+  alerts: ['ประวัติการแจ้งเตือน', 'ประวัติการแจ้งเตือน', 'ตรวจสอบเหตุการณ์ย้อนหลัง กรองตามหมวดและบุคคล'],
+  daily: ['รายงานประจำวัน', 'รายงานประจำวัน', 'สรุปการอยู่หน้ากล้องและความเสี่ยง Office Syndrome รายวัน'],
+  reports: ['รายงาน', 'รายงาน', 'รายงานของทุก session ที่จบแล้ว'],
 }
-const isTab = (value: unknown): value is Tab => value === 'live' || value === 'floor' || value === 'reports'
+const isTab = (value: unknown): value is Tab => typeof value === 'string' && Object.hasOwn(TABS, value)
 
 const STATE_TEXT: Record<SessionState, string> = {
   idle: 'ยังไม่ได้เลือก',
@@ -178,7 +186,9 @@ export default function YoloConsole() {
             <span>yolo-backend</span>
             <span className="dc-mono dc-text">/yolo → 127.0.0.1:8000</span>
           </div>
-          <a href="?dashboard" className="dc-back-link">← Back to Dashboard</a>
+          {/* YOLO Console เป็นของระบบ YOLOv8 จึงกลับไปภาพรวมของ YOLOv8 (Dev Console ของ MediaPipe กลับไป ?dashboard)
+              ไม่หยุด session ก่อนออก เพราะหน้าภาพรวม YOLOv8 ใช้ session เดียวกันของ yolo-backend */}
+          <a href="?yolo-dashboard" className="dc-back-link">← Back to Dashboard</a>
         </div>
       </aside>
 
@@ -192,10 +202,14 @@ export default function YoloConsole() {
         </header>
         <main className="dc-main">
           {tab === 'live' && <LiveTab />}
-          {tab === 'floor' && <FloorTab />}
+          {tab === 'settings' && <FloorTab />}
+          {tab === 'faces' && <FacesTab />}
+          {tab === 'alerts' && <AlertsTab />}
+          {tab === 'daily' && <DailyTab />}
           {tab === 'reports' && <ReportsTab />}
         </main>
       </div>
+      <Toaster />
     </div>
   )
 }

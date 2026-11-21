@@ -5,11 +5,19 @@ import threading
 from contextlib import asynccontextmanager
 
 import anyio
-from fastapi import Body, FastAPI, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
+import cv2
+import numpy as np
+from fastapi import Body, FastAPI, File, Form, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field, TypeAdapter, ValidationError
 
+import face_id
+import wellness
+
+from . import alerts as alert_stores
 from . import config
+from . import daily as daily_report
+from .faces import CONSENT_TEXT, CONSENT_VERSION, FaceError, FaceStore, FaceTuning, NotFound
 from .go2rtc import stream_candidates
 from .reports import ReportStore
 from .session import InvalidTransition, Session
@@ -20,6 +28,8 @@ from .uploads import TooLarge, UploadError, UploadStore
 settings_store = SettingsStore(config.DATA_DIR / "settings.json")
 uploads = UploadStore(config.DATA_DIR / "uploads", config.MAX_UPLOAD_BYTES)
 reports = ReportStore(config.DATA_DIR / "reports")
+faces = FaceStore(config.FACES_DIR)
+face_tuning = FaceTuning(config.FACE_TUNING)
 spec_adapter = TypeAdapter(SourceSpec)
 
 
@@ -145,6 +155,172 @@ def post_upload(file: UploadFile) -> dict:
         raise HTTPException(413, str(exc))
     except UploadError as exc:
         raise HTTPException(415, str(exc))
+
+
+# ---------------------------------------------------------------- faces
+def _face_engine():
+    return face_id.shared_engine(config.FACE_ENGINE, config.BACKEND_DIR)
+
+
+def _faces_changed(request: Request, engine):
+    if engine is not None:
+        face_id.Gallery.load(faces.root, engine, log=None)  # embed the new photos now, not in the live loop
+    session = request.app.state.manager.session
+    if session:
+        session.faces_changed()
+
+
+def _face_call(fn, *args):
+    try:
+        return fn(*args)
+    except NotFound as exc:
+        raise HTTPException(404, str(exc))
+    except FaceError as exc:
+        raise HTTPException(422, str(exc))
+
+
+def _thresholds(engine):
+    if engine is None:
+        return dict(threshold=None, defaultThreshold=None)
+    saved = face_tuning.threshold(engine.name)
+    return dict(threshold=saved if saved is not None else engine.threshold, defaultThreshold=engine.threshold)
+
+
+@app.get("/api/faces")
+def list_faces() -> dict:
+    engine = _face_engine()
+    return dict(engine=engine.name if engine else None, consent=dict(version=CONSENT_VERSION, text=CONSENT_TEXT),
+                people=faces.people(), **_thresholds(engine))
+
+
+@app.get("/api/faces/check")
+def check_faces() -> dict:
+    """The most alike enrolled people and each photo's likeness to the person's other photos."""
+    engine = _face_engine()
+    if engine is None:
+        return dict(engine=None, pairs=[], closest={}, photos={})
+    gallery, _ = face_id.Gallery.load(faces.root, engine, log=None)
+    return dict(engine=engine.name, **face_id.similarity_report(gallery))
+
+
+MAX_CAPTURE_FRAMES = 80
+
+
+@app.post("/api/faces/capture")
+def capture_faces(frames: list[UploadFile] = File(default=[])) -> dict:
+    """Frames from the browser camera while someone turns their head: which of them to enrol.
+    Nothing is stored; the page crops the chosen faces and sends them through POST /api/faces."""
+    engine = _face_engine()
+    if engine is None:
+        raise HTTPException(409, "ยังไม่ได้ติดตั้งโมเดลใบหน้า")
+    if not frames:
+        raise HTTPException(422, "ไม่มีภาพจากกล้อง")
+    if len(frames) > MAX_CAPTURE_FRAMES:
+        raise HTTPException(422, f"ส่งได้ไม่เกิน {MAX_CAPTURE_FRAMES} ภาพ")
+    images = []
+    for f in frames:
+        data = f.file.read(8 * 1024 ** 2 + 1)
+        if len(data) > 8 * 1024 ** 2:
+            raise HTTPException(413, "ภาพจากกล้องใหญ่เกินไป")
+        images.append(cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR))
+    return face_id.select_enrolment_frames(engine, images)
+
+
+@app.put("/api/faces/threshold")
+def put_face_threshold(request: Request, body: dict = Body(...)) -> dict:
+    engine = _face_engine()
+    if engine is None:
+        raise HTTPException(409, "ยังไม่ได้ติดตั้งโมเดลใบหน้า")
+    value = body.get("threshold")
+    if value is not None and not isinstance(value, (int, float)):
+        raise HTTPException(422, "threshold ต้องเป็นตัวเลข")
+    _face_call(face_tuning.set_threshold, engine.name, value)
+    session = request.app.state.manager.session
+    if session:
+        session.faces_changed()
+    return _thresholds(engine)
+
+
+@app.post("/api/faces")
+def add_faces(request: Request, name: str = Form(""), consent: bool = Form(False),
+              files: list[UploadFile] = File(default=[])) -> dict:
+    engine = _face_engine()
+    result = _face_call(faces.add, name, [(f.filename or "", f.file) for f in files], consent, engine)
+    _faces_changed(request, engine)
+    return result
+
+
+@app.delete("/api/faces/{name}")
+def delete_face(name: str, request: Request) -> dict:
+    _face_call(faces.delete, name)
+    _faces_changed(request, _face_engine())
+    return dict(deleted=name)
+
+
+@app.delete("/api/faces/{name}/photos/{photo}")
+def delete_face_photo(name: str, photo: str, request: Request) -> dict:
+    _face_call(faces.delete_photo, name, photo)
+    _faces_changed(request, _face_engine())
+    return dict(deleted=photo)
+
+
+@app.get("/api/faces/{name}/photos/{photo}")
+def get_face_photo(name: str, photo: str):
+    return FileResponse(_face_call(faces.photo_path, name, photo), headers={"Cache-Control": "no-store"})
+
+
+# ---------------------------------------------------------------- wellness alerts
+def _today():
+    import datetime as dt
+    return dt.date.today().isoformat()
+
+
+@app.get("/api/alerts")
+def list_alerts(start: str | None = None, end: str | None = None) -> dict:
+    """Alerts from `start` to `end` (YYYY-MM-DD, both included; default the last 7 days), newest first."""
+    import datetime as dt
+    end = end or _today()
+    start = start or (dt.date.fromisoformat(end) - dt.timedelta(days=6)).isoformat()
+    try:
+        days = alert_stores.stores()[0].days(start, end)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+    alerts = [a for _, d in days for a in d["alerts"]]
+    alerts.sort(key=lambda a: -a["started_at"])
+    return dict(start=start, end=end, alerts=alerts, categories=wellness.CATEGORY_TEXT, types=wellness.TYPE_TEXT)
+
+
+@app.get("/api/daily")
+def get_daily(date: str | None = None) -> dict:
+    try:
+        return daily_report.build(alert_stores.stores()[0], date or daily_report.today())
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+
+
+@app.get("/api/wellness/settings")
+def get_wellness_settings() -> dict:
+    return alert_stores.stores()[1].settings().to_dict()
+
+
+@app.get("/api/wellness/defaults")
+def get_wellness_defaults() -> dict:
+    return wellness.WellnessSettings().to_dict()
+
+
+@app.put("/api/wellness/settings")
+def put_wellness_settings(request: Request, body: dict = Body(...)) -> dict:
+    try:
+        settings = wellness.WellnessSettings.from_dict(body)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(422, f"ค่าไม่ถูกต้อง: {exc}")
+    if settings.sit_minutes < 1 or settings.posture_seconds < 1:
+        raise HTTPException(422, "เวลาต้องไม่น้อยกว่า 1")
+    alert_stores.stores()[1].save_settings(settings)
+    session = request.app.state.manager.session
+    if session:
+        session.wellness_changed(settings)
+    return settings.to_dict()
 
 
 # ---------------------------------------------------------------- session

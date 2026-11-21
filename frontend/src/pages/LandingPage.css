@@ -196,6 +196,18 @@
   margin-top: 40px;
 }
 
+/* บรรทัดพิมพ์ข้างตรายาง: กดแล้วไปหน้าเลือกระบบ จึงบอกไว้ก่อนว่ามีสองระบบให้เลือก */
+.rx-next {
+  max-width: 12em;
+  margin: 0;
+  font: 400 18px/1.5 var(--rx-form);
+  text-wrap: balance;
+}
+
+.rx-next strong {
+  font: 700 1em/1 var(--rx-display);
+}
+
 /* ตรายาง: ปุ่มหลักของหน้า มองเห็นตั้งแต่แรก แล้วกดประทับลงครั้งเดียวหลังรอยติ๊กวาดเสร็จ */
 .rx-stamp {
   display: inline-block;

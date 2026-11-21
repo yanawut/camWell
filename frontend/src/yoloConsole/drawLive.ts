@@ -3,6 +3,7 @@
 import type { Box, Heat, ObjectClass, PersonState, Snapshot } from './types'
 
 export const LAYERS = {
+  room: 'คนในห้องนี้',
   boxes: 'กรอบคน',
   ids: 'ID',
   states: 'ท่าทาง',
@@ -18,6 +19,7 @@ export const LAYERS = {
 export type LayerKey = keyof typeof LAYERS
 export type Layers = Record<LayerKey, boolean>
 export const DEFAULT_LAYERS: Layers = {
+  room: true,
   boxes: true,
   ids: true,
   states: true,
@@ -142,8 +144,10 @@ function drawPeople(ctx: Ctx, snap: Snapshot, fontPx: number, thick: number, lay
       ctx.ellipse(p.ground[0], p.ground[1], Math.max(6, bw * 0.35), Math.max(3, bw * 0.1), 0, 0, Math.PI * 2)
       ctx.stroke()
     }
+    const who = p.face?.status === 'known' ? p.face.name : p.face?.status === 'unknown' ? 'unknown' : 'person'
     const parts = [
-      layers.ids ? `person #${String(p.id).padStart(2, '0')}` : null,
+      p.wellness?.alerts.length ? '⚠' : null,
+      layers.ids ? `${who} #${String(p.id).padStart(2, '0')}` : null,
       layers.states ? p.state : null,
     ].filter((part): part is string => part !== null)
     if (parts.length) tag(ctx, p.box, color, `${parts.join(' ')} ${p.conf.toFixed(2)}`, fontPx)

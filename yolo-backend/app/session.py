@@ -8,10 +8,14 @@ from pathlib import Path
 
 import cv2
 
+import face_id
 import room_analytics as ra
+import wellness
 
 from . import config
+from . import alerts as alert_store
 from .analytics import AreaAnalytics
+from .faces import FaceTuning
 from .reports import ReportWriter
 from .settings import FloorSettings
 from .snapshot import to_message
@@ -56,6 +60,9 @@ class Session:
         self.report_ids: list[str] = []
         self.source: Source | None = None
         self.analytics: AreaAnalytics | None = None
+        self.faces: face_id.FaceIdentifier | None = None
+        self.wellness: wellness.WellnessMonitor | None = None
+        self._faces_dirty = False
         self.report: ReportWriter | None = None
         self._cond = threading.Condition()
         self._stop = False
@@ -104,6 +111,10 @@ class Session:
             self._seek = t
             self._cond.notify_all()
 
+    def faces_changed(self):
+        """Someone was enrolled or removed: the analysis thread reloads the gallery before its next frame."""
+        self._faces_dirty = True
+
     def push_frame(self, data: bytes):
         if self.source:
             self.source.push(data)
@@ -133,6 +144,8 @@ class Session:
             runner = None
             if self.source.needs_detector:
                 runner = ra.YoloRunner(ra.Config(det_model=config.DET_MODEL, pose_model=config.POSE_MODEL))
+                self.faces = self._open_faces()
+            self.wellness = self._open_wellness()
             self._transition(State.RUNNING)
             self._loop(runner)
         except (SourceError, UploadError) as exc:
@@ -148,6 +161,9 @@ class Session:
             outcome, error = State.ERROR, f"บันทึกรายงานไม่สำเร็จ: {exc}"
         if self.source:
             self.source.close()
+        if self.faces is not None:
+            self.faces.close()
+        self._close_wellness()
         self.error = error
         self._transition(outcome)
 
@@ -210,18 +226,25 @@ class Session:
     def _process(self, frame, runner):
         started = time.perf_counter()
         persons, objects = frame.dets if frame.dets is not None else runner(frame.image)
+        if runner is not None and frame.dets is None:
+            if self._faces_dirty:
+                self._reload_faces()
+            if self.faces is not None:
+                self._update_faces(frame, persons, runner)
         self._last = (frame, persons, objects)
         if self.analytics is None:
             self._new_analytics(frame.image)
         if self.source.live and self._fps > 0:
             self.analytics.fps = max(1.0, self._fps)  # time step follows the rate actually analysed
-        self._analyse(frame, persons, objects, started)
+        self._analyse(frame, persons, objects, started, live=True)
         if frame.dets is None:
             self.report.add_layers(self._index, frame.t, runner.layers)
         self._index += 1
 
-    def _analyse(self, frame, persons, objects, started):
+    def _analyse(self, frame, persons, objects, started, live=False):
         snap = self.analytics.update(persons, objects, frame.t, self._index)
+        if live and self.wellness is not None:
+            self._update_wellness(frame, persons, snap)
         self.report.sample(snap)
         if self._index % RECORD_DRAIN_EVERY == 0:
             self._drain_records()
@@ -230,9 +253,87 @@ class Session:
             h, w = frame.image.shape[:2]
             proc_ms = (time.perf_counter() - started) * 1000
             message = to_message(snap, self.analytics.cfg, (w, h), self._fps, proc_ms, self.source,
-                                 with_heat=self._index % HEAT_EVERY == 0 or self.source.holds)
+                                 with_heat=self._index % HEAT_EVERY == 0 or self.source.holds,
+                                 faces=self.faces, wellness=self.wellness)
             if ok:
                 self.sink.frame(json.dumps(message, ensure_ascii=False), jpeg.tobytes())
+
+    def wellness_changed(self, settings: wellness.WellnessSettings):
+        if self.wellness is not None:
+            self.wellness.set_settings(settings)
+
+    def _open_wellness(self):
+        try:
+            store, wstore = alert_store.stores()
+            engine = None
+            if self.source.needs_detector:
+                engine = self.faces.engine if self.faces is not None else face_id.shared_engine(
+                    config.FACE_ENGINE, config.BACKEND_DIR)
+            return wellness.WellnessMonitor(
+                wstore.settings(), engine=engine,
+                sink=None if self.source.kind == "sim" else store,  # simulated people stay out of the history
+                camera=self.source.label or self.source.kind, baselines=wstore.baselines())
+        except Exception:
+            traceback.print_exc()  # tracking still works without alerts
+            return None
+
+    def _update_wellness(self, frame, persons, snap):
+        try:
+            states = {tr.id: tr.state for tr in snap["people"]}
+            names = {}
+            if self.faces is not None:
+                for pid in states:
+                    label = self.faces.label(pid)
+                    if label and label["name"]:
+                        names[pid] = label["name"]
+            self.wellness.update(frame.image if frame.dets is None else None, persons, states, names, frame.t)
+        except Exception:
+            traceback.print_exc()
+            self.wellness = None
+
+    def _close_wellness(self):
+        if self.wellness is None:
+            return
+        try:
+            self.wellness.close()
+            if self.source is not None and self.source.kind != "sim":
+                alert_store.stores()[1].save_baselines(self.wellness.baselines)
+        except Exception:
+            traceback.print_exc()
+
+    def _open_faces(self):
+        try:
+            faces = face_id.open_identifier(config.FACE_ENGINE, config.FACES_DIR, models_dir=config.BACKEND_DIR)
+            if faces is not None:
+                faces.set_threshold(FaceTuning(config.FACE_TUNING).threshold(faces.engine.name))
+            return faces
+        except Exception:
+            traceback.print_exc()  # tracking still works without names
+            return None
+
+    def _reload_faces(self):
+        self._faces_dirty = False
+        try:
+            if self.faces is None:
+                self.faces = self._open_faces()
+                return
+            gallery, _ = face_id.Gallery.load(config.FACES_DIR, self.faces.engine, log=None)
+            if len(gallery):
+                self.faces.set_gallery(gallery)
+                self.faces.set_threshold(FaceTuning(config.FACE_TUNING).threshold(self.faces.engine.name))
+            else:  # the last person was removed
+                self.faces.close()
+                self.faces = None
+        except Exception:
+            traceback.print_exc()
+
+    def _update_faces(self, frame, persons, runner):
+        try:
+            self.faces.update(frame.image, persons, frame.t)
+            runner.layers["faces"] = self.faces.layers()
+        except Exception:
+            traceback.print_exc()
+            self.faces = None
 
     def _new_analytics(self, image):
         h, w = image.shape[:2]
@@ -258,6 +359,8 @@ class Session:
             return
         self._drain_records()
         self.summary = self.analytics.summary()
+        if self.faces is not None:
+            self.summary["faces"] = self.faces.summary()
         rid = self.report.close(self.summary, outcome)
         if rid:
             self.report_ids.append(rid)

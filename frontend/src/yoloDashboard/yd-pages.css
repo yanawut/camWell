@@ -1,0 +1,470 @@
+/*
+ * ชิ้นส่วนร่วมของทุกหน้าใน /?yolo-dashboard — หมึกเดียวบนแผ่นฉลาก ตาม DESIGN.md
+ * หมึก (--yd-ink) = เส้น กรอบ ตัวอักษร · ปากกา (--yd-pen) = ค่าที่เขียนด้วยมือ · ตรายาง (--yd-stamp) = การเตือน การล้ม ความเสี่ยงสูง
+ * แต่ละหน้ามีไฟล์ของตัวเองสำหรับส่วนที่ใช้หน้าเดียว ไฟล์นี้มีเฉพาะส่วนที่หลายหน้าใช้
+ */
+.yd {
+  min-height: 100vh;
+  background: var(--yd-fiber), var(--yd-paper);
+  color: var(--yd-ink);
+}
+
+.yd :focus-visible {
+  outline: 3px solid var(--yd-pen);
+  outline-offset: 2px;
+}
+
+/* ข้อความรองพิมพ์ด้วยหมึกเต็มเหมือนข้อความหลัก (One Ink Rule ใน DESIGN.md) แยกด้วยขนาด ไม่ใช่ด้วยการทำให้จาง
+   หมึกจาง 72% เหลือคอนทราสต์ราว 3.5:1 ต่ำกว่า WCAG AA ที่ข้อความ 14px ต้องได้ 4.5:1 */
+.yd-muted {
+  color: var(--yd-ink);
+}
+
+.yd-fine {
+  margin: 0;
+  color: var(--yd-ink);
+  font-size: 14px;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.yd-mono {
+  font-family: ui-monospace, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.yd-error {
+  margin: 0;
+  color: var(--yd-stamp);
+  font-weight: 600;
+}
+
+.yd-empty {
+  margin: 0;
+  padding: 28px 18px;
+  color: var(--yd-ink);
+  text-align: center;
+}
+
+/* ---------- หัวหน้า ---------- */
+/* ปิดด้วยเส้นหมึก 2px ห่าง 18px เหมือนหัวหน้าของ /?dashboard และหัวหน้าภาพรวม (.yd-dash-head) */
+.yd-page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 28px;
+  padding-bottom: 18px;
+  border-bottom: 2px solid var(--yd-ink);
+}
+
+.yd-page-title {
+  min-width: min(100%, 320px);
+}
+
+.yd-page-head h1 {
+  font: 700 clamp(28px, 3vw, 40px)/1.25 var(--yd-display);
+}
+
+.yd-page-head p {
+  max-width: 72ch;
+  margin: 6px 0 0;
+  font-size: 17px;
+  text-wrap: pretty;
+}
+
+.yd-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ---------- ปุ่ม ---------- */
+.yd-btn,
+.yd-btn-line {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 2px solid var(--yd-ink);
+  border-radius: 0;
+  cursor: pointer;
+  font: 600 16px/1 var(--yd-display);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.yd-btn {
+  background: var(--yd-ink);
+  color: var(--yd-paper);
+}
+
+.yd-btn:hover:not(:disabled) {
+  background: transparent;
+  color: var(--yd-ink);
+}
+
+.yd-btn-line {
+  background: transparent;
+  color: var(--yd-ink);
+}
+
+.yd-btn-line:hover:not(:disabled),
+.yd-btn-line[aria-pressed='true'] {
+  background: var(--yd-ink);
+  color: var(--yd-paper);
+}
+
+/* ปุ่มเปิดปิดที่ปิดอยู่: ชี้แล้วแค่แรเงา ถ้าทึบ กดปิดแล้วปุ่มยังดูเหมือนเปิดจนกว่าจะเลื่อนเมาส์ออก */
+.yd-btn-line[aria-pressed='false']:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--yd-ink) 12%, transparent);
+  color: var(--yd-ink);
+}
+
+.yd-btn-line.is-small,
+.yd-btn.is-small {
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 14px;
+}
+
+/* ลบ/ทำลาย: ตรายางแดง ใช้กับคำสั่งที่ย้อนกลับไม่ได้เท่านั้น */
+.yd-btn-line.is-danger {
+  border-color: var(--yd-stamp);
+  color: var(--yd-stamp);
+}
+
+.yd-btn-line.is-danger:hover:not(:disabled) {
+  background: var(--yd-stamp);
+  color: var(--yd-paper);
+}
+
+.yd-btn:disabled,
+.yd-btn-line:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.yd-linkbtn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--yd-pen);
+  cursor: pointer;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ---------- แถบตัวเลขสรุป (ledger) ---------- */
+.yd-ledger {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  border-top: 2px solid var(--yd-ink);
+  border-left: 2px solid var(--yd-ink);
+}
+
+.yd-ledger-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 96px;
+  padding: 16px 20px;
+  border: 0;
+  border-right: 2px solid var(--yd-ink);
+  border-bottom: 2px solid var(--yd-ink);
+  background: transparent;
+  color: var(--yd-ink);
+  text-align: left;
+}
+
+.yd-ledger-cell.is-button {
+  cursor: pointer;
+  font: inherit;
+}
+
+.yd-ledger-cell.is-button:hover {
+  background: color-mix(in srgb, var(--yd-ink) 7%, transparent);
+}
+
+.yd-ledger-cell[aria-pressed='true'] {
+  background: var(--yd-ink);
+  color: var(--yd-paper);
+}
+
+.yd-ledger-value {
+  font: 700 34px/1.1 var(--yd-display);
+  font-variant-numeric: tabular-nums;
+}
+
+.yd-ledger-value.is-alert {
+  color: var(--yd-stamp);
+}
+
+.yd-ledger-cell[aria-pressed='true'] .yd-ledger-value.is-alert {
+  color: inherit;
+}
+
+.yd-ledger-label {
+  font: 600 15px/1.3 var(--yd-display);
+}
+
+/* ---------- แผงบนฉลาก ---------- */
+.yd-panel {
+  min-width: 0;
+  border: 2px solid var(--yd-ink);
+}
+
+.yd-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 20px;
+  padding: 12px 18px;
+  background: var(--yd-ink);
+  color: var(--yd-paper);
+}
+
+.yd-panel-head h2 {
+  font: 700 18px/1.3 var(--yd-display);
+}
+
+.yd-panel-head .yd-fine,
+.yd-panel-head .yd-muted {
+  color: var(--yd-paper);
+}
+
+.yd-panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px;
+}
+
+/* แถวตัวกรองเหนือตาราง */
+.yd-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 16px;
+  padding: 14px 18px;
+  border-bottom: 1.5px solid var(--yd-ink);
+}
+
+.yd-toolbar-end {
+  margin-left: auto;
+}
+
+/* ---------- ช่องกรอก ---------- */
+.yd-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font: 600 14px/1.3 var(--yd-display);
+}
+
+.yd .yd-input {
+  min-height: 42px;
+  padding: 6px 12px;
+  border: 1.5px solid var(--yd-ink);
+  border-radius: 0;
+  background-color: var(--yd-paper);
+  color: var(--yd-ink);
+  font: 400 16px/1.4 var(--yd-form);
+}
+
+/* ค่าเดียวกับ placeholder ของ index.css (88% หมึก ราว 4.8:1) */
+.yd .yd-input::placeholder {
+  color: color-mix(in srgb, var(--yd-ink) 88%, var(--yd-paper));
+}
+
+/* ---------- ปุ่มเลือกทีละอัน ---------- */
+.yd-segment {
+  display: inline-flex;
+  flex-wrap: wrap;
+  border: 2px solid var(--yd-ink);
+}
+
+.yd-segment button {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 0;
+  border-right: 1.5px solid var(--yd-ink);
+  background: transparent;
+  color: var(--yd-ink);
+  cursor: pointer;
+  font: 600 15px/1 var(--yd-display);
+}
+
+.yd-segment button:last-child {
+  border-right: 0;
+}
+
+.yd-segment button.is-on {
+  background: var(--yd-ink);
+  color: var(--yd-paper);
+}
+
+/* ---------- ตาราง ---------- */
+.yd-table-wrap {
+  overflow-x: auto;
+}
+
+.yd-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+.yd-table th {
+  padding: 12px 14px;
+  border-bottom: 2px solid var(--yd-ink);
+  font: 700 14px/1.3 var(--yd-display);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.yd-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--yd-rule-soft);
+  vertical-align: top;
+}
+
+.yd-table tbody tr:hover {
+  background: color-mix(in srgb, var(--yd-ink) 5%, transparent);
+}
+
+.yd-table tr.is-fall td {
+  color: var(--yd-stamp);
+  font-weight: 600;
+}
+
+.yd-table tr.is-selected td {
+  background: color-mix(in srgb, var(--yd-ink) 10%, transparent);
+}
+
+.yd-sort {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+/* ---------- หมายเหตุ ---------- */
+.yd-callout {
+  margin: 0;
+  padding: 12px 16px;
+  border: 1.5px dashed var(--yd-ink);
+  font-size: 15px;
+}
+
+.yd-callout.is-warn {
+  border-color: var(--yd-stamp);
+  color: var(--yd-stamp);
+}
+
+/* ข้อความ PDPA ท้ายหน้า เหมือน .pdpa-note ของหน้าเดิม */
+.yd-pdpa {
+  margin: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--yd-stamp);
+  color: var(--yd-stamp);
+  font-size: 14px;
+}
+
+/* ---------- ระดับความเสี่ยง: สูง = ตรายางทึบ, ปานกลาง = ตรายางเส้น, ต่ำ = หมึกเส้น ---------- */
+.yd-level {
+  display: inline-block;
+  padding: 2px 10px;
+  border: 1.5px solid var(--yd-ink);
+  font: 700 14px/1.4 var(--yd-display);
+  white-space: nowrap;
+}
+
+.yd-level.is-high {
+  border-color: var(--yd-stamp);
+  background: var(--yd-stamp);
+  color: var(--yd-paper);
+}
+
+.yd-level.is-medium {
+  border-color: var(--yd-stamp);
+  color: var(--yd-stamp);
+}
+
+/* ---------- แท่งสัดส่วน ---------- */
+.yd-meter {
+  height: 10px;
+  border: 1.5px solid var(--yd-ink);
+}
+
+.yd-meter > i {
+  display: block;
+  height: 100%;
+  background: var(--yd-ink);
+}
+
+.yd-meter.is-alert > i {
+  background: var(--yd-stamp);
+}
+
+/* ---------- ข้อความเด้ง ---------- */
+.yd-toasts {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(420px, calc(100vw - 40px));
+}
+
+.yd-toast {
+  padding: 12px 16px;
+  border: 2px solid var(--yd-ink);
+  background: var(--yd-paper);
+  color: var(--yd-ink);
+  font: 600 15px/1.4 var(--yd-display);
+}
+
+.yd-toast.is-success {
+  background: var(--yd-ink);
+  color: var(--yd-paper);
+}
+
+.yd-toast.is-warning,
+.yd-toast.is-error {
+  border-color: var(--yd-stamp);
+  color: var(--yd-stamp);
+}
+
+@media (max-width: 760px) {
+  .yd-page-head {
+    align-items: stretch;
+  }
+
+  .yd-toolbar-end {
+    margin-left: 0;
+  }
+}
+
+@media print {
+  .yd-nav,
+  .yd-toasts,
+  .yd-noprint {
+    display: none !important;
+  }
+
+  .yd,
+  .yd-dash {
+    background: none;
+  }
+}

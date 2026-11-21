@@ -94,7 +94,9 @@ class Config:
     floor_img_pts: list | None = None
     floor_size_m: tuple = (8.0, 6.0)      # (W = left-right, D = far-near) in metres
     zones: dict | None = None             # {"name": [(x, y), ...]} polygons in floor metres
-    walk_speed: float = 0.45              # m/s above which a standing person counts as walking
+    walk_pace: float = 0.20               # body heights per second above which someone counts as walking: the
+                                          # floor calibration is often rough or misses part of the room, a body is not
+    still_s: float = 2.0                  # keeping still this long with the legs out of sight counts as seated
     state_window: int = 9                 # frames of majority-vote smoothing for the state
     trail_len: int = 45                   # trajectory points kept per person
     obj_memory_s: float = 8.0             # keep furniture this long after it was last seen
@@ -124,6 +126,7 @@ class PersonDet:
     gt_state: str | None = None      # simulator ground truth
     ground: np.ndarray | None = None  # image point on the floor; None = bottom centre of the box
     held: bool = False               # shown from memory: nothing detected them this frame
+    cut: frozenset = frozenset()     # sides of the picture ("left", "right", "top", "bottom") the box runs into
 
 
 @dataclass
@@ -213,25 +216,50 @@ class FloorMap:
 
 
 # --------------------------------------------------------------------- posture
-def classify_posture(box, kpts, chairs, tables, kc=0.35):
+def hip_point(box, kpts, kc=0.35):
+    """The hips from pose, or a guess a little below the middle of the box."""
+    if kpts is not None:
+        v = kpts[:, 2] > kc
+        if v[11] and v[12]:
+            return (kpts[11, :2] + kpts[12, :2]) / 2
+        if v[11] or v[12]:
+            return kpts[11, :2] if v[11] else kpts[12, :2]
+    x1, y1, x2, y2 = box
+    return np.array([(x1 + x2) / 2, y1 + 0.55 * (y2 - y1)], np.float32)
+
+
+def seat_people(hips, chairs):
+    """{person index: chair index}. A chair seats one person: the one whose hips are nearest its middle, so someone
+    standing beside an occupied chair is not sitting in it."""
+    pairs = []
+    for i, hip in enumerate(hips):
+        for j, c in enumerate(chairs):
+            if inside(hip, expand(c, 0.2)):
+                pairs.append((math.hypot(hip[0] - (c[0] + c[2]) / 2, hip[1] - (c[1] + c[3]) / 2), i, j))
+    seated, taken = {}, set()
+    for _, i, j in sorted(pairs):
+        if i not in seated and j not in taken:
+            seated[i] = j
+            taken.add(j)
+    return seated
+
+
+def classify_posture(box, kpts, on_chair=False, tables=(), still=False, cut=frozenset(), kc=0.35):
     """Return ('sitting'|'standing', hip_point). Walking is decided later from speed.
 
-    Votes from: thigh direction, knee angle, thigh foreshortening, sitting on a chair,
-    box aspect ratio, and lower body hidden behind a table."""
+    Votes from: thigh direction, knee angle, thigh foreshortening, sitting on a chair, box aspect ratio (unless the
+    picture edge cuts the box), and a lower body that stays hidden: behind a table, or anywhere for someone keeping
+    still, as people seated at a desk do."""
     x1, y1, x2, y2 = box
     w, h = max(x2 - x1, 1.0), max(y2 - y1, 1.0)
     sit = stand = 0.0
-    hip = None
+    hip = hip_point(box, kpts, kc)
     legs_seen = 0
     if kpts is not None:
         k = kpts
         v = k[:, 2] > kc
-        if v[11] and v[12]:
-            hip = (k[11, :2] + k[12, :2]) / 2
-        elif v[11] or v[12]:
-            hip = k[11, :2] if v[11] else k[12, :2]
         sh = (k[5, :2] + k[6, :2]) / 2 if (v[5] and v[6]) else None
-        torso = float(np.linalg.norm(sh - hip)) if (sh is not None and hip is not None) else 0.0
+        torso = float(np.linalg.norm(sh - hip)) if (sh is not None and (v[11] or v[12])) else 0.0
         for hi, kn, an in ((11, 13, 15), (12, 14, 16)):
             if not (v[hi] and v[kn]):
                 continue
@@ -255,22 +283,15 @@ def classify_posture(box, kpts, chairs, tables, kc=0.35):
                     sit += 1.0
                 elif a > 160:
                     stand += 0.6
-    if hip is None:
-        hip = np.array([(x1 + x2) / 2, y1 + 0.55 * h], np.float32)
-    for c in chairs:
-        if inside(hip, expand(c, 0.2)):
-            sit += 1.2
-            break
+    if on_chair:
+        sit += 1.2
     ar = h / w
-    if ar < 1.4:
+    if not cut and ar < 1.4:
         sit += 0.5
-    elif ar > 2.3:
+    elif not cut and ar > 2.3:
         stand += 0.5
-    if legs_seen == 0:                            # legs hidden -> maybe behind a desk
-        for tb in tables:
-            if tb[1] < y2 < tb[3] + 0.1 * h and x1 < tb[2] and x2 > tb[0]:
-                sit += 0.8
-                break
+    if legs_seen == 0 and (still or any(tb[1] < y2 < tb[3] + 0.1 * h and x1 < tb[2] and x2 > tb[0] for tb in tables)):
+        sit += 0.8
     return ("sitting" if sit > stand + 0.2 else "standing"), hip
 
 
@@ -284,6 +305,10 @@ class Track:
     floor_trail: deque = field(default_factory=lambda: deque(maxlen=60))
     smooth: np.ndarray | None = None
     speed: float = 0.0
+    moves: deque = field(default_factory=lambda: deque(maxlen=60))  # (t, x, y, box height) image ground points
+    pace: float = 0.0                 # body heights per second across the picture
+    depth: float = 0.0                # ...and toward or away from the camera (log of the box height per second)
+    still_since: float | None = None  # since when they have kept (nearly) still
     state: str = "standing"
     zone: str | None = None
     zone_since: float = 0.0
@@ -342,12 +367,16 @@ class Analytics:
                 del self.objects[key]
             elif ob["last_t"] < t:
                 ob["seen"] = False
+                # the tracker gave the same chair a new id: the remembered box is that chair, not another one
+                if any(o.cls == ob["cls"] and iou(o.box, ob["box"]) > 0.3 for o in objects):
+                    del self.objects[key]
         chairs = [o["box"] for o in self.objects.values() if o["cls"] == "chair"]
         tables = [o["box"] for o in self.objects.values() if o["cls"] == "table"]
+        seated = seat_people([hip_point(p.box, p.kpts) for p in persons], chairs)
 
         # ---- people
         active = []
-        for p in persons:
+        for n, p in enumerate(persons):
             tr = self.tracks.get(p.id)
             if tr is None:
                 tr = Track(p.id, trail=deque(maxlen=cfg.trail_len), raw=deque(maxlen=cfg.state_window))
@@ -375,9 +404,23 @@ class Analytics:
                     break
             sp = math.hypot(tr.smooth[0] - x0, tr.smooth[1] - y0) / (t - t0) if t - t0 >= 0.25 else 0.0
             tr.speed = 0.6 * tr.speed + 0.4 * sp
+            tr.moves.append((t, float(gp[0]), float(gp[1]), float(max(y2 - y1, 1.0))))
+            while t - tr.moves[0][0] > 0.6:
+                tr.moves.popleft()
+            t0, mx, my, mh = tr.moves[0]
+            if t - t0 >= 0.25:
+                pace = math.hypot(gp[0] - mx, gp[1] - my) / max(y2 - y1, mh, 1.0) / (t - t0)
+                depth = abs(math.log(max(y2 - y1, 1.0) / mh)) / (t - t0)
+            else:
+                pace = depth = 0.0
+            tr.pace = 0.6 * tr.pace + 0.4 * pace
+            tr.depth = 0.6 * tr.depth + 0.4 * depth
+            if tr.pace >= cfg.walk_pace or tr.still_since is None:
+                tr.still_since = t
 
-            posture, hip = classify_posture(p.box, k, chairs, tables)
-            raw = "sitting" if posture == "sitting" else ("walking" if tr.speed > cfg.walk_speed else "standing")
+            posture, hip = classify_posture(p.box, k, n in seated, tables, t - tr.still_since >= cfg.still_s, p.cut)
+            # seated boxes jump in size as a desk hides and shows the legs, so only the upright walk toward the camera
+            raw = "walking" if posture != "sitting" and math.hypot(tr.pace, tr.depth) > cfg.walk_pace else posture
             tr.raw.append(raw)
             cnt = Counter(tr.raw)
             best = max(cnt.values())
@@ -986,6 +1029,7 @@ class YoloRunner:
         self.detections, self.chairs = [], []
         self.layers = dict(dets=[], tracks=[], shown=[])
         self.n = 0
+        self.lit = None  # brightest value per row and column over the first frames, to find a black border
         self.model_name = os.path.splitext(os.path.basename(cfg.det_model))[0]
 
     def _pose_crops(self, frame, boxes):
@@ -1042,6 +1086,23 @@ class YoloRunner:
                 out[i] = kps[j]
         return out
 
+    def _view(self, frame):
+        """(x1, y1, x2, y2) of the picture inside any black border: a recorded screen or a letterboxed stream."""
+        if self.n < 30:
+            g = frame.max(axis=2)
+            lit = (g.max(axis=0), g.max(axis=1))
+            self.lit = lit if self.lit is None else (np.maximum(self.lit[0], lit[0]), np.maximum(self.lit[1], lit[1]))
+        cols, rows = (np.flatnonzero(m > 24) for m in self.lit)
+        if not len(cols) or not len(rows):
+            return 0, 0, frame.shape[1] - 1, frame.shape[0] - 1
+        return cols[0], rows[0], cols[-1], rows[-1]
+
+    @staticmethod
+    def _cut(box, view, margin):
+        sides = (("left", box[0] - view[0]), ("top", box[1] - view[1]), ("right", view[2] - box[2]),
+                 ("bottom", view[3] - box[3]))
+        return frozenset(side for side, gap in sides if gap <= margin)
+
     def _keep_detections(self, predictor):
         boxes = predictor.results[0].boxes
         found = list(zip(boxes.xyxy.tolist(), boxes.conf.tolist(), boxes.cls.tolist()))
@@ -1066,6 +1127,9 @@ class YoloRunner:
                 elif c in OBJECT_CLASSES and cf[i] >= cfg.conf:
                     objects.append(ObjDet(int(ids[i]), OBJECT_CLASSES[c], xyxy[i], float(cf[i])))
         persons = self.identities.update(tracks, self.chairs)
+        view = self._view(frame)
+        for p in persons:
+            p.cut = self._cut(p.box, view, 0.01 * frame.shape[1])
         self.layers = dict(
             dets=self.detections,
             tracks=[[t, *(round(float(v), 1) for v in b), round(c, 3)] for t, b, c in tracks],

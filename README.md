@@ -1,255 +1,254 @@
-# Camwell — Frontend
+# Camwell
 
-Webapp เชื่อมกล้องเพื่อตรวจจับท่านั่ง ความเหนื่อยล้า และการหกล้มของพนักงานออฟฟิศ แล้วแจ้งเตือนเมื่อพบปัญหาต่อเนื่อง
+Camwell ใช้กล้องตรวจท่านั่ง ระยะห่างจากจอ เวลานั่งต่อเนื่อง ความเหนื่อยล้า และการหกล้มของพนักงานออฟฟิศ
+ระบบแจ้งเตือนเมื่อปัญหาเกิดต่อเนื่องนานพอ ส่วนการหกล้มแจ้งทันที
 
-- **การตรวจจับทั้งหมดรันในเบราว์เซอร์ (local AI)** — กล้อง + โมเดล + ตรรกะแจ้งเตือนอยู่ฝั่ง client ไม่มีภาพ/วิดีโอส่งออกจากเครื่อง
-- **camwell-backend (`backend/`)** — ใช้เฉพาะฟีเจอร์ "จำหน้า/ระบุตัวตนพนักงาน" (เก็บ face descriptor ลง SQLite และจับคู่ใบหน้าแทนเบราว์เซอร์)
-  ไม่รัน backend แอปก็ยังตรวจจับท่านั่ง/ความเหนื่อยล้า/ระยะห่างจอ/หกล้มได้ปกติ — ดู `backend/README.md`
-- ยังไม่ได้ทำ: ส่ง log เหตุการณ์แจ้งเตือนไป backend, dashboard HR, แจ้งเตือนผ่าน LINE — ดู "แผนถัดไป" ด้านล่าง
+Camwell มีระบบตรวจจับให้เลือกสองระบบ ทั้งสองระบบใช้หน้าตาและเมนูชุดเดียวกัน แต่ประมวลผลคนละที่และเก็บข้อมูลแยกกัน
 
-## ฟีเจอร์ที่มีตอนนี้
+| ระบบ | ประมวลผลที่ | โมเดล | เก็บข้อมูลที่ |
+|---|---|---|---|
+| YOLOv8 (แนะนำ) | yolo-backend ซึ่งอ่านกล้องผ่าน go2rtc ได้เอง จึงไม่ต้องเปิดหน้าเว็บค้างไว้ | ท่าทางใช้ `yolov8m-pose.pt` (17 จุด) คนและสิ่งของใช้ `yolov8m.pt` กับ ByteTrack ใบหน้าใช้ InsightFace `buffalo_l` หรือ YuNet กับ SFace | `yolo-backend/data/` |
+| MediaPipe | เบราว์เซอร์ของเครื่องที่เปิดหน้าไว้ | Pose Landmarker (33 จุด) และ @vladmandic/face-api | camwell-backend (SQLite) |
 
-1. **ท่านั่ง** — ก้มคอ/ยื่นคอ, หลังค่อม/โน้มตัว, นั่งเอียงข้าง (MediaPipe Pose Landmarker)
-   พร้อมปุ่ม **Calibrate ท่านั่ง** (นั่งท่าดี 3 วินาที → เก็บเป็น baseline แยกต่อกล้อง)
-2. **หกล้ม / ตกจากเก้าอี้** — ลำตัวร่วงเร็ว + เอียงใกล้แนวนอน หรือร่วงเร็วแล้วหายจากเฟรม (แจ้งทันที ไม่ต้องรอสะสมเวลา)
-3. **ความเหนื่อยล้า** — ง่วง/หลับตานาน (Eye Aspect Ratio), หาวถี่ผิดปกติ (Mouth Aspect Ratio) (@vladmandic/face-api)
-4. **ระยะห่างจากจอ** — เตือนเมื่อนั่งใกล้จอเกินกว่าค่าที่ calibrate ไว้
-5. **เตือนพัก** — นั่งต่อเนื่องนานเกินไปโดยไม่ลุก (ตัวจับเวลาแยกต่อกล้อง ไม่เกี่ยวกับท่านั่งถูก/ผิด)
-6. **Face recognition (ระบุตัวตน)** — ลงทะเบียนใบหน้าผ่าน camwell-backend ⚠️ ดูคำเตือนเรื่อง PDPA ด้านล่าง
-7. **หลายกล้อง / หลายคน** — ต่อกล้องพร้อมกันได้สูงสุด 2 ตัว (กล้องในเครื่อง/USB หรือกล้อง IP แบบ MJPEG)
-   และเลือกโหมด Workstation (1 คน) หรือ Multi-person (สูงสุด 4 คนต่อกล้อง)
-8. **Dev Console** (`/?console`) — หน้าผู้ดูแลระบบสำหรับดูสถานะ/ปรับเกณฑ์/เก็บ dataset — ดูหัวข้อด้านล่าง
+โปรเจกต์มีสามส่วน ทุกส่วนรันบนเครื่องในออฟฟิศ และไม่ส่งภาพหรือวิดีโอขึ้นคลาวด์
 
-ฟีเจอร์ที่ใช้ใบหน้า (3, 4, 6) ปิดอยู่เป็นค่าเริ่มต้น เปิดได้จาก checkbox "ฟีเจอร์ใบหน้า"
+| ส่วน | โฟลเดอร์ | พอร์ต | หน้าที่ |
+|---|---|---|---|
+| frontend | `frontend/` | 5173 | หน้าเว็บของทั้งสองระบบ (React, Vite) |
+| camwell-backend | `backend/` | 4000 | เก็บข้อมูลของระบบ MediaPipe (Express, SQLite) |
+| yolo-backend | `yolo-backend/` | 8000 | ประมวลผลและเก็บข้อมูลของระบบ YOLOv8 (FastAPI, YOLOv8) |
 
-## เทคโนโลยีที่ใช้
+## ติดตั้งแต่ละส่วน
 
-- **React 19 + TypeScript + Vite**
-- **react-webcam** — เข้าถึงกล้องผ่าน `getUserMedia`
-- **@mediapipe/tasks-vision (Pose Landmarker / BlazePose)** — ตรวจท่านั่ง/หกล้ม รันในเบราว์เซอร์ผ่าน WebAssembly
-  (ไม่เรียก API ภายนอกตอนใช้งานจริง) — License Apache 2.0 ใช้เชิงพาณิชย์ได้ฟรี
-- **@vladmandic/face-api** — ตรวจความเหนื่อยล้า/ระยะห่างจอ/ดึง face descriptor รันในเบราว์เซอร์ผ่าน TensorFlow.js
-  — License MIT ใช้เชิงพาณิชย์ได้ฟรีเช่นกัน
-- **vitest** (test) · **oxlint** (lint)
+ติดตั้งครบทั้งสามส่วนเพื่อใช้ได้ทั้งสองระบบ แต่ละส่วนติดตั้งครั้งเดียว
+จากนั้นเปิดทุกส่วนพร้อมกันตามหัวข้อ "เปิดทุกส่วนพร้อมกัน"
 
-## เริ่มต้นใช้งาน
+### ติดตั้ง frontend
+
+frontend ต้องใช้ Node.js 20.19 ขึ้นไปในรุ่น 20 หรือ 22.12 ขึ้นไป ตามที่ Vite 8 กำหนด
 
 ```bash
 cd frontend
-npm install       # ติดตั้ง dependency + รัน postinstall (scripts/setup-assets.mjs) ที่จะ:
-                   #   1) คัดลอก WASM runtime ของ MediaPipe มาไว้ที่ public/wasm
-                   #   2) ดาวน์โหลดโมเดล pose_landmarker_{lite,full,heavy}.task (~44MB รวม) มาไว้ที่ public/models
-                   #      (จาก storage.googleapis.com)
-                   #   3) ดาวน์โหลดโมเดลของ face-api มาไว้ที่ public/models/face-api
-                   #      (จาก raw.githubusercontent.com — เครือข่ายองค์กรส่วนใหญ่มักไม่บล็อก)
-npm run dev        # เปิด dev server (http://localhost:5173)
+npm install
+npm run dev       # http://localhost:5173
 ```
 
-ไฟล์ที่ข้ามไปแล้วจะไม่ดาวน์โหลดซ้ำ ถ้าเครือข่ายบล็อกการดาวน์โหลดโมเดลใด ดูวิธีดาวน์โหลดเองที่ `frontend/public/models/README.md`
-และ `frontend/public/models/face-api/README.md` หรือรัน `npm run setup:assets` ใน `frontend/` ใหม่ภายหลัง
+`npm install` รัน `frontend/scripts/setup-assets.mjs` ต่อให้เอง สคริปต์นี้เตรียมไฟล์ที่หน้าเว็บต้องใช้ตอนรันตามลำดับนี้
 
-ถ้าต้องการฟีเจอร์ระบุตัวตน ให้รัน backend ด้วย (`cd backend && npm install && npm run dev` — รายละเอียดใน `backend/README.md`)
-ที่อยู่ backend ตั้งได้ผ่าน `VITE_API_BASE_URL` ใน `frontend/.env` (ค่าเริ่มต้น `http://localhost:4000`)
+1. คัดลอก WASM runtime ของ MediaPipe ไปที่ `frontend/public/wasm`
+2. ดาวน์โหลดโมเดล `pose_landmarker_{lite,full,heavy}.task` รวมประมาณ 44 MB จาก storage.googleapis.com ไปที่ `frontend/public/models`
+3. ดาวน์โหลดโมเดลของ face-api จาก raw.githubusercontent.com ไปที่ `frontend/public/models/face-api`
 
-คำสั่งอื่นใน `frontend/`: `npm test` (vitest) · `npm run lint` (oxlint) · `npm run build` (tsc + vite build)
+สคริปต์ข้ามไฟล์ที่มีอยู่แล้ว ถ้าดาวน์โหลดไม่สำเร็จ ดูหัวข้อ "ดาวน์โหลดโมเดลของ frontend ไม่สำเร็จ" ด้านล่าง
 
-### หน้าที่เปิดได้
+frontend ส่งคำขอไป camwell-backend ที่ `http://localhost:4000`
+ถ้า camwell-backend อยู่ที่อื่น ให้ตั้ง `VITE_API_BASE_URL` ใน `frontend/.env`
 
-| URL | หน้า |
+คำสั่งอื่นใน `frontend/` มีดังนี้
+
+- `npm test` รันเทสต์ด้วย vitest
+- `npm run lint` ตรวจโค้ดด้วย oxlint
+- `npm run build` ตรวจ type ด้วย tsc แล้ว build ด้วย Vite
+
+### ติดตั้ง camwell-backend
+
+camwell-backend ต้องใช้ Node.js 22.5 ขึ้นไป เพราะใช้ `node:sqlite` ที่มากับ Node.js
+
+```bash
+cd backend
+npm install
+cp .env.example .env
+npm run dev       # http://localhost:4000
+```
+
+`backend/.env` กำหนดพอร์ต ไฟล์ฐานข้อมูล และ origin ที่อนุญาต
+
+| ตัวแปร | ค่าเริ่มต้น |
 |---|---|
-| `/` | หน้าหลักเดิม — กล้อง + แผงตั้งค่าความไว + ประวัติแจ้งเตือน (ใช้โมเดล `lite` และโครงร่างแบบ `basic` เสมอ) |
-| `/?console` | Dev Console — ใช้ state และ logic ชุดเดียวกับหน้าหลัก แต่จัดหน้าใหม่ + มีเครื่องมือสำหรับนักพัฒนา |
-| `/?yolo-console` | YOLO Console — วิเคราะห์ทั้งห้องด้วย `yolo-backend` (ดูหัวข้อด้านล่าง) |
+| `PORT` | `4000` |
+| `DB_PATH` | `./data/camwell.sqlite` ซึ่งคือ `backend/data/camwell.sqlite` |
+| `CORS_ORIGIN` | `http://localhost:5173` คั่นด้วยจุลภาคถ้ามีหลาย origin |
 
-## YOLO Console (`/?yolo-console`)
+ถ้าไม่เปิด camwell-backend ระบบ MediaPipe ยังตรวจจับและเตือนบนจอได้ แต่จำหน้าไม่ได้
+หน้ารายชื่อ หน้าประวัติแจ้งเตือน และหน้ารายงานประจำวันของระบบ MediaPipe ก็จะไม่มีข้อมูล
+API และตารางในฐานข้อมูลอยู่ใน [คู่มือ camwell-backend](backend/README.md)
 
-สลับจาก Dev Console ได้ที่ปุ่ม **Engine: MediaPipe / YOLO** ใน sidebar — สลับแล้วเปลี่ยนทั้งหน้า กล้องและโมเดลของหน้าเดิมถูกปิด
-กดกลับมา MediaPipe แล้ว console เดิมโหลดค่าเดิมจาก localStorage และ session ของ YOLO ถูกสั่งหยุด
+### ติดตั้ง yolo-backend
 
-ต้องเปิด `yolo-backend` ไว้ด้วย (ครั้งแรกให้สร้าง `.venv` ก่อน):
+yolo-backend ต้องใช้ Python 3.12 และ torch รุ่น CUDA 12.8
+ถ้าไม่เปิด yolo-backend ระบบ YOLOv8 ใช้ไม่ได้ทั้งระบบ
+รันทุกคำสั่งในหัวข้อนี้ที่ root ของโปรเจกต์
+
+ถ้าจะเปิดด้วย `scripts\dev.bat` ให้ทำแค่ข้อ 1 และข้อ 2
+dev.bat ตรวจแพ็กเกจทุกครั้งที่เปิด แล้วลงข้อ 3 และข้อ 4 ให้เองเมื่อแพ็กเกจไม่ตรง
+
+1. สร้าง venv
+
+   ```bat
+   py -3.12 -m venv yolo-backend\.venv
+   ```
+
+2. ลง torch และ torchvision จาก index ของ PyTorch แพ็กเกจสองตัวนี้จึงไม่อยู่ใน `requirements.txt`
+
+   ```bat
+   yolo-backend\.venv\Scripts\python.exe -m pip install torch==2.11.0+cu128 torchvision==0.26.0+cu128 --index-url https://download.pytorch.org/whl/cu128
+   ```
+
+3. ลงแพ็กเกจหลัก
+
+   ```bat
+   yolo-backend\.venv\Scripts\python.exe -m pip install -r yolo-backend\requirements.txt
+   ```
+
+4. ลงชุดจดจำใบหน้า
+   ชุดนี้ไม่บังคับ ถ้าลงไม่สำเร็จ yolo-backend ยังเปิดได้ แต่จะไม่ขึ้นชื่อคน และวัดระยะห่างจากจอกับความเหนื่อยล้าไม่ได้
+   insightface ลง onnxruntime รุ่น CPU มาด้วย คำสั่งที่สองและสามจึงถอดรุ่นนั้นออกแล้วลงรุ่น GPU ที่เข้ากับ torch cu128 แทน
+   อย่าลง onnxruntime-gpu รุ่น 1.27 ขึ้นไป รุ่นเหล่านั้นสร้างมาสำหรับ CUDA 13 และใช้คู่กับ torch cu128 ไม่ได้
+
+   ```bat
+   yolo-backend\.venv\Scripts\python.exe -m pip install -r yolo-backend\requirements-face.txt
+   yolo-backend\.venv\Scripts\python.exe -m pip uninstall -y onnxruntime onnxruntime-gpu
+   yolo-backend\.venv\Scripts\python.exe -m pip install "onnxruntime-gpu>=1.22,<1.27"
+   ```
+
+5. เปิด yolo-backend
+
+   ```bat
+   npm run dev:yolo
+   ```
+
+   yolo-backend รันที่ `http://127.0.0.1:8000`
+   ตอนใช้ครั้งแรก InsightFace ดาวน์โหลดโมเดล `buffalo_l` ไปที่ `%USERPROFILE%\.insightface` ครั้งแรกจึงต้องต่ออินเทอร์เน็ต
+
+### ติดตั้ง go2rtc
+
+ทำหัวข้อนี้เฉพาะเมื่อจะให้ระบบ YOLOv8 อ่านภาพจากกล้อง IP ผ่าน RTSP
+แหล่งภาพอื่น ได้แก่ ไฟล์วิดีโอ ไฟล์รูปภาพ กล้อง browser และ Simulator ไม่ต้องใช้ go2rtc
+
+[go2rtc](https://github.com/AlexxIT/go2rtc) เป็นโปรแกรมแยกที่รับสตรีมจากกล้องแล้วส่งต่อ
+yolo-backend ใช้พอร์ตของ go2rtc สองพอร์ต คือ RTSP ที่ 8554 และหน้าเว็บกับ API ที่ 1984
+ติดตั้ง go2rtc ได้สองแบบ เลือกแบบที่สะดวก
+
+#### แบบที่ 1 รันด้วย Docker
+
+แบบนี้ต้องมี Docker Desktop และไม่ต้อง clone repo เพราะ image `alexxit/go2rtc` มี go2rtc และ FFmpeg มาให้แล้ว
+รันคำสั่งนี้ใน Command Prompt
 
 ```bat
-py -3.12 -m venv yolo-backend\.venv
-yolo-backend\.venv\Scripts\python.exe -m pip install -r yolo-backend\requirements.txt
-npm run dev:yolo
+docker run -d --name go2rtc --restart unless-stopped -p 1984:1984 -p 8554:8554 -v %USERPROFILE%\go2rtc:/config alexxit/go2rtc
 ```
 
-`npm run dev:all` เปิดให้ด้วยถ้ามี `yolo-backend\.venv` แล้ว — frontend เรียก `/yolo/...` และ Vite ส่งต่อไปที่ `127.0.0.1:8000`
-(`frontend/vite.config.ts`) backend รับเฉพาะหน้าเว็บที่เปิดจาก `localhost:5173` จึงต้องเปิด dev server ที่พอร์ตนี้
+go2rtc เก็บ `go2rtc.yaml` ไว้ใน `%USERPROFILE%\go2rtc`
+คู่มือของ go2rtc ใช้ `--network host` แต่ Docker Desktop ใช้ host networking ได้เฉพาะรุ่น 4.34 ขึ้นไป และต้องเปิด **Enable host networking** ใน Settings ก่อน
+Camwell ใช้แค่พอร์ต 1984 และ 8554 คำสั่งด้านบนจึงเปิดสองพอร์ตนี้ด้วย `-p` แทน
 
-- **Live** — แหล่งภาพ: ไฟล์วิดีโอ, ไฟล์รูปภาพ, กล้อง browser, go2rtc, Simulator · ภาพสดพร้อมกรอบคน/สิ่งของ/เส้นทางเดิน,
-  แผงสถิติ, heatmap, ผังพื้น · หยุดชั่วคราว/จบ/เริ่มใหม่
-- **Floor & Zones** — calibrate พื้น (ลาก 4 มุม คลิกบนเส้นกรอบเพื่อเพิ่มจุด) และแบ่งโซน บันทึกลง `yolo-backend/data/settings.json`
-- **Reports** — รายงานของทุก session ที่จบแล้ว + ดาวน์โหลด `tracks.csv`
+#### แบบที่ 2 ใช้ go2rtc.exe
 
-## Dev Console (`/?console`)
+1. ดาวน์โหลด `go2rtc_win64.zip` จาก [release ล่าสุดของ go2rtc](https://github.com/AlexxIT/go2rtc/releases/latest)
+2. แตกไฟล์ zip จะได้ `go2rtc.exe` ไฟล์เดียว
+3. ลง FFmpeg
+   go2rtc เรียก `ffmpeg` จาก PATH เมื่อต้องแปลงสตรีม เช่น แปลงภาพ H264 จากกล้องเป็น MJPEG
 
-ออกแบบจาก `docs/camWell/project/Camwell Dev Console.dc.html` (แผนงานใน `docs/camWell/IMPLEMENTATION_PLAN.md`)
-ตอนนี้เปิดได้ทุก build (ยังอยู่ช่วงพัฒนา — จะกำหนดสิทธิ์ใหม่ภายหลัง)
+   ```bat
+   winget install --id Gyan.FFmpeg --exact
+   ```
 
-- **Sidebar** — 4 เมนู + สถานะโมเดล/บริการ (Pose Landmarker, face-api, camwell-backend, error ของกล้องแต่ละตัว)
-- **Header** — โหมด Workstation/Multi · **Pose: lite / full / heavy** · **Skeleton: basic / full** · เสียงแจ้งเตือน ·
-  ฟีเจอร์ใบหน้า · Dataset Recorder · สถานะ backend (`/health` ทุก 10 วินาที)
-- **ภาพรวมระบบ** — แถบสถิติ (Pose inference ms แบบ EMA, จำนวนคนที่ติดตาม, แจ้งเตือนที่ยัง active), การ์ดกล้อง
-  (ชิป GPU/CPU · ms · จำนวนคน, สถานะ baseline, เปลี่ยนแหล่งภาพ), แจ้งเตือนล่าสุด
-  — จอกว้าง ≥1700px จะแสดงการ์ดเกณฑ์การตรวจจับทางขวาด้วย
-- **เกณฑ์การตรวจจับ** — slider ทุกค่า (ท่านั่ง/หกล้ม/ความเหนื่อยล้า/ระยะห่างจอ/เตือนพัก) บอกว่าค่าไหนแก้จากค่าเริ่มต้น + ปุ่มคืนค่าทั้งหมด
-- **เหตุการณ์** — กรองตามหมวด/เฉพาะที่ยัง active + Export JSON
-- **ข้อมูลใบหน้า** — รายชื่อพนักงานที่ลงทะเบียนใน backend + ลบข้อมูล
+4. เปิด terminal ใหม่ในโฟลเดอร์ที่มี `go2rtc.exe` แล้วรัน `go2rtc.exe`
+   go2rtc อ่าน `go2rtc.yaml` จากโฟลเดอร์ที่รันคำสั่ง
 
-กล้องไม่ถูก unmount ตอนสลับแท็บ (แค่ซ่อน) จึงไม่ต้องโหลดกล้อง/โมเดลใหม่
+#### เพิ่มกล้องใน go2rtc
 
-### เลือกรุ่นโมเดล Pose (lite / full / heavy)
+แก้ `go2rtc.yaml` ได้จากหน้าเว็บของ go2rtc ที่ `http://localhost:1984` หรือแก้ไฟล์เอง
+ใส่ลิงก์ RTSP ของกล้องตามคู่มือของกล้องรุ่นนั้น ตัวอย่างนี้มาจากคู่มือของ go2rtc
 
-ทุกรุ่นให้ landmark 33 จุดรูปแบบเดียวกัน ต่างกันที่ความแม่นยำกับความเร็ว — ดูค่า ms ในแถบสถิติเพื่อเทียบบนเครื่องจริง
-(ระบบจำกัดไว้ 12 fps = งบ ~83 ms ต่อรอบต่อกล้อง)
-
-| รุ่น | ไฟล์ | ขนาดโดยประมาณ |
-|---|---|---|
-| lite (ค่าเริ่มต้น) | `pose_landmarker_lite.task` | ~5.5 MB |
-| full | `pose_landmarker_full.task` | ~9 MB |
-| heavy | `pose_landmarker_heavy.task` | ~29 MB |
-
-- เปลี่ยนรุ่นแล้วโมเดลโหลดใหม่ทุกกล้อง — **ควร Calibrate ท่านั่งใหม่** เพราะมุมที่วัดได้ต่างกันเล็กน้อย
-- เปลี่ยนรุ่นไม่ได้ระหว่างกำลังบันทึก dataset
-
-### โครงร่าง (Skeleton: basic / full)
-
-- **basic** (ค่าเริ่มต้น) — โครงร่างเดิม 10 เส้นช่วงบน (ไหล่ แขน ลำตัว หู-ไหล่) วาดทุกจุดที่โมเดลส่งมา
-- **full** — ครบ 35 เส้นตาม BlazePose (หน้า แขน มือ ลำตัว ขา) เฉพาะจุดที่ visibility ≥ `minVisibility` (0.5)
-  + **เส้นสีเหลือง** = เส้นคอ (กึ่งกลางไหล่ → กึ่งกลางหู/จมูก) และกระดูกสันหลัง (กึ่งกลางสะโพก → กึ่งกลางไหล่)
-  ซึ่งเป็นเส้นเดียวกับที่ใช้วัด `neckAngleDeg` / `torsoAngleDeg` จริง
-  — ตอนเห็นแค่ช่วงบน แขน/สะโพกที่มองไม่ชัดจะไม่ถูกวาด (ตั้งใจ)
-
-การเลือกโครงร่างเป็นแค่การแสดงผล ไม่มีผลกับการตรวจจับ
-
-### Dataset Recorder
-
-เก็บตัวเลข landmark/feature (ไม่เก็บภาพ) ไว้ปรับจูนเกณฑ์ท่านั่ง — เปิดจาก checkbox "Dataset Recorder" บน header
-(แผงจะอยู่ในหน้าภาพรวม) หน้าหลัก `/` ก็มีแผงแบบง่ายให้ใช้เช่นกัน (แสดงเฉพาะตอนรัน dev)
-
-- เลือก **กล้อง** + **label** (`GOOD`, `FORWARD_HEAD`, `SLOUCH`, `LEAN_LEFT`, `LEAN_RIGHT`) → เริ่ม/หยุดบันทึก → Export JSON
-- เก็บเฉพาะเฟรมที่มี **คนเดียวในเฟรม** · ประมาณ 12 sample/วินาที · ค่าดิบก่อน smoothing
-- ระหว่างบันทึกจะเห็น `● REC` + ค่า 4 feature ซ้อนบนภาพกล้องที่กำลังบันทึก
-- **ไม่ปน dataset ข้ามรุ่นโมเดล** — dataset ล็อกตามรุ่นของ sample แรก ถ้ารุ่นไม่ตรงจะเริ่มบันทึกไม่ได้จนกว่าจะ Export แล้วล้างข้อมูล
-- ไฟล์ export มี `meta.schemaVersion`, `exportedAt`, `poseModel`, `thresholdsAtExport` + `samples[]`
-  (แต่ละ sample มี `cameraId`, `label`, มุมต่างๆ, `quality`, `landmarks`/`worldLandmarks` 33 จุดพร้อม `visibility`, `minVisibility`)
-
-ข้อควรระวัง:
-- เก็บในหน่วยความจำของแท็บเท่านั้น — **รีเฟรช/ปิดแท็บแล้วหาย ต้อง Export ก่อน** และกินหน่วยความจำเพิ่มขึ้นระหว่างบันทึก (อัดเป็นช่วงแล้ว export ทยอย)
-- CameraStage เก็บ sample เฉพาะตอนรัน dev (`import.meta.env.DEV`) — production build จะไม่เก็บ
-- ไม่มีผลกับการตรวจจับ/แจ้งเตือน (การแจ้งเตือนยังทำงานระหว่างอัด — ปิดเสียงได้ถ้ารำคาญ)
-
-แนวทางเก็บข้อมูลให้ใช้งานได้: อัด `GOOD` ก่อนทุกรอบ (ใช้เป็น baseline ตอนวิเคราะห์) · ท่าละ 30–60 วินาทีต่อเนื่อง ·
-ครบทุก label · หลายคน/หลายวัน ดีกว่าอัดคนเดียวนานๆ · ห้ามย้ายกล้อง/เปลี่ยนรุ่นโมเดลกลางคัน
-
-## วิธีทำงานของแต่ละฟีเจอร์
-
-### ท่านั่ง + หกล้ม + เตือนพัก (PostureEngine)
-1. `usePoseLandmarker` โหลดโมเดล BlazePose (33 keypoints) รุ่นที่เลือกจากไฟล์ local (GPU delegate, fallback เป็น CPU)
-2. `lib/poseThrottle.ts` จำกัดการรันโมเดลไว้ 12 fps ต่อกล้อง และรันเฉพาะเมื่อเฟรมวิดีโอเปลี่ยนจริง
-3. `lib/postureEngine.ts` (หนึ่ง instance ต่อกล้อง) รวมขั้นตอนต่อเฟรม:
-   - `lib/tracker.ts` จับคู่คนข้ามเฟรมให้มี trackId คงที่
-   - `lib/postureAnalysis.ts` คำนวณมุมคอ/มุมลำตัว/มุมเอียงไหล่/`headHeightRatio` (ข้ามจุดที่ visibility < `minVisibility`)
-     และแยก `full_body` / `upper_body`
-   - `lib/smoothing.ts` ทำค่าให้นิ่ง (EMA) ก่อนจัดท่า → `classifyPosture` → forward_head / slouching / leaning / good
-     (ถ้า Calibrate แล้ว ตัดสินจากส่วนต่างเทียบ baseline ของกล้องนั้น + สัดส่วนหัวที่ต่ำลง)
-   - `lib/fallDetection.ts` ตรวจการร่วงตัวเร็ว / หายจากเฟรม
-   - `lib/breakReminder.ts` จับเวลานั่งต่อเนื่อง
-4. Baseline ท่านั่งเก็บใน localStorage แยกต่อกล้อง (`camwell:posture-baseline:v1:<cameraId>`, ดู `services/postureBaselineStore.ts`)
-
-### ความเหนื่อยล้า + ระยะห่างจอ + ระบุตัวตน
-1. `useFaceApiModels` โหลดโมเดล TinyFaceDetector + FaceLandmark68 + FaceRecognition จากไฟล์ local
-2. ตรวจจับใบหน้าแบบ throttled (ทุก ~400ms) แล้วจับคู่ใบหน้ากับคนจาก pose ที่ตำแหน่งใกล้ที่สุด
-3. `lib/fatigueAnalysis.ts` คำนวณ EAR (ตาหลับ) และ MAR (อ้าปาก/หาว) จาก 68 จุด landmark ใบหน้า
-4. `lib/distanceAnalysis.ts` เทียบขนาดกรอบใบหน้ากับ baseline ที่ calibrate ไว้
-5. `services/faceEnrollment.ts` ส่ง descriptor 128 มิติไปให้ camwell-backend จับคู่ (เช็คซ้ำทุก ~3 วินาทีต่อคน)
-   — browser ไม่ได้เก็บ descriptor ของใครไว้เลย
-
-### กลไกแจ้งเตือนกลาง
-`lib/sustainedAlertMachine.ts` เป็น state machine กลางของท่านั่ง/ความเหนื่อยล้า/ระยะห่างจอ — ต้องเจอปัญหาต่อเนื่อง
-นานเกิน threshold ก่อนจะแจ้งเตือนจริง และต้องกลับปกติสักพักก่อนเคลียร์ (hysteresis) กันกระพริบ
-(หกล้มเป็น edge-triggered แจ้งทันที, เตือนพักเป็นตัวจับเวลา) ทุกเหตุการณ์ใช้โครงสร้าง `AlertEvent` เดียวกัน (`types/alerts.ts`)
-
-แจ้งเตือนแสดงเป็นกรอบ/banner สีแดงบนกล้อง + banner หกล้ม/เตือนพัก + เสียง (ปิดได้) + บันทึกลงตารางเหตุการณ์
-(เก็บในหน่วยความจำของเบราว์เซอร์ — `services/alertReporter.ts` ตอนนี้แค่ log ใน console)
-
-## โครงสร้างโค้ดที่สำคัญ
-
-```
-frontend/src/
-  App.tsx                         state กลาง + หน้าหลัก (/) — ถ้ามี ?console จะแสดง DevConsole แทน
-  hooks/usePoseLandmarker.ts      โหลด MediaPipe Pose Landmarker (เลือกรุ่น lite/full/heavy, รายงาน GPU/CPU)
-  hooks/useFaceApiModels.ts       โหลดโมเดลของ face-api
-  hooks/useCameraDevices.ts       รายชื่อกล้องในเครื่อง
-  lib/postureEngine.ts            pipeline ต่อเฟรมของกล้อง 1 ตัว (tracker + posture + fall + break)
-  lib/postureAnalysis.ts          คำนวณมุมท่านั่ง + จัดท่า
-  lib/postureCalibration.ts       คำนวณ baseline จากช่วง Calibrate
-  lib/smoothing.ts                EMA ของ feature
-  lib/tracker.ts                  จับคู่คนข้ามเฟรม
-  lib/fallDetection.ts            ตรวจการหกล้ม
-  lib/breakReminder.ts            ตัวจับเวลานั่งต่อเนื่อง
-  lib/fatigueAnalysis.ts          EAR/MAR (ง่วง/หาว)
-  lib/distanceAnalysis.ts         ระยะห่างจอ
-  lib/sustainedAlertMachine.ts    state machine แจ้งเตือนกลาง
-  lib/poseThrottle.ts             จำกัด 12 fps
-  lib/skeletonOverlay.ts          เส้นโครงร่าง basic/full (แสดงผลอย่างเดียว)
-  lib/datasetJson.ts              รูปแบบไฟล์ dataset ที่ export
-  lib/multiPerson.ts              โหมด workstation/multi
-  services/datasetRecorder.ts     เก็บ sample dataset (เลือกกล้อง, ล็อกรุ่นโมเดล)
-  services/postureBaselineStore.ts baseline ท่านั่งต่อกล้อง (localStorage)
-  services/faceEnrollment.ts      ลงทะเบียน/ลบ/จับคู่ใบหน้าผ่าน backend
-  services/apiConfig.ts           API_BASE_URL + fetch helper
-  services/alertReporter.ts       จุดเชื่อมต่อส่งเหตุการณ์ออกนอกแอป (ตอนนี้ log ในเครื่อง)
-  services/beep.ts                เสียงแจ้งเตือน (Web Audio API)
-  components/CameraStage.tsx      กล้อง + canvas overlay + detection loop (pose + face) ของกล้อง 1 ตัว
-  components/CameraSourceSelector.tsx  เลือกกล้องในเครื่อง / กล้อง IP (MJPEG)
-  components/SettingsPanel.tsx    ปรับ threshold (หน้าหลัก)
-  components/EnrollmentPanel.tsx  รายชื่อที่ลงทะเบียนใบหน้า + ลบ (หน้าหลัก)
-  components/EventLog.tsx         ตารางประวัติการแจ้งเตือน (หน้าหลัก)
-  components/DatasetRecorderPanel.tsx  แผงบันทึก dataset แบบง่าย (หน้าหลัก)
-  console/                        Dev Console (DevConsole, MonitorTab, RecorderPanel, ThresholdsTab,
-                                  EventsTab, PeopleTab, useBackendHealth, format, console.css)
-  types/                          alerts, posture, fall, wellbeing, identity, person, cameraSource
-backend/                          camwell-backend (Express + SQLite) สำหรับข้อมูลใบหน้า
-docs/camWell/                     design handoff ของ Dev Console + IMPLEMENTATION_PLAN.md
-docs/performance/                 บันทึกงานปรับประสิทธิภาพ/ตรวจสอบแต่ละ ticket
+```yaml
+streams:
+  camera1: rtsp://admin:password@192.168.1.123/cam/realmonitor?channel=1&subtype=0
 ```
 
-## ข้อจำกัดที่ควรรู้
+`camera1` คือชื่อสตรีมที่ใช้ในลิงก์ของขั้นถัดไป
 
-- **กล้อง IP ต่าง origin (CORS)** — ภาพแสดงได้แต่ AI อ่านพิกเซลไม่ได้ (canvas tainted) ต้องมีตัวกลางแปลงสตรีม
-  กล้องที่ใช้ RTSP เปิดในเบราว์เซอร์ตรงๆ ไม่ได้
-- **กล้องหน้าตรง** มองการยื่นคอ/หลังค่อมได้จำกัด (เป็นการเคลื่อนเข้าหากล้อง) — เกณฑ์ปัจจุบันยังต้องปรับจูนจาก dataset จริง
-- `minVisibility` (0.5) ยังไม่มีให้ปรับในหน้าเว็บ (มีผลกับการคำนวณมุม, dataset และโครงร่างแบบ full)
+#### ส่งภาพเข้าระบบ YOLOv8
 
-## ⚠️ ข้อควรระวังเรื่อง Face Recognition และ PDPA
+1. เปิด `/?yolo-dashboard` แล้วไปที่ส่วน "ภาพจากกล้อง"
+2. เลือกแหล่งภาพ "go2rtc"
+3. วางลิงก์ในช่อง "ลิงก์ go2rtc" เช่น `rtsp://127.0.0.1:8554/camera1` เมื่อ go2rtc รันบนเครื่องเดียวกับ yolo-backend
 
-ฟีเจอร์ระบุตัวตนพนักงานใช้ face descriptor ซึ่งเป็น**ข้อมูลชีวภาพ (biometric data)** ถือเป็นข้อมูลส่วนบุคคล
-ที่มีความอ่อนไหวภายใต้ พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล (PDPA) ของไทย ก่อนนำไปใช้งานจริงกับพนักงานต้อง:
+ช่อง "ลิงก์ go2rtc" รับลิงก์หน้าเว็บของ go2rtc ที่มี `src` ได้ด้วย เช่น `http://127.0.0.1:1984/stream.html?src=camera1`
+เมื่อได้ลิงก์หน้าเว็บ yolo-backend ลองเปิด RTSP ที่พอร์ต 8554 ก่อน แล้วค่อยลอง MJPEG ที่ `/api/stream.mjpeg`
+กล้อง H264 หรือ H265 ส่ง MJPEG ได้ก็ต่อเมื่อตั้งให้ go2rtc แปลงด้วย FFmpeg ตาม[คู่มือ MJPEG ของ go2rtc](https://github.com/AlexxIT/go2rtc/blob/master/internal/mjpeg/README.md)
+yolo-backend ถือว่า RTSP อยู่ที่พอร์ต 8554 ซึ่งเป็นค่าเริ่มต้นของ go2rtc ถ้าตั้ง RTSP ไว้ที่พอร์ตอื่น ให้วางลิงก์ `rtsp://` ที่มีพอร์ตนั้นแทน
 
-1. ขอความยินยอม (consent) จากพนักงานอย่างชัดเจนก่อนลงทะเบียนใบหน้า — UI บังคับให้ติ๊กยืนยันก่อนกดลงทะเบียน
-   และ backend ปฏิเสธคำขอที่ไม่มี `consentGiven: true`
-2. แจ้งวัตถุประสงค์การใช้ข้อมูลให้ชัดเจน และเก็บเท่าที่จำเป็น
-3. มีสิทธิ์ให้พนักงานขอลบข้อมูลของตัวเองได้ตลอดเวลา (ปุ่มลบในหน้าหลัก และแท็บ "ข้อมูลใบหน้า" ใน Dev Console)
+## เปิดทุกส่วนพร้อมกัน
 
-descriptor เก็บไว้ที่ **camwell-backend (SQLite) เท่านั้น** ไม่ถูกส่งกลับมาที่เบราว์เซอร์หลังลงทะเบียน
-ยังไม่ใช่ระบบที่ผ่านกระบวนการขอความยินยอมที่ถูกต้องตามกฎหมายครบทุกขั้นตอน — **โปรดปรึกษาฝ่ายกฎหมาย/HR ก่อนนำไปใช้งานจริง**
-(ปิดฟีเจอร์นี้ได้จาก checkbox "ฟีเจอร์ใบหน้า" ถ้ายังไม่พร้อม)
+ที่ root ของโปรเจกต์ รันคำสั่งนี้บน Windows
 
-## ข้อควรทราบเรื่องโมเดล AI
+```bat
+scripts\dev.bat
+```
 
-โปรเจกต์นี้ตั้งใจใช้เฉพาะโมเดลที่ license เป็น Apache 2.0 (MediaPipe) หรือ MIT (face-api) เพื่อให้ใช้ใน
-ซอฟต์แวร์เชิงพาณิชย์ปิด (closed-source) ของบริษัทได้โดยไม่มีปัญหาลิขสิทธิ์
+`scripts\dev.bat` ตรวจ camwell-backend, yolo-backend และ frontend ทีละตัว แล้วเปิดแต่ละตัวในหน้าต่างของตัวเอง จากนั้นสรุปผลรายตัว
 
-รุ่น Pose เลือกได้ใน Dev Console (lite/full/heavy) — หน้าหลักใช้ `lite` ค่าคงที่รุ่นอยู่ที่ `POSE_MODELS` ใน
-`frontend/src/hooks/usePoseLandmarker.ts` (ต้องตรงกับรายการใน `frontend/scripts/setup-assets.mjs`)
+- ถ้าพอร์ตของตัวใดถูกใช้อยู่แล้ว dev.bat ไม่เปิดตัวนั้นซ้ำ
+- ถ้าแพ็กเกจไม่ตรง dev.bat ซ่อมให้ด้วย `npm ci` หรือ `pip install` ถ้าซ่อมไม่ได้ dev.bat ข้ามตัวนั้นแล้วบอกวิธีแก้
+- หน้าต่างของ frontend เปิดเบราว์เซอร์ไปที่ `http://localhost:5173` ให้เอง
+- dev.bat ไม่เปิด go2rtc ให้ ถ้าใช้ go2rtc ให้เปิดเองแยกต่างหาก
 
-## แผนถัดไป (ยังไม่ได้ทำ)
+ถ้าอยากเปิดทุกตัวใน terminal เดียว ให้รัน `npm run dev:all` ที่ root แทน
 
-- ส่งเหตุการณ์แจ้งเตือนไป backend (`createWebSocketAlertReporter()` ใน `frontend/src/services/alertReporter.ts` เตรียมไว้แล้ว
-  ใช้โครงสร้าง `AlertEvent` เดียวกันทุกหมวด) และเก็บ log พร้อม employeeId/cameraId
-- Dashboard รวมสำหรับ HR/หัวหน้างาน
-- แจ้งเตือนภายนอกผ่าน LINE Messaging API + LINE Official Account (LINE Notify ปิดให้บริการไปแล้วตั้งแต่ 31 มี.ค. 2025)
-- ปรับจูนเกณฑ์ท่านั่งจาก dataset จริง (หลายคน ครบทุก label)
-- กำหนดสิทธิ์การเข้า Dev Console
+- คำสั่งนี้ไม่ตรวจและไม่ซ่อมแพ็กเกจ
+- ถ้ายังไม่มี `yolo-backend\.venv` คำสั่งนี้ข้าม yolo-backend
+- ถ้าตัวใดหยุด ตัวอื่นหยุดตาม
+
+## เปิดหน้าเว็บ
+
+1. เปิด `http://localhost:5173`
+2. กด "เข้าสู่ระบบ" เพื่อไปหน้าเลือกระบบ `/?systems`
+3. เลือก YOLOv8 หรือ MediaPipe
+
+หน้าของแต่ละระบบอยู่ใน [ระบบ YOLOv8](docs/yolo.md) และ [ระบบ MediaPipe](docs/mediapipe.md)
+
+## ก่อนใช้กับพนักงานจริง
+
+ทั้งสองระบบเก็บข้อมูลใบหน้า ซึ่งเป็นข้อมูลอ่อนไหวตาม PDPA
+ระบบ MediaPipe ยังลงทะเบียนใบหน้าที่ไม่รู้จักให้เองโดยไม่มีความยินยอม และเปิดอยู่เป็นค่าเริ่มต้น
+อ่าน [ข้อมูลใบหน้า PDPA และ license ของโมเดล](docs/privacy-and-licenses.md) แล้วปรึกษาฝ่ายกฎหมายหรือ HR ก่อนใช้งานจริง
+ถ้าจะใช้ระบบ YOLOv8 เชิงพาณิชย์ ให้ตรวจ license ของ ultralytics และ InsightFace ในเอกสารเดียวกันก่อน
+
+## แก้ปัญหา
+
+### ดาวน์โหลดโมเดลของ frontend ไม่สำเร็จ
+
+เครือข่ายองค์กรบางแห่งบล็อก storage.googleapis.com
+เมื่อดาวน์โหลดไม่สำเร็จ `setup-assets.mjs` พิมพ์ลิงก์และ path ที่ต้องวางไฟล์ไว้ แก้ได้สองทาง
+
+- ดาวน์โหลดเองตาม `frontend/public/models/README.md` และ `frontend/public/models/face-api/README.md`
+- รัน `npm run setup:assets` ใน `frontend/` อีกครั้งเมื่อเครือข่ายพร้อม
+
+### หน้าเว็บเรียก backend ไม่ได้เพราะ CORS
+
+ถ้าพอร์ต 5173 ไม่ว่าง Vite ย้าย frontend ไปพอร์ตอื่น แล้ว backend ทั้งสองตัวจะปฏิเสธคำขอจากหน้าเว็บ
+yolo-backend รับเฉพาะ origin `http://localhost:5173` และ `http://127.0.0.1:5173` ตามที่กำหนดไว้ใน `yolo-backend/app/config.py`
+camwell-backend รับเฉพาะ origin ใน `CORS_ORIGIN`
+ปิดโปรแกรมที่ใช้พอร์ต 5173 แล้วเปิด frontend ใหม่
+
+### มีโฟลเดอร์ `vision_service\` ค้างอยู่
+
+โปรเจกต์รุ่นเก่าเก็บโค้ดของ yolo-backend ไว้ที่ `vision_service\` และโค้ดย้ายไป `yolo-backend\` แล้ว
+หลัง `git pull` โฟลเดอร์ `vision_service\` ยังค้างอยู่ เพราะมี `.venv` ที่ git ไม่ได้เก็บ
+อย่าย้าย `vision_service\.venv` มาใช้ เพราะ venv บน Windows ผูกกับ path เดิม
+
+1. ลบโฟลเดอร์ `vision_service\`
+2. ลบ `node_modules\` ที่ root ซึ่งเหลือจากรุ่นที่ frontend ยังอยู่ที่ root
+3. สร้าง `yolo-backend\.venv` ใหม่ตามหัวข้อ "ติดตั้ง yolo-backend"
+
+## เอกสารอื่น
+
+- [ระบบ YOLOv8](docs/yolo.md) หน้า เกณฑ์แจ้งเตือน ตัวแปรสภาพแวดล้อม และไฟล์ข้อมูลของระบบ YOLOv8
+- [ระบบ MediaPipe](docs/mediapipe.md) ฟีเจอร์ หน้า และ Dev Console ของระบบ MediaPipe
+- [เก็บ dataset ท่านั่ง](docs/mediapipe-dataset.md) วิธีใช้ Dataset Recorder ของระบบ MediaPipe
+- [การตรวจจับและแจ้งเตือนของระบบ MediaPipe](docs/mediapipe-how-it-works.md) ขั้นตอนต่อเฟรม เหตุผลของการออกแบบ และข้อจำกัด
+- [ข้อมูลใบหน้า PDPA และ license ของโมเดล](docs/privacy-and-licenses.md)
+- [คู่มือ camwell-backend](backend/README.md) API และตารางในฐานข้อมูล
+- `DESIGN.md` ระบบดีไซน์ "ซองยาประจำออฟฟิศ" ที่ทุกหน้าใช้ ธีมมีโหมดสว่างและมืด และเริ่มตามการตั้งค่าของ OS จนกว่าผู้ใช้จะกดสลับ
+- `PRODUCT.md` บริบทของผลิตภัณฑ์

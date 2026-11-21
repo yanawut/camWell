@@ -38,7 +38,7 @@ export default function EnrollmentPanel({ people, onRemove, onRename }: Props) {
         ลงทะเบียนได้จากช่องใต้ภาพกล้อง (ต้องเห็นหน้าชัดเจนก่อน) หรือเปิด "ลงทะเบียนอัตโนมัติ" ในตั้งค่า ระบบจะเพิ่มคนที่ไม่
         รู้จักให้เองเป็น "คนที่ 1", "คนที่ 2", … แล้วกด "เปลี่ยนชื่อ" เป็นชื่อจริงทีหลังได้ ข้อมูลเก็บไว้ที่ camwell-backend
         (ฐานข้อมูล SQLite กลาง) — <strong>ต้องขอความยินยอมจากพนักงานก่อนใช้งานจริงเสมอ</strong> (ดูรายละเอียดเรื่อง
-        PDPA ใน camwell-backend/README.md)
+        PDPA ใน docs/privacy-and-licenses.md)
       </p>
       {people.length === 0 ? (
         <p className="empty-state">ยังไม่มีใครลงทะเบียนไว้</p>

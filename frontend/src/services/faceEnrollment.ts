@@ -1,7 +1,7 @@
 // คุยกับ camwell-backend (Phase 2) เพื่อลงทะเบียน/ลบ/จับคู่ใบหน้าพนักงาน — เดิม (Phase 1) ทำทุกอย่างในเบราว์เซอร์
 // เอง (เก็บลง localStorage + เทียบ descriptor เอง) ตอนนี้ย้ายไปให้ backend ทำแทนทั้งหมด เพื่อให้พนักงานคนเดียว
 // ถูกจำได้ทุกเครื่อง/ทุกกล้องในออฟฟิศ (ไม่ใช่แค่เครื่องที่ลงทะเบียนไว้) และไม่ต้องส่ง descriptor ดิบของทุกคน
-// ไปให้ทุกเบราว์เซอร์ถืออยู่ — ดู camwell-backend/README.md สำหรับรายละเอียด API และ src/types/identity.ts
+// ไปให้ทุกเบราว์เซอร์ถืออยู่ — ดู backend/README.md สำหรับรายละเอียด API และ src/types/identity.ts
 // สำหรับข้อควรระวังเรื่อง PDPA
 
 import type { EnrolledPerson } from '../types/identity'

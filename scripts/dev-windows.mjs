@@ -11,6 +11,9 @@ const NEEDS_ATTENTION = 1
 const root = resolve(import.meta.dirname, '..')
 const yoloPython = join(root, 'yolo-backend', '.venv', 'Scripts', 'python.exe')
 const requirements = join(root, 'yolo-backend', 'requirements.txt')
+const faceRequirements = join(root, 'yolo-backend', 'requirements-face.txt')
+// onnxruntime-gpu 1.27 ขึ้นไปสร้างมาสำหรับ CUDA 13 ใช้คู่กับ torch cu128 ไม่ได้ (ดู yolo-backend\requirements-face.txt)
+const ONNXRUNTIME_GPU = 'onnxruntime-gpu>=1.22,<1.27'
 
 // ผลตรวจหนึ่งข้อคือ { label, ok, detail, warn?, repair? } โดย repair() รันคำสั่งซ่อมแล้วคืนผลตรวจข้อนั้นใหม่
 const SERVICES = [
@@ -112,31 +115,52 @@ def installed(name):
     except PackageNotFoundError:
         return None
 
-pinned = 0
-wrong = []
-for line in open(sys.argv[1], encoding="utf-8"):
-    line = line.split("#")[0].strip()
-    if line:
-        pinned += 1
-        name, _, want = line.partition("==")
-        got = installed(name)
-        if got != want:
-            wrong.append({"name": name, "want": want, "got": got})
-print(json.dumps({"python": platform.python_version(), "torch": installed("torch"), "pinned": pinned, "wrong": wrong}))
+def compare(path):
+    pinned = 0
+    wrong = []
+    for line in open(path, encoding="utf-8"):
+        line = line.split("#")[0].strip()
+        if line:
+            pinned += 1
+            name, _, want = line.partition("==")
+            got = installed(name)
+            if got != want:
+                wrong.append({"name": name, "want": want, "got": got})
+    return {"pinned": pinned, "wrong": wrong}
+
+print(json.dumps({
+    "python": platform.python_version(),
+    "torch": installed("torch"),
+    "main": compare(sys.argv[1]),
+    "face": compare(sys.argv[2]),
+    "ortCpu": installed("onnxruntime"),
+    "ortGpu": installed("onnxruntime-gpu"),
+}))
 `
 
 function inspectVenv() {
   const uncheckable = (reason) => [
     { label: 'torch', ok: false, detail: `ตรวจไม่ได้ เพราะ${reason}` },
     { label: 'pip packages', ok: false, detail: `ตรวจไม่ได้ เพราะ${reason}` },
+    { label: 'face packages', ok: false, optional: true, detail: `ตรวจไม่ได้ เพราะ${reason}` },
   ]
   if (!existsSync(yoloPython)) {
+    // โปรเจกต์รุ่นเก่ามี vision_service\ (ย้ายมาเป็น yolo-backend\ แล้ว) git pull ลบไฟล์โค้ดแต่ทิ้ง .venv ไว้ในโฟลเดอร์เดิม
+    const leftover = existsSync(join(root, 'vision_service'))
+      ? ' / เจอโฟลเดอร์ vision_service\\ ของรุ่นเก่า ไม่ได้ใช้แล้ว ลบทิ้งได้ และอย่าย้าย .venv ในนั้นมาใช้ (venv ผูกกับ path เดิม)'
+      : ''
     return [
-      { label: '.venv', ok: false, detail: 'ยังไม่มี วิธีสร้างอยู่ในหัวข้อ YOLO Console ของ README.md' },
+      {
+        label: '.venv',
+        ok: false,
+        detail:
+          'ยังไม่มี สร้างครั้งเดียว: py -3.12 -m venv yolo-backend\\.venv แล้วลง torch ตามบรรทัดแรกของ yolo-backend\\requirements.txt ' +
+          `แล้วรัน dev.bat อีกครั้ง สคริปต์จะลงที่เหลือให้ (ดูหัวข้อ "ติดตั้ง yolo-backend" ใน README.md)${leftover}`,
+      },
       ...uncheckable('ยังไม่มี .venv'),
     ]
   }
-  const run = spawnSync(yoloPython, ['-I', '-c', VENV_REPORT, requirements], { encoding: 'utf8' })
+  const run = spawnSync(yoloPython, ['-I', '-c', VENV_REPORT, requirements, faceRequirements], { encoding: 'utf8' })
   if (run.status !== 0) {
     return [
       { label: '.venv', ok: false, detail: 'มีโฟลเดอร์แต่เปิด python ไม่ได้ ให้ลบ yolo-backend\\.venv แล้วสร้างใหม่ตาม README.md' },
@@ -149,15 +173,44 @@ function inspectVenv() {
   const torch = report.torch
     ? { label: 'torch', ok: true, detail: report.torch }
     : { label: 'torch', ok: false, detail: 'ยังไม่ได้ติดตั้ง คำสั่งติดตั้งอยู่ที่บรรทัดแรกของ yolo-backend\\requirements.txt' }
-  const packages = report.wrong.length === 0
-    ? { label: 'pip packages', ok: true, detail: `ตรงกับ requirements.txt ครบ ${report.pinned} ตัว` }
+  const { main, face } = report
+  const packages = main.wrong.length === 0
+    ? { label: 'pip packages', ok: true, detail: `ตรงกับ requirements.txt ครบ ${main.pinned} ตัว` }
     : {
         label: 'pip packages',
         ok: false,
-        detail: `ไม่ตรงกับ requirements.txt ${report.wrong.length} ตัว เช่น ${report.wrong.slice(0, 3).map(describe).join(', ')}`,
+        detail: `ไม่ตรงกับ requirements.txt ${main.wrong.length} ตัว เช่น ${main.wrong.slice(0, 3).map(describe).join(', ')}`,
         repair: runPipInstall,
       }
-  return [{ label: '.venv', ok: true, detail: `มี Python ${report.python}` }, torch, packages]
+  // จดจำใบหน้าเป็นส่วนเสริม: ขาดไป yolo-backend ยังเปิดได้ แต่ไม่ขึ้นชื่อคน และวัดระยะจอ/ความล้าไม่ได้
+  const faceProblems = [
+    ...face.wrong.map(describe),
+    ...(report.ortGpu ? [] : ['onnxruntime-gpu ไม่ได้ติดตั้ง']),
+    ...(report.ortCpu ? [`มี onnxruntime ${report.ortCpu} (รุ่น CPU) ซ้อนกับรุ่น GPU`] : []),
+  ]
+  const faces = faceProblems.length === 0
+    ? { label: 'face packages', ok: true, optional: true, detail: `ตรงกับ requirements-face.txt และมี onnxruntime-gpu ${report.ortGpu}` }
+    : {
+        label: 'face packages',
+        ok: false,
+        optional: true,
+        detail: `${faceProblems.slice(0, 3).join(', ')} (จดจำใบหน้าจะไม่ทำงาน)`,
+        repair: runFaceInstall,
+      }
+  return [{ label: '.venv', ok: true, detail: `มี Python ${report.python}` }, torch, packages, faces]
+}
+
+function runFaceInstall() {
+  console.log('\n[..] yolo-backend: กำลังติดตั้งชุดจดจำใบหน้า (requirements-face.txt + onnxruntime-gpu)')
+  const pip = (...args) => spawnSync(yoloPython, ['-m', 'pip', ...args, '--disable-pip-version-check'], { stdio: 'inherit' }).status === 0
+  // insightface ดึง onnxruntime รุ่น CPU มาด้วย ต้องถอดออกแล้วลงรุ่น GPU ที่เข้ากับ torch cu128 แทน
+  const ok =
+    pip('install', '--quiet', '-r', faceRequirements) &&
+    pip('uninstall', '-y', 'onnxruntime', 'onnxruntime-gpu') &&
+    pip('install', '--quiet', ONNXRUNTIME_GPU)
+  const after = inspectVenv().find((check) => check.label === 'face packages')
+  const how = ok ? 'ติดตั้งแล้ว' : 'ติดตั้งแล้วแต่ล้มเหลว ดู error ด้านบน'
+  return { ...after, detail: `${how} ตอนนี้${after.detail}`, repair: undefined }
 }
 
 function runPipInstall() {
@@ -204,14 +257,14 @@ function runService(service, pids) {
   }
 
   const port = { label: `port ${service.port}`, ok: true, detail: 'ว่าง' }
-  const failing = inspected.filter((check) => !check.ok)
+  const failing = inspected.filter((check) => !check.ok && !check.optional)
   const canRepairAll = failing.every((check) => check.repair)
   const checks = inspected.map((check) => {
     if (check.ok || !check.repair) return check
     return canRepairAll ? check.repair() : withNote(check, 'ยังไม่ซ่อม เพราะต้องแก้ข้ออื่นก่อน')
-  })
+  }).map((check) => (check.optional && !check.ok ? { ...check, warn: true } : check))
 
-  const blocking = checks.filter((check) => !check.ok).map((check) => check.label)
+  const blocking = checks.filter((check) => !check.ok && !check.optional).map((check) => check.label)
   if (blocking.length > 0) {
     return { service, checks: [port, ...checks], started: false, outcome: `ข้าม เพราะ ${blocking.join(', ')} ไม่ผ่าน` }
   }

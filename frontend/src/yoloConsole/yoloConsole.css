@@ -254,3 +254,148 @@
 .yc-calib-corner {
   font-family: var(--rx-display);
 }
+
+/* ---------- การแจ้งเตือนสุขภาพ ใบหน้า และรายงานประจำวัน (พอร์ตจากต้นแบบ) ---------- */
+
+/* --- ทั่วไป --- */
+.yc-toolbar { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
+.yc-push { margin-left: auto; }
+.yc-grow-col { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.yc-end-col { align-items: flex-end; gap: 2px; text-align: right; }
+.yc-fields { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.yc-fields.is-off { opacity: 0.5; }
+.yc-gap-lg { gap: 16px; }
+.yc-tight-p { margin: 4px 0 0; }
+.yc-baseline { align-items: baseline; }
+.yc-truncate { display: block; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.yc-right { text-align: right; white-space: nowrap; }
+.yc-contents { display: contents; }
+.yc-inline { margin: 0; }
+.yc-bad { color: var(--danger); }
+.yc-warn-text { color: var(--warn); font-size: 12px; }
+.yc-box { display: flex; flex-direction: column; gap: 6px; padding: 12px; border: 1px solid var(--border); min-width: 0; }
+.yc-callout { margin: 0 0 10px; padding: 8px 10px; font-size: 12px; border: 1px dashed var(--border); }
+.yc-callout.is-warn { border-color: var(--warn); color: var(--warn); }
+.yc-link { border: none; background: none; padding: 0; color: var(--text-muted); font-size: 12px; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.yc-link:hover { color: var(--text); }
+.yc-icon-btn { padding: 4px 8px; line-height: 1; }
+.yc-btn-danger { border-color: var(--danger); color: var(--danger); }
+.yc-btn-danger:hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 10%, var(--rx-paper)); }
+.yc-btn-warn { border-style: dashed; border-color: var(--warn); color: var(--warn); }
+.yc-filters { display: flex; align-items: flex-end; gap: 10px 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.yc-sort { border: none; background: none; padding: 0; font: inherit; color: inherit; cursor: pointer; white-space: nowrap; }
+.yc-sort:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.yc-tiles { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+.yc-tile { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+
+/* --- ระดับความเสี่ยง: หมึกแดงของตรายาง (สูง) เส้นประแดง (กลาง) หมึกเขียว (ต่ำ) --- */
+.yc-level { display: inline-block; padding: 1px 6px; border: 1px solid; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.yc-level-high { border-color: var(--danger); background: var(--danger); color: var(--rx-paper); }
+.yc-level-medium { border-color: var(--danger); border-style: dashed; color: var(--danger); }
+.yc-level-low { border-color: var(--rx-ink); color: var(--rx-ink); }
+
+/* --- toast --- */
+.yc-toasts { position: fixed; right: 16px; bottom: 16px; z-index: 50; display: flex; flex-direction: column; gap: 8px; max-width: min(380px, calc(100vw - 32px)); }
+.yc-toast { padding: 10px 14px; font-size: 13px; border: 2px solid var(--rx-ink); background: var(--rx-paper); color: var(--rx-ink); box-shadow: 4px 4px 0 color-mix(in srgb, var(--rx-ink) 25%, transparent); }
+.yc-toast.is-warning { border-style: dashed; border-color: var(--warn); color: var(--warn); }
+.yc-toast.is-error { border-color: var(--danger); color: var(--danger); }
+
+/* --- คนในห้องนี้ --- */
+.yc-people { display: flex; flex-direction: column; gap: 8px; }
+.yc-person { padding: 10px; border: 1px solid var(--border); font-size: 13px; }
+.yc-person.is-alert { border-color: var(--danger); }
+.yc-person-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.yc-checks { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; margin-top: 8px; }
+.yc-check-cell { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 11px; color: var(--text-muted); text-align: center; }
+.yc-check-mark { width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--border); font: 700 11px/1 ui-monospace, Consolas, monospace; }
+.yc-check-cell.is-ok .yc-check-mark { border-color: var(--good); color: var(--good); }
+.yc-check-cell.is-alert { color: var(--danger); }
+.yc-check-cell.is-alert .yc-check-mark { border-color: var(--danger); background: var(--danger); color: var(--rx-paper); }
+.yc-check-cell.is-na .yc-check-mark,
+.yc-check-cell.is-off .yc-check-mark { opacity: 0.5; }
+.yc-person-alert { display: flex; gap: 8px; align-items: baseline; margin-top: 4px; color: var(--danger); }
+.yc-person-alert span { flex: 1; min-width: 0; }
+.yc-person-alert em { font-size: 12px; }
+.yc-metrics { margin-top: 6px; padding: 6px 8px; border: 1px solid var(--border); font-size: 11px; }
+.yc-metrics-grid { display: grid; grid-template-columns: auto auto 1fr; gap: 2px 12px; }
+.yc-metrics-grid .yc-bad { font-weight: 700; }
+.yc-fall { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 8px; padding: 10px; border: 2px solid var(--danger); color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, var(--rx-paper)); font-size: 13px; animation: yc-blink 1.2s steps(2, jump-none) infinite; }
+.yc-fall-side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+@keyframes yc-blink { 50% { background: color-mix(in srgb, var(--danger) 18%, var(--rx-paper)); } }
+@media (prefers-reduced-motion: reduce) { .yc-fall { animation: none; } }
+
+/* --- ตั้งค่าการแจ้งเตือน --- */
+.yc-wl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
+.yc-switch { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; }
+.yc-switch input { width: 16px; height: 16px; accent-color: var(--rx-ink); }
+.yc-num-field { display: grid; grid-template-columns: minmax(0, 1fr) 88px 110px; align-items: center; gap: 8px; font-size: 13px; }
+.yc-num { width: 100%; text-align: right; }
+.yc-unit { line-height: 1.3; }
+
+/* --- ใบหน้า --- */
+.yc-faces-grid { display: grid; grid-template-columns: minmax(0, 26rem) minmax(0, 1fr); gap: 20px; align-items: start; }
+.yc-faces-grid.is-single { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 1100px) { .yc-faces-grid { grid-template-columns: minmax(0, 1fr); } }
+.yc-accuracy { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; }
+.yc-range { width: 100%; accent-color: var(--rx-ink); }
+.yc-range-ends { display: flex; justify-content: space-between; gap: 12px; }
+.yc-pair { display: grid; grid-template-columns: minmax(0, 12rem) minmax(80px, 1fr) 3rem 5.5rem; align-items: center; gap: 8px; font-size: 13px; }
+.yc-pair-track { position: relative; height: 8px; border: 1px solid var(--border); }
+.yc-pair-track i { display: block; height: 100%; background: var(--rx-ink); }
+.yc-pair-track i.is-bad { background: var(--danger); }
+.yc-pair-track i.is-near { background: repeating-linear-gradient(90deg, var(--danger) 0 4px, transparent 4px 7px); }
+.yc-pair-track b { position: absolute; top: -5px; width: 2px; height: 16px; background: var(--text); }
+.yc-pair-level { font-size: 12px; }
+.yc-pair-level.is-bad { color: var(--danger); }
+.yc-pair-level.is-near { color: var(--warn); }
+.yc-pair-level.is-ok { color: var(--text-muted); }
+.yc-face-people { display: flex; flex-direction: column; }
+.yc-face-person { display: flex; flex-direction: column; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.yc-face-person:first-child { padding-top: 0; }
+.yc-face-person:last-child { border-bottom: none; padding-bottom: 0; }
+.yc-face-photos { display: flex; flex-wrap: wrap; gap: 8px; }
+.yc-thumbs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.yc-thumb { position: relative; aspect-ratio: 1; overflow: hidden; border: 1px solid var(--border); }
+.yc-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.yc-thumb-sm { width: 64px; height: 64px; }
+.yc-thumb.is-odd { outline: 2px solid var(--danger); outline-offset: 1px; }
+.yc-thumb-tag { position: absolute; left: 0; bottom: 0; padding: 0 4px; font-size: 10px; background: var(--rx-ink); color: var(--rx-paper); }
+.yc-thumb-x { position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; border: none; background: var(--rx-ink); color: var(--rx-paper); font-size: 14px; line-height: 1; cursor: pointer; }
+.yc-on-hover { display: none; }
+.yc-thumb:hover .yc-on-hover,
+.yc-thumb:focus-within .yc-on-hover { display: block; }
+.yc-dropzone { padding: 24px 12px; border: 1px dashed var(--border); background: none; color: var(--text-muted); font-size: 13px; cursor: pointer; }
+.yc-dropzone:hover { background: var(--bg); }
+.yc-pose { padding: 1px 6px; border: 1px solid var(--border); text-decoration: line-through; opacity: 0.6; }
+.yc-pose.is-on { border-color: var(--good); color: var(--good); text-decoration: none; opacity: 1; }
+.yc-consent-text { margin: 0; max-height: 8rem; overflow-y: auto; line-height: 1.6; }
+.yc-capture { position: relative; aspect-ratio: 16 / 9; overflow: hidden; background: #000; }
+.yc-capture video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); display: block; }
+.yc-capture-oval { position: absolute; top: 50%; left: 50%; width: 32%; height: 70%; transform: translate(-50%, -50%); border: 2px dashed rgb(255 255 255 / 0.6); border-radius: 50%; pointer-events: none; }
+.yc-capture-step { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); padding: 4px 12px; background: rgb(0 0 0 / 0.7); color: #fff; font-size: 18px; font-weight: 600; white-space: nowrap; }
+.yc-capture-progress { position: absolute; left: 0; right: 0; bottom: 0; height: 6px; background: rgb(255 255 255 / 0.2); }
+.yc-capture-progress i { display: block; height: 100%; background: var(--rx-stamp); }
+.yc-capture-cover { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 16px; text-align: center; background: rgb(0 0 0 / 0.6); color: #fff; font-size: 13px; }
+.yc-capture-cover.is-error { background: rgb(0 0 0 / 0.8); color: #ffb4a9; }
+
+/* --- รายงานประจำวัน --- */
+.yc-daily-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 20px; align-items: start; }
+@media (max-width: 1180px) { .yc-daily-grid { grid-template-columns: minmax(0, 1fr); } }
+.yc-person-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+.yc-report-card { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--border); background: var(--panel-bg); font-size: 13px; }
+.yc-report-card.is-fell { border: 2px solid var(--danger); }
+.yc-report-card-head { display: flex; gap: 8px; align-items: flex-start; }
+.yc-report-card-head strong { font-size: 15px; }
+.yc-report-card-body { display: flex; gap: 12px; }
+.yc-body-box { display: flex; flex-direction: column; align-items: center; padding: 4px; border: 1px solid var(--border); }
+.yc-body { width: 80px; height: 144px; color: var(--text-muted); }
+.yc-symptoms { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.yc-symptoms li { display: flex; gap: 8px; justify-content: space-between; }
+.yc-bullets { margin: 2px 0 0; padding-left: 18px; font-size: 12px; color: var(--text-muted); }
+
+/* --- พิมพ์: เอาเฉพาะเนื้อรายงาน --- */
+@media print {
+  .dc-aside, .yc-noprint, .yc-toasts, .dc-header-controls { display: none !important; }
+  .yc-root, .yc-root .dc-main-col, .yc-root .dc-main { display: block; height: auto; overflow: visible; }
+  .yc-avoid-break { break-inside: avoid; }
+}

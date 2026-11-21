@@ -10,6 +10,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import { WellnessSettingsCard } from './WellnessSettingsCard'
 import { floorBox, frameOf, frameOnGrid, nearestEdge, nearestVertex, zoneOnPicture } from './floorCalibration'
 import { homography, isConvexQuad, project } from './homography'
 import { useLiveDraw, useYoloLive } from './useYoloLive'
@@ -609,6 +610,7 @@ export default function FloorTab() {
         {dirty && !message && <span className="dc-muted-12">ยังไม่ได้บันทึก</span>}
         {message && <span className={message.ok ? 'yc-ok' : 'yc-error'}>{message.text}</span>}
       </div>
+      <WellnessSettingsCard />
     </div>
   )
 }

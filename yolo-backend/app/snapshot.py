@@ -22,12 +22,14 @@ def _kpts(kpts):
     return [[round(float(x), 1), round(float(y), 1), round(float(c), 2)] for x, y, c in kpts]
 
 
-def _person(tr):
+def _person(tr, faces=None, wellness=None):
     return dict(
         id=tr.id, state=tr.state, conf=round(tr.conf, 2), box=_box(tr.box),
         trail=[list(p) for p in tr.trail], ground=_pt(tr.ground),
         floor=_pt(tr.smooth, 2), floorTrail=[_pt(p, 2) for p in list(tr.floor_trail)[::3]],
         speed=round(tr.speed, 2), zone=tr.zone, kpts=_kpts(tr.kpts),
+        face=faces.label(tr.id) if faces is not None else None,
+        wellness=wellness.status(tr.id) if wellness is not None else None,
     )
 
 
@@ -46,7 +48,7 @@ def heat_message(heat):
     return dict(w=int(hm.shape[1]), h=int(hm.shape[0]), data=hm.ravel().tolist())
 
 
-def to_message(snap, cfg, frame_size, fps, proc_ms, source, with_heat):
+def to_message(snap, cfg, frame_size, fps, proc_ms, source, with_heat, faces=None, wellness=None):
     st, oc, zc = snap["states"], snap["obj_counts"], snap["zone_counts"]
     busiest = max(zc.items(), key=lambda kv: kv[1]) if zc else ("-", 0)
     occ, chairs = snap["chairs"]
@@ -55,7 +57,7 @@ def to_message(snap, cfg, frame_size, fps, proc_ms, source, with_heat):
         type="snapshot", frame=snap["frame"], t=round(snap["t"], 3), size=list(frame_size),
         fps=round(fps, 1), procMs=round(proc_ms, 1), badge=source.badge,
         model=f"YOLOv8 ({Path(config.DET_MODEL).stem})" if source.needs_detector else "Simulator",
-        people=[_person(tr) for tr in people], objects=[_object(o) for o in objects],
+        people=[_person(tr, faces, wellness) for tr in people], objects=[_object(o) for o in objects],
         stats=dict(
             people=len(people),
             sitting=st.get("sitting", 0), standing=st.get("standing", 0), walking=st.get("walking", 0),
@@ -71,6 +73,8 @@ def to_message(snap, cfg, frame_size, fps, proc_ms, source, with_heat):
     )
     if source.seekable:
         msg["clip"] = dict(pos=round(source.position, 2), duration=round(source.duration, 2))
+    if wellness is not None:
+        msg["alerts"] = wellness.active()
     if with_heat:
         msg["heat"] = heat_message(snap["heat"])
     return msg
