@@ -30,3 +30,7 @@ frontend/public/models/face-api/*-weights_manifest.json
 *.njsproj
 *.sln
 *.sw?
+
+# Impeccable: ไฟล์ร่างตอนเลือกทิศทางดีไซน์ (ใช้ครั้งเดียว ไม่ต้องเก็บ)
+.impeccable/decision-payload.json
+.impeccable/sketches/
