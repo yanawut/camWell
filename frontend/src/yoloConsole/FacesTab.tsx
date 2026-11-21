@@ -30,7 +30,7 @@ export default function FacesTab() {
       {faces.error && <p className="yc-error">{faces.error}</p>}
       {faces.data && !faces.data.engine && (
         <p className="yc-callout is-warn">
-          ยังไม่ได้ติดตั้งโมเดลใบหน้า ระบบบันทึกรูปไว้ได้ แต่ยังตรวจรูปและจดจำใบหน้าไม่ได้ ดูหัวข้อ "จดจำใบหน้า" ใน README
+          ยังไม่ได้ติดตั้งโมเดลใบหน้า ระบบบันทึกรูปไว้ได้ แต่ยังตรวจรูปและจดจำใบหน้าไม่ได้ ดูหัวข้อ "ติดตั้ง yolo-backend" ใน README
         </p>
       )}
 

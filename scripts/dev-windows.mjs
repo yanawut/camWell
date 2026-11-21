@@ -155,7 +155,7 @@ function inspectVenv() {
         ok: false,
         detail:
           'ยังไม่มี สร้างครั้งเดียว: py -3.12 -m venv yolo-backend\\.venv แล้วลง torch ตามบรรทัดแรกของ yolo-backend\\requirements.txt ' +
-          `แล้วรัน dev.bat อีกครั้ง สคริปต์จะลงที่เหลือให้ (ดูหัวข้อ YOLO Console ใน README.md)${leftover}`,
+          `แล้วรัน dev.bat อีกครั้ง สคริปต์จะลงที่เหลือให้ (ดูหัวข้อ "ติดตั้ง yolo-backend" ใน README.md)${leftover}`,
       },
       ...uncheckable('ยังไม่มี .venv'),
     ]

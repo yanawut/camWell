@@ -76,7 +76,7 @@ export default function PeoplePage() {
       {faces.data && !faces.data.engine && (
         <p className="yd-callout is-warn">
           ยังไม่ได้ติดตั้งโมเดลใบหน้า ระบบบันทึกรูปไว้ได้ แต่ยังตรวจรูปและจดจำใบหน้าไม่ได้ ให้ผู้ดูแลระบบลงชุดจดจำใบหน้าตามหัวข้อ
-          "YOLO Console" ใน README แล้วเปิด yolo-backend ใหม่
+          "ติดตั้ง yolo-backend" ใน README แล้วเปิด yolo-backend ใหม่
         </p>
       )}
 

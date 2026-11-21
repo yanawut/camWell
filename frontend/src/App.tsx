@@ -508,7 +508,7 @@ function CameraApp() {
         </p>
         <p className="pdpa-note">
           <WarnGlyph /> ฟีเจอร์ face recognition เก็บข้อมูลชีวภาพ (biometric) ไว้ที่ backend/ฐานข้อมูลของระบบนี้เท่านั้น (ดู
-          camwell-backend/README.md) การใช้งานจริงกับพนักงานต้องขอความยินยอมตาม พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล
+          docs/privacy-and-licenses.md) การใช้งานจริงกับพนักงานต้องขอความยินยอมตาม พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล
           (PDPA) ก่อนเสมอ — โปรดปรึกษาฝ่ายกฎหมาย/HR ก่อนนำไปใช้งานจริง
         </p>
       </footer>
