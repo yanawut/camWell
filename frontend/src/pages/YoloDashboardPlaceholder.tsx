@@ -5,7 +5,6 @@ import './LandingPage.css'
 import './SystemChooserPage.css'
 
 // หน้ารอของ /?yolo-dashboard — ใช้จนกว่า Dashboard ของ YOLOv8 จะเสร็จ แล้วให้หน้าจริงมาแทนที่ไฟล์นี้
-// ขั้นตอนตรงกับ YOLO-separate-system-plan.md (หัวข้อ "ขั้นตอนการพัฒนา")
 
 const PLAN: { step: number; text: string }[] = [
   { step: 0, text: 'รากฐาน yolo-backend: เปิดหลายกล้องพร้อมกัน และที่เก็บข้อมูลของตัวเอง' },

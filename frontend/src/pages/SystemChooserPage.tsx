@@ -6,7 +6,7 @@ import './LandingPage.css'
 import './SystemChooserPage.css'
 
 // หน้าเลือกระบบ (/?systems) — หน้าที่ปุ่ม "เข้าสู่ระบบ" บนหน้าแรกพามา
-// ฉลากแผ่นเดียวแบ่งสองฝั่งด้วยรอยปรุ: ซ้าย MediaPipe (ใช้งานอยู่) ขวา YOLOv8 (กำลังพัฒนา ดู YOLO-separate-system-plan.md)
+// ฉลากแผ่นเดียวแบ่งสองฝั่งด้วยรอยปรุ: ซ้าย MediaPipe (ใช้งานอยู่) ขวา YOLOv8 (กำลังพัฒนา)
 // ชื่อโมเดลตรงกับโค้ดจริง: hooks/usePoseLandmarker.ts, hooks/useFaceApiModels.ts, yolo-backend/app/config.py
 // หน้านี้ไม่โหลดกล้องหรือโมเดล AI
 

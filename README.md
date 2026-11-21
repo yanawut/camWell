@@ -84,7 +84,6 @@ npm run dev:yolo
 
 ## Dev Console (`/?console`)
 
-ออกแบบจาก `docs/camWell/project/Camwell Dev Console.dc.html` (แผนงานใน `docs/camWell/IMPLEMENTATION_PLAN.md`)
 ตอนนี้เปิดได้ทุก build (ยังอยู่ช่วงพัฒนา — จะกำหนดสิทธิ์ใหม่ภายหลัง)
 
 - **Sidebar** — 4 เมนู + สถานะโมเดล/บริการ (Pose Landmarker, face-api, camwell-backend, error ของกล้องแต่ละตัว)
@@ -212,8 +211,6 @@ frontend/src/
                                   EventsTab, PeopleTab, useBackendHealth, format, console.css)
   types/                          alerts, posture, fall, wellbeing, identity, person, cameraSource
 backend/                          camwell-backend (Express + SQLite) สำหรับข้อมูลใบหน้า
-docs/camWell/                     design handoff ของ Dev Console + IMPLEMENTATION_PLAN.md
-docs/performance/                 บันทึกงานปรับประสิทธิภาพ/ตรวจสอบแต่ละ ticket
 ```
 
 ## ข้อจำกัดที่ควรรู้

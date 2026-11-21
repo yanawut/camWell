@@ -1,4 +1,4 @@
-/* Dev Console — ค่าสี/ระยะตาม docs/camWell/project/Camwell Dev Console.dc.html
+/* Dev Console
    ใช้ตัวแปรสีจาก index.css (--bg, --border, --accent ฯลฯ) ซึ่งตรงกับ design อยู่แล้ว */
 
 .dc-root {

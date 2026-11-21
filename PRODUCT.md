@@ -46,8 +46,6 @@ Camwell watches office workers through cameras and raises an alert when a health
 ## Evidence on Hand
 
 - Working detection pipelines with unit tests (`frontend/src/lib/*.test.ts`, `yolo-backend/tests/`).
-- Design prototypes from Claude Design: `docs/camWell/project/Camwell Dev Console.dc.html` and `Camwell Current.dc.html`.
-- Performance and verification notes: `docs/performance/`.
 - **Absent, so never fabricate:** customer names, testimonials, accuracy or benchmark figures, PDPA certification, and pricing. The README says the consent flow is not yet a fully lawful process.
 
 ## Product Principles
