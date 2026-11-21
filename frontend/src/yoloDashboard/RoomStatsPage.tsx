@@ -255,7 +255,7 @@ export default function RoomStatsPage() {
                     key={r.id}
                     className={r.id === selected ? 'is-selected' : undefined}
                     tabIndex={0}
-                    aria-selected={r.id === selected}
+                    aria-current={r.id === selected ? 'true' : undefined}
                     onClick={() => setSelected(r.id)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {

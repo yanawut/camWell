@@ -106,7 +106,7 @@ function SourcePicker() {
       {tab === 'camera' && (
         <div className="yd-overview-row">
           <button type="button" className="yd-btn" disabled={busy || camera.pending !== null} onClick={() => void startBrowserCamera('กำลังเปิดกล้องใหม่...')}>
-            refresh กล้อง browser
+            เปิดกล้องเครื่องนี้ใหม่
           </button>
           <p className="yd-fine">
             หน้านี้เปิดกล้องของเครื่องนี้ให้เองเมื่อเข้ามา แล้วส่งภาพไปให้ yolo-backend วิเคราะห์ กดปุ่มนี้เพื่อเปิดกล้องใหม่เมื่อภาพค้าง หรือหลังกด "จบ" ถ้ากำลังวิเคราะห์แหล่งอื่นอยู่ จะเปลี่ยนมาใช้กล้องเครื่องนี้แทน

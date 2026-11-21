@@ -9,7 +9,7 @@ import { useAutoStartCamera } from './browserCamera'
 import FloorPlan from './FloorPlan'
 import LiveCamera from './LiveCamera'
 import { Glyph, LockGlyph, Mark, ZzMark } from './marks'
-import { goTo } from './pages'
+import { goTo, YOLO_PAGES } from './pages'
 import {
   CHECK_MARK,
   CHECK_TEXT,
@@ -166,8 +166,8 @@ export default function OverviewPage() {
       {isTestMode(settings.data) && (
         <p className="yd-callout is-warn">
           โหมดทดสอบ: เกณฑ์เวลาสั้นกว่าปกติ (นั่ง {String(settings.data?.sit_minutes)} นาที, ท่านั่ง {String(settings.data?.posture_seconds)} วินาที)
-          คืนค่าเริ่มต้นได้ที่หน้าตั้งค่า{' '}
-          <button type="button" className="yd-linkbtn" onClick={() => goTo('camera')}>ไปที่ตั้งค่ากล้อง</button>
+          คืนค่าเริ่มต้นได้ที่หน้า{YOLO_PAGES.camera}{' '}
+          <button type="button" className="yd-linkbtn" onClick={() => goTo('camera')}>ไปที่{YOLO_PAGES.camera}</button>
         </p>
       )}
 

@@ -14,15 +14,18 @@
   outline-offset: 2px;
 }
 
+/* ข้อความรองพิมพ์ด้วยหมึกเต็มเหมือนข้อความหลัก (One Ink Rule ใน DESIGN.md) แยกด้วยขนาด ไม่ใช่ด้วยการทำให้จาง
+   หมึกจาง 72% เหลือคอนทราสต์ราว 3.5:1 ต่ำกว่า WCAG AA ที่ข้อความ 14px ต้องได้ 4.5:1 */
 .yd-muted {
-  color: color-mix(in srgb, var(--yd-ink) 72%, var(--yd-paper));
+  color: var(--yd-ink);
 }
 
 .yd-fine {
   margin: 0;
-  color: color-mix(in srgb, var(--yd-ink) 72%, var(--yd-paper));
+  color: var(--yd-ink);
   font-size: 14px;
   line-height: 1.5;
+  text-wrap: pretty;
 }
 
 .yd-mono {
@@ -39,17 +42,20 @@
 .yd-empty {
   margin: 0;
   padding: 28px 18px;
-  color: color-mix(in srgb, var(--yd-ink) 72%, var(--yd-paper));
+  color: var(--yd-ink);
   text-align: center;
 }
 
 /* ---------- หัวหน้า ---------- */
+/* ปิดด้วยเส้นหมึก 2px ห่าง 18px เหมือนหัวหน้าของ /?dashboard และหัวหน้าภาพรวม (.yd-dash-head) */
 .yd-page-head {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
   gap: 16px 28px;
+  padding-bottom: 18px;
+  border-bottom: 2px solid var(--yd-ink);
 }
 
 .yd-page-title {
@@ -64,6 +70,7 @@
   max-width: 72ch;
   margin: 6px 0 0;
   font-size: 17px;
+  text-wrap: pretty;
 }
 
 .yd-actions {
@@ -229,7 +236,7 @@
 
 .yd-panel-head .yd-fine,
 .yd-panel-head .yd-muted {
-  color: color-mix(in srgb, var(--yd-paper) 82%, var(--yd-ink));
+  color: var(--yd-paper);
 }
 
 .yd-panel-body {
@@ -271,8 +278,9 @@
   font: 400 16px/1.4 var(--yd-form);
 }
 
+/* ค่าเดียวกับ placeholder ของ index.css (88% หมึก ราว 4.8:1) */
 .yd .yd-input::placeholder {
-  color: color-mix(in srgb, var(--yd-ink) 55%, var(--yd-paper));
+  color: color-mix(in srgb, var(--yd-ink) 88%, var(--yd-paper));
 }
 
 /* ---------- ปุ่มเลือกทีละอัน ---------- */

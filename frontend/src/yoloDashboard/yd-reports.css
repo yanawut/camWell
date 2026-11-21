@@ -296,6 +296,10 @@
   min-width: 0;
 }
 
+.yd-reports-cams {
+  overflow-wrap: anywhere;
+}
+
 .yd-reports-card-risk {
   display: flex;
   flex-direction: column;
@@ -457,6 +461,18 @@
 
 .yd-reports-pick tbody tr {
   cursor: pointer;
+}
+
+/* จอแคบ: วันที่ แหล่งภาพ และตัวเลขไม่ตัดบรรทัด ตารางเลื่อนด้านข้างในกรอบแทน (ไม่งั้นแต่ละช่องสูงหกบรรทัด)
+   เฉพาะคอลัมน์ชื่อที่ยาวได้ยังตัดบรรทัด โดยกว้างอย่างน้อยพอให้อ่านได้ */
+.yd-reports-pick td {
+  white-space: nowrap;
+}
+
+.yd-reports-pick td:nth-child(3) {
+  min-width: 14em;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 @media (max-width: 1180px) {

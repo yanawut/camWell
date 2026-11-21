@@ -257,7 +257,8 @@ function PersonReportCard({ person: p, date }: { person: DailyPerson; date: stri
         <div className="yd-reports-card-who">
           <h3>{p.label}</h3>
           <p className="yd-fine">
-            <span className="yd-ph">{p.cameras.join(', ')}</span>{' '}· <span className="yd-ph">{clockTime(p.first_at)}–{clockTime(p.last_at)}</span>
+            {/* ชื่อกล้องเป็นชื่อไฟล์ยาวได้ (เช่น ชื่อคลิป .mp4) จึงตัดบรรทัดได้ทุกที่ ไม่ห่อเป็นวลีที่ห้ามขาด */}
+            <span className="yd-reports-cams">{p.cameras.join(', ')}</span>{' '}· <span className="yd-ph">{clockTime(p.first_at)}–{clockTime(p.last_at)}</span>
             {' '}· <span className="yd-ph">อยู่หน้ากล้อง {formatSeconds(p.present_seconds)}</span>
           </p>
         </div>
