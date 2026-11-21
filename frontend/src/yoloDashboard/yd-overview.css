@@ -1,0 +1,353 @@
+/*
+ * หน้าภาพรวม (/?yolo-dashboard) — ส่วนที่มีเฉพาะหน้านี้ ต่อจากหน้าตา /?dashboard ใน yd-dash.css
+ * ไฟล์นี้ถูกโหลดก่อน yd-dash.css และ yd-pages.css (OverviewPage ถูก import ก่อน CSS ของ shell)
+ * จะทับ class ที่ใช้ร่วมกันต้องเขียน selector ให้เจาะจงกว่า
+ */
+
+/* ---------- ป้ายสถานะข้างหัวเรื่อง (LIVE ใช้ .yd-dash-live) ---------- */
+.yd-overview-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border: 1.5px solid var(--yd-ink);
+  font: 700 13px/1.4 var(--yd-display);
+}
+
+.yd-overview-badge.is-alert {
+  border-color: var(--yd-stamp);
+  color: var(--yd-stamp);
+}
+
+.yd-overview-sound {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 12px;
+}
+
+.yd-overview-swatch {
+  flex: none;
+  overflow: visible;
+  color: var(--yd-ink);
+}
+
+/* ---------- ห้องคู่ภาพจากกล้อง: วางข้างกันเมื่อจอกว้างตั้งแต่ 1280px ---------- */
+.yd-overview-workspace > * {
+  min-width: 0;
+}
+
+@media (max-width: 1279.98px) {
+  .yd-dash-workspace.yd-overview-workspace.is-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---------- ผังพื้นห้อง ---------- */
+.yd-overview-plan {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 2px solid var(--yd-ink);
+}
+
+.yd-overview-plan-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--yd-rule-soft);
+}
+
+/* คงสัดส่วนพื้นห้องจริง และสูงไม่เกิน 72% ของจอ (ห้องแนวตั้งจะไม่ยาวเกินจอ) */
+.yd-overview-plan-box {
+  position: relative;
+  width: min(100%, calc(72vh * var(--yd-plan-ratio)));
+  margin: 0 auto;
+  aspect-ratio: var(--yd-plan-ratio);
+}
+
+.yd-overview-plan-box > svg {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  color: var(--yd-ink);
+}
+
+.yd-overview-heat rect {
+  fill: currentColor;
+}
+
+.yd-overview-zone {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.2;
+  stroke-dasharray: 6 5;
+}
+
+.yd-overview-zone-name {
+  position: absolute;
+  padding: 3px 7px;
+  font: 600 13px/1.2 var(--yd-display);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.yd-plan-chair.yd-overview-chair.is-occupied {
+  fill: var(--yd-rule-soft);
+}
+
+.yd-overview-trail {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-dasharray: 0 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* แผงสดมาทุก 250ms — เลื่อนคนและป้ายชื่อตามไปอย่างนุ่มนวลแทนการกระโดด */
+.yd-overview-person {
+  transition: transform 0.25s linear;
+}
+
+.yd-plan-tag.yd-overview-tag {
+  transition: left 0.25s linear, top 0.25s linear, opacity 0.7s;
+}
+
+.yd-overview-id {
+  fill: var(--yd-paper);
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+.yd-overview-id-text {
+  fill: currentColor;
+  font: 700 11px var(--yd-display);
+  dominant-baseline: central;
+  text-anchor: middle;
+}
+
+.yd-overview-plan-empty {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: 0;
+  padding: 4px 14px;
+  background: var(--yd-paper);
+  font: 600 16px/1.3 var(--yd-display);
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+}
+
+@container (max-width: 780px) {
+  .yd-overview-plan {
+    border-right: 0;
+    border-bottom: 2px solid var(--yd-ink);
+  }
+}
+
+/* ---------- การตรวจห้าอย่างใต้ชื่อในตาราง ---------- */
+.yd-overview-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 6px;
+  font: 400 13px/1.3 var(--yd-form);
+}
+
+/* วงแดงล้นกล่องออกมาตามแบบรอยปากกา เว้นระยะให้ไม่ทับคำ */
+.yd-overview-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.yd-overview-check .yd-box {
+  margin: -3px;
+  transform: scale(0.7);
+}
+
+/* ---------- ภาพจากกล้อง ---------- */
+.yd-overview-cameras {
+  scroll-margin-top: 88px;
+}
+
+.yd-overview-camera-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding: 14px 20px;
+  border-bottom: 2px solid var(--yd-ink);
+}
+
+.yd-overview-camera-head h2 {
+  font-size: clamp(20px, 1.8vw, 24px);
+  line-height: 1.3;
+}
+
+.yd-overview-camera-head .yd-error {
+  flex-basis: 100%;
+}
+
+.yd-overview-camera-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 20px 20px;
+}
+
+/* ยังไม่มีภาพ = หมึกจาง 4% ในกรอบหมึก แคนวาสวาดทับเมื่อภาพมา */
+.yd-overview-stage {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border: 2px solid var(--yd-ink);
+  background: color-mix(in srgb, var(--yd-ink) 4%, transparent);
+}
+
+.yd-overview-stage canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.yd-overview-stage-msg {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 24px;
+  font: 600 15px/1.4 var(--yd-display);
+  text-align: center;
+}
+
+.yd-overview-player {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+
+.yd-overview-player-btn .yd-inline-glyph {
+  margin-right: 0;
+}
+
+.yd-overview-time {
+  min-width: 38px;
+  font-size: 13px;
+  text-align: center;
+}
+
+.yd-overview-seek {
+  min-width: 120px;
+  flex: 1 1 200px;
+  accent-color: var(--yd-ink);
+  cursor: pointer;
+}
+
+.yd-overview-seek:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.yd-overview-player-error {
+  flex-basis: 100%;
+}
+
+.yd-overview-source {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.yd-overview-camera-body > .yd-overview-source:not(:first-child) {
+  padding-top: 14px;
+  border-top: 2px dashed var(--yd-rule-soft);
+}
+
+.yd-overview-source-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+}
+
+.yd-overview-source-head h3 {
+  margin: 0;
+  font: 700 17px/1.3 var(--yd-display);
+}
+
+.yd-overview-layers {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+
+.yd-overview-layers h3 {
+  margin: 0;
+  font: 700 17px/1.3 var(--yd-display);
+}
+
+.yd-overview-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px 14px;
+}
+
+.yd-overview-row .yd-fine {
+  min-width: 0;
+  flex: 1 1 220px;
+}
+
+.yd-overview-grow {
+  min-width: 0;
+  flex: 1 1 260px;
+}
+
+.yd .yd-overview-narrow {
+  width: 6em;
+}
+
+.yd-overview-file {
+  max-width: 100%;
+  color: var(--yd-ink);
+  font: 400 15px/1.4 var(--yd-form);
+}
+
+.yd-overview-file::file-selector-button {
+  min-height: 40px;
+  margin-right: 12px;
+  padding: 0 14px;
+  border: 2px solid var(--yd-ink);
+  border-radius: 0;
+  background: transparent;
+  color: var(--yd-ink);
+  cursor: pointer;
+  font: 600 15px/1 var(--yd-display);
+}
+
+.yd-overview-file:hover:not(:disabled)::file-selector-button {
+  background: var(--yd-ink);
+  color: var(--yd-paper);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .yd-overview-person,
+  .yd-plan-tag.yd-overview-tag {
+    transition: none;
+  }
+}

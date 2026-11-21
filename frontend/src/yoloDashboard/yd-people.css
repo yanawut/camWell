@@ -1,0 +1,516 @@
+/*
+ * หน้ารายชื่อบุคคล (?yolo-dashboard=people) — ส่วนที่ใช้หน้าเดียว ชิ้นส่วนร่วมอยู่ใน yd-pages.css
+ * ไฟล์นี้ถูกโหลดก่อน yd-pages.css (YoloDashboard.tsx import หน้าก่อน css ร่วม)
+ * ที่ต้องเปลี่ยน class ร่วมจึงใช้ selector สอง class เสมอ ไม่งั้นแพ้กฎร่วมที่น้ำหนักเท่ากัน
+ */
+
+.yd-people-h3 {
+  margin: 0;
+  font: 700 17px/1.3 var(--yd-display);
+}
+
+.yd-people-num {
+  font: 600 15px/1.3 var(--yd-display);
+  font-variant-numeric: tabular-nums;
+}
+
+/* สีตรายาง: ไม่มีบันทึกความยินยอม รูปไม่เข้าพวก คู่ที่ต้องระวัง ค่าที่ยังไม่บันทึก */
+.yd-people-alert {
+  color: var(--yd-stamp);
+  font-weight: 600;
+}
+
+.yd-people-good {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--yd-pen);
+  font-weight: 600;
+}
+
+.yd-people-col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.yd-people-push {
+  margin-left: auto;
+}
+
+/* ใกล้เกณฑ์ = เส้นประหมึก ตามไวยากรณ์ความรุนแรงของ DESIGN.md (สูง = ตรายางทึบ, ต่ำ = เส้นหมึก) */
+.yd-level.yd-people-level-near {
+  border-style: dashed;
+}
+
+.yd-level.yd-people-level {
+  justify-self: start;
+}
+
+/* ---------- ฟอร์มเพิ่มคน ---------- */
+.yd-people-enrol {
+  scroll-margin-top: 88px;
+}
+
+.yd-people-enrol h2:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.yd-people-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+  align-items: start;
+  gap: 24px 36px;
+}
+
+.yd-people-name {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.yd-people-name label {
+  font: 600 16px/1.3 var(--yd-display);
+}
+
+.yd-people-name .yd-input {
+  width: 100%;
+}
+
+.yd-people-name .yd-input:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.yd-people-consent {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1.5px solid var(--yd-ink);
+}
+
+.yd-people-consent-text {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.yd-people-photos-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+
+.yd-people-dropzone {
+  min-height: 132px;
+  padding: 20px 16px;
+  border: 2px dashed var(--yd-rule-soft);
+  border-radius: 0;
+  background: transparent;
+  color: var(--yd-ink);
+  cursor: pointer;
+  font: 400 15px/1.6 var(--yd-form);
+  text-align: center;
+}
+
+.yd-people-dropzone:hover {
+  border-color: var(--yd-ink);
+  background: color-mix(in srgb, var(--yd-ink) 5%, transparent);
+}
+
+.yd-people-captured {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.yd-people-poses {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  font: 600 15px/1.3 var(--yd-display);
+}
+
+.yd-people-poses ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.yd-people-poses li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.yd-people-form-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--yd-rule-soft);
+}
+
+/* ---------- ถ่ายจากกล้อง ---------- */
+.yd-people-capture {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--yd-rule-soft);
+}
+
+.yd-people-capture-view {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 2px solid var(--yd-ink);
+  background: color-mix(in srgb, var(--yd-ink) 4%, transparent);
+}
+
+.yd-people-capture-view video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+
+/* วงรีวางอยู่บนภาพกล้องจริง จึงเป็นสีกระดาษค่าคงที่ ไม่กลับสีตามธีม ให้เห็นบนภาพทั้งสองธีม */
+.yd-people-capture-oval {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 32%;
+  height: 70%;
+  border: 2px dashed rgb(248 250 247 / 0.75);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.yd-people-capture-step {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  margin: 0;
+  padding: 4px 14px;
+  background: var(--yd-ink);
+  color: var(--yd-paper);
+  font: 700 18px/1.4 var(--yd-display);
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.yd-people-capture-progress {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 6px;
+  background: rgb(248 250 247 / 0.35);
+}
+
+/* แถบเวลาระหว่างบันทึก = สีตรายางแบบป้าย "กำลังบันทึก" */
+.yd-people-capture-progress i {
+  display: block;
+  height: 100%;
+  background: var(--yd-stamp);
+}
+
+.yd-people-capture-cover {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 16px;
+  background: color-mix(in srgb, var(--yd-ink) 88%, transparent);
+  color: var(--yd-paper);
+  font: 600 15px/1.5 var(--yd-display);
+  text-align: center;
+}
+
+.yd-people-capture-cover.is-error {
+  background: var(--yd-stamp);
+}
+
+/* ---------- รูป (ที่เลือกในฟอร์ม และที่ลงทะเบียนแล้ว) ---------- */
+.yd-people-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 12px 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.yd-people-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.yd-people-tile-img {
+  position: relative;
+  display: block;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 1.5px solid var(--yd-ink);
+  background: color-mix(in srgb, var(--yd-ink) 4%, transparent);
+}
+
+.yd-people-tile-img img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.yd-people-tile.is-odd .yd-people-tile-img {
+  border: 3px solid var(--yd-stamp);
+}
+
+.yd-people-tile-tag {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  padding: 1px 6px;
+  background: var(--yd-ink);
+  color: var(--yd-paper);
+  font: 600 12px/1.4 var(--yd-display);
+}
+
+.yd-people-tile-score {
+  font: 600 13px/1.4 var(--yd-display);
+  font-variant-numeric: tabular-nums;
+}
+
+.yd-people-tile.is-odd .yd-people-tile-score {
+  color: var(--yd-stamp);
+}
+
+.yd-people-tile-btn {
+  align-self: flex-start;
+  min-height: 28px;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--yd-ink);
+  cursor: pointer;
+  font: 600 13px/1.3 var(--yd-display);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.yd-people-tile-btn:hover:not(:disabled) {
+  color: var(--yd-stamp);
+}
+
+.yd-people-tile-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* ---------- รายชื่อ ---------- */
+.yd-people-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.yd-people-person {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--yd-rule-soft);
+}
+
+.yd-people-person:first-child {
+  padding-top: 4px;
+}
+
+.yd-people-person:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.yd-people-person-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px 20px;
+}
+
+.yd-people-who {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.yd-people-who h3 {
+  margin: 0;
+  font: 700 20px/1.3 var(--yd-display);
+  overflow-wrap: anywhere;
+}
+
+.yd-people-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
+  margin: 0;
+  font-size: 15px;
+}
+
+.yd-people-confirm {
+  margin: 0;
+  padding: 8px 12px;
+  border: 2px solid var(--yd-stamp);
+  color: var(--yd-stamp);
+  font: 600 15px/1.5 var(--yd-display);
+}
+
+/* ---------- ความแม่นยำ ---------- */
+.yd-panel-body.yd-people-accuracy {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+  align-items: start;
+  gap: 28px 40px;
+}
+
+.yd-people-threshold-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+}
+
+.yd-people-threshold-head label {
+  font: 600 16px/1.3 var(--yd-display);
+}
+
+.yd-people-threshold-head output {
+  font-size: 30px;
+  line-height: 1.1;
+}
+
+.yd .yd-people-range {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--yd-ink);
+}
+
+.yd-people-range-ends {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font: 600 14px/1.4 var(--yd-display);
+}
+
+.yd-people-range-ends span:last-child {
+  text-align: right;
+}
+
+.yd-people-pairs {
+  container-type: inline-size;
+}
+
+.yd-people-pairs-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+}
+
+.yd-people-pair-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.yd-people-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 13rem) minmax(80px, 1fr) 3rem 7.5rem;
+  align-items: center;
+  gap: 6px 12px;
+  font-size: 15px;
+}
+
+.yd-people-pair-names {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.yd-people-pair-track {
+  position: relative;
+  height: 10px;
+  border: 1.5px solid var(--yd-ink);
+}
+
+.yd-people-pair-track i {
+  display: block;
+  height: 100%;
+  background: var(--yd-ink);
+}
+
+/* เส้นเกณฑ์: ขอบสีกระดาษกันไม่ให้จมหายในแถบหมึกเมื่อคะแนนเกินเส้น */
+.yd-people-pair-track b {
+  position: absolute;
+  top: -6px;
+  width: 2px;
+  height: 19px;
+  margin-left: -1px;
+  background: var(--yd-ink);
+  outline: 1.5px solid var(--yd-paper);
+}
+
+.yd-linkbtn.yd-people-more {
+  align-self: flex-start;
+  min-height: 32px;
+  font: 600 15px/1.3 var(--yd-display);
+}
+
+/* จอแคบ: แถบเต็มบรรทัดล่าง ทุกคู่ยาวเท่ากันจึงเทียบกันได้ */
+@container (max-width: 520px) {
+  .yd-people-pair {
+    grid-template-areas:
+      'names score level'
+      'track track track';
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+
+  .yd-people-pair-names {
+    grid-area: names;
+  }
+
+  .yd-people-pair-track {
+    grid-area: track;
+  }
+
+  .yd-people-pair-score {
+    grid-area: score;
+  }
+
+  .yd-level.yd-people-level {
+    grid-area: level;
+  }
+}

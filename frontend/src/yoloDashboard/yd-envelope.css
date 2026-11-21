@@ -1,0 +1,287 @@
+/*
+ * สำเนาของ envelope/envelope.css สำหรับหน้า YOLO (/?yolo-dashboard) ทุก class และ token ขึ้นต้นด้วย yd-
+ * แยกจากต้นฉบับโดยตั้งใจ: แก้ envelope.css แล้วหน้า YOLO ไม่เปลี่ยนตาม และลบระบบใดระบบหนึ่งทิ้งได้ทั้งก้อน
+ * token อยู่ที่ .yd (รากของหน้า YOLO) ธีมมืด = พิมพ์กลับสีตาม <html data-theme> ตัวเดียวกับทั้งแอป
+ */
+.yd {
+  --yd-paper: #f8faf7;
+  --yd-ink: #0b6b47;
+  --yd-rule-soft: color-mix(in srgb, var(--yd-ink) 30%, var(--yd-paper));
+  --yd-pen: #1f3fbf;
+  --yd-stamp: #c62b28;
+  --yd-band: #0b6b47;
+  --yd-band-fg: #f8faf7;
+  --yd-fiber: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .2 0 0 0 0 .3 0 0 0 0 .26 0 0 0 .025 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --yd-display: 'Anuphan', 'IBM Plex Sans Thai', system-ui, sans-serif;
+  --yd-form: 'Sarabun', 'IBM Plex Sans Thai Looped', system-ui, sans-serif;
+  --yd-hand: 'Sriracha', 'Sarabun', cursive;
+  --yd-gutter: clamp(16px, 5vw, 72px);
+}
+
+:root[data-theme='dark'] .yd {
+  --yd-paper: #0a4630;
+  --yd-ink: #f8faf7;
+  --yd-pen: #b4c3ff;
+  --yd-stamp: #ff9d8f;
+  --yd-band: #f8faf7;
+  --yd-band-fg: #0a4630;
+  --yd-fiber: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .75 0 0 0 0 .9 0 0 0 0 .82 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* พิมพ์บนกระดาษขาวเสมอ: ธีมมืดกลับเป็นสีพิมพ์ปกติทุกหน้า */
+@media print {
+  :root[data-theme='dark'] .yd {
+    --yd-paper: #f8faf7;
+    --yd-ink: #0b6b47;
+    --yd-rule-soft: color-mix(in srgb, #0b6b47 30%, #f8faf7);
+    --yd-pen: #1f3fbf;
+    --yd-stamp: #c62b28;
+    --yd-band: #0b6b47;
+    --yd-band-fg: #f8faf7;
+  }
+}
+
+.yd ::selection {
+  background: color-mix(in srgb, var(--yd-pen) 28%, transparent);
+}
+
+.yd-glyph {
+  flex: none;
+}
+
+/* ไอคอนวางในบรรทัดข้อความ */
+.yd-inline-glyph {
+  display: inline-block;
+  margin-right: 0.35em;
+  vertical-align: -0.2em;
+}
+
+/* วลีไทยไม่ขาดกลาง (ดู Phrases ใน yoloDashboard/marks.tsx) */
+.yd-ph {
+  white-space: nowrap;
+}
+
+.yd-hand {
+  color: var(--yd-pen);
+  font-family: var(--yd-hand);
+  font-weight: 400;
+}
+
+.yd-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ช่องกรอกบนฉลาก: คำพิมพ์ + ค่าเขียนด้วยมือบนเส้นหมึก */
+.yd-ruled {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin: 0;
+  padding-bottom: 4px;
+  border-bottom: 1.5px solid var(--yd-ink);
+  font: 600 17px/1.2 var(--yd-display);
+}
+
+.yd-ruled .yd-hand {
+  font-size: 1.5em;
+  line-height: 1.25;
+}
+
+/* ช่องกรอกกลางประโยค: เส้นประพิมพ์ + ค่าเขียนด้วยมือ */
+.yd-blank {
+  display: inline-block;
+  min-width: 3.2em;
+  padding: 0 0.5em;
+  border-bottom: 2px dotted var(--yd-ink);
+  font-size: 22px;
+  line-height: 1.35;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* ปุ่มรอง: กรอบหมึกเหลี่ยม เต็มหมึกเมื่อชี้ */
+.yd-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  padding: 0 22px;
+  border: 2px solid var(--yd-ink);
+  border-radius: 0;
+  background: transparent;
+  color: var(--yd-ink);
+  cursor: pointer;
+  font: 600 19px/1 var(--yd-display);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.yd-secondary:hover {
+  background: var(--yd-ink);
+  color: var(--yd-paper);
+}
+
+.yd-secondary.is-small {
+  min-height: 40px;
+  padding: 0 14px;
+  font-size: 15px;
+}
+
+.yd-secondary .yd-glyph {
+  margin-left: 8px;
+  transition: transform 0.16s ease;
+}
+
+.yd-secondary:hover .yd-glyph {
+  transform: translateX(3px);
+}
+
+/* ป้ายพิมพ์เล็ก เช่น "ตัวอย่างจำลอง" */
+.yd-sample {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 1px 10px;
+  border: 1.5px solid var(--yd-ink);
+  font: 600 13px/1.5 var(--yd-display);
+  vertical-align: 2px;
+}
+
+/* คำมั่นเรื่องความเป็นส่วนตัว: แผ่นพิมพ์ทึบสีหมึก (กลับสีในธีมมืดเอง)
+   สีแดงสงวนไว้ให้ตรายางและการเตือนเท่านั้น จึงไม่ใช้กับเรื่องดี */
+.yd-promise {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px 20px 20px;
+  background: var(--yd-ink);
+  color: var(--yd-paper);
+}
+
+.yd-promise .yd-glyph {
+  margin-top: 3px;
+}
+
+.yd-promise p {
+  margin: 0;
+  font: 700 clamp(20px, 1.75vw, 24px)/1.45 var(--yd-display);
+}
+
+/* ---------- ช่องติ๊ก + รอยปากกา: ว่าง / ติ๊ก / วงแดง / ขีดฆ่า ---------- */
+.yd-box {
+  position: relative;
+  display: inline-block;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--yd-ink);
+  vertical-align: middle;
+}
+
+.yd-box svg {
+  position: absolute;
+  overflow: visible;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.yd-box path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+
+.yd-box.is-tick svg {
+  top: -11px;
+  left: -1px;
+  width: 32px;
+  height: 32px;
+  stroke: var(--yd-pen);
+  stroke-width: 3.2;
+}
+
+.yd-box.is-ring svg {
+  top: -13px;
+  left: -13px;
+  width: 48px;
+  height: 48px;
+  stroke: var(--yd-stamp);
+  stroke-width: 2.6;
+}
+
+.yd-box.is-strike svg {
+  top: 0;
+  left: -8px;
+  width: 38px;
+  height: 22px;
+  stroke: var(--yd-pen);
+  stroke-width: 3;
+}
+
+/* ขนาดเล็กสำหรับรายการแน่น (ตาราง คำอธิบายเครื่องหมาย) */
+.yd-box.is-small {
+  width: 20px;
+  height: 20px;
+}
+
+.yd-box.is-small.is-tick svg {
+  top: -9px;
+  width: 26px;
+  height: 26px;
+}
+
+.yd-box.is-small.is-ring svg {
+  top: -11px;
+  left: -11px;
+  width: 38px;
+  height: 38px;
+}
+
+.yd-box.is-small.is-strike svg {
+  left: -6px;
+  width: 30px;
+  height: 18px;
+}
+
+/* เครื่องหมายความล้า Zz: เส้นปากกาน้ำเงิน */
+.yd-zz {
+  flex: none;
+  width: 26px;
+  height: 18px;
+  overflow: visible;
+  fill: none;
+  stroke: var(--yd-pen);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* รอยปากกาวาดทีละช่องเมื่อมี --yd-order */
+.yd-box.is-drawn path {
+  animation: yd-draw 0.38s cubic-bezier(0.65, 0, 0.35, 1) calc(0.3s + var(--yd-order, 0) * 0.14s) both;
+}
+
+@keyframes yd-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .yd-box.is-drawn path {
+    animation: none;
+  }
+
+  .yd-secondary,
+  .yd-secondary .yd-glyph {
+    transition: none;
+  }
+}

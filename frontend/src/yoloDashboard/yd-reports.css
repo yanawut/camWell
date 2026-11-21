@@ -1,0 +1,524 @@
+/*
+ * หน้าประวัติแจ้งเตือน รายงานประจำวัน และสถิติการใช้ห้อง (?yolo-dashboard=alerts | report | rooms)
+ * ไฟล์นี้ถูก import ก่อน yd-pages.css (หน้าถูก import ก่อน CSS ใน YoloDashboard.tsx)
+ * กฎที่ทับชิ้นร่วมจึงขึ้นต้นด้วย .yd ให้ชนะด้วย specificity ไม่ใช่ด้วยลำดับไฟล์
+ */
+
+.yd-reports-name {
+  font-weight: 600;
+}
+
+.yd-reports-num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.yd-reports-bad {
+  color: var(--yd-stamp);
+  font-weight: 600;
+}
+
+/* จำนวนรายการท้ายแถวตัวกรอง: วางระดับเดียวกับกลางช่องกรอก */
+.yd-reports-count {
+  padding-bottom: 10px;
+  font: 600 15px/1.3 var(--yd-display);
+  font-variant-numeric: tabular-nums;
+}
+
+.yd-reports-note {
+  padding: 12px 18px 0;
+}
+
+/* ---------- แถบเลือกวันที่ ---------- */
+.yd-reports-datebar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border: 2px solid var(--yd-ink);
+}
+
+.yd-reports-today {
+  margin-left: auto;
+}
+
+/* ---------- ปุ่มกรองระดับความเสี่ยง: ที่เลือกอยู่ใช้ไวยากรณ์ความรุนแรงเดียวกับ .yd-level + ขีดเส้นใต้ ---------- */
+.yd-reports-levels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.yd .yd-reports-levels [aria-pressed='true'] {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
+.yd .yd-btn-line.yd-reports-level.is-high[aria-pressed='true'] {
+  border-color: var(--yd-stamp);
+  background: var(--yd-stamp);
+  color: var(--yd-paper);
+}
+
+.yd .yd-btn-line.yd-reports-level.is-medium[aria-pressed='true'] {
+  border-color: var(--yd-stamp);
+  background: transparent;
+  color: var(--yd-stamp);
+}
+
+.yd-reports-print-only {
+  display: none;
+  margin: 0;
+  font: 700 16px/1.4 var(--yd-display);
+}
+
+/* ---------- เส้นตาราง 2 ช่อง / 3 ช่อง ---------- */
+.yd-reports-grid,
+.yd-reports-room-grid {
+  display: grid;
+  gap: 24px;
+  align-items: start;
+}
+
+.yd-reports-grid {
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+}
+
+.yd-reports-room-grid {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
+}
+
+/* ---------- กราฟหมึกเดียว ---------- */
+.yd-reports-chart-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* จอแคบ: กราฟเลื่อนในกรอบของตัวเอง ตัวเลขบนแกนจึงยังอ่านออก และหน้าไม่ต้องเลื่อนข้าง */
+.yd-reports-chart-wrap {
+  overflow-x: auto;
+}
+
+.yd-reports-chart {
+  display: block;
+  width: 100%;
+  min-width: 520px;
+  height: auto;
+}
+
+.yd-reports-grid-line {
+  stroke: var(--yd-rule-soft);
+  stroke-width: 1;
+}
+
+.yd-reports-baseline {
+  stroke: var(--yd-ink);
+  stroke-width: 2;
+}
+
+.yd-reports-tick {
+  fill: var(--yd-ink);
+  font: 600 13px var(--yd-display);
+  font-variant-numeric: tabular-nums;
+}
+
+.yd-reports-hit {
+  fill: transparent;
+}
+
+.yd-reports-hit.is-on {
+  fill: color-mix(in srgb, var(--yd-ink) 8%, transparent);
+}
+
+/* ส่วนของแท่ง: ทุกลายมีเส้นหมึกบางล้อม ลายเส้นทแยงและลายจุดมาจาก <pattern> (fill ในแอตทริบิวต์) */
+.yd-reports-seg {
+  stroke: var(--yd-ink);
+  stroke-width: 1;
+}
+
+.yd-reports-seg.is-solid {
+  fill: var(--yd-ink);
+}
+
+.yd-reports-seg.is-outline {
+  fill: var(--yd-paper);
+  stroke-width: 1.5;
+}
+
+.yd-reports-seg.is-stamp {
+  fill: var(--yd-stamp);
+  stroke: var(--yd-stamp);
+}
+
+.yd-reports-pattern-ground {
+  fill: var(--yd-paper);
+}
+
+.yd-reports-pattern-ink {
+  stroke: var(--yd-ink);
+  stroke-width: 1.5;
+}
+
+.yd-reports-pattern-dot {
+  fill: var(--yd-ink);
+}
+
+.yd-reports-line {
+  fill: none;
+  stroke: var(--yd-ink);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.yd-reports-line.is-dashed {
+  stroke-dasharray: 10 6;
+}
+
+.yd-reports-line.is-dotted {
+  stroke-width: 3.5;
+  stroke-dasharray: 0.1 7;
+}
+
+.yd-reports-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font: 600 14px/1.3 var(--yd-display);
+}
+
+.yd-reports-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.yd-reports-swatch {
+  flex: none;
+  width: 18px;
+  height: 14px;
+}
+
+.yd-reports-swatch.is-line {
+  width: 34px;
+  height: 12px;
+}
+
+.yd-reports-readout {
+  min-height: 1.5em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- แท่งสัดส่วน (.yd-meter) พร้อมหัวข้อและตัวเลข ---------- */
+.yd-reports-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.yd-reports-bar-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 5px;
+  font-size: 15px;
+}
+
+/* ---------- การ์ดรายบุคคล: กรอบตามไวยากรณ์ความรุนแรง (DESIGN.md) ---------- */
+.yd-reports-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+  align-items: start;
+  gap: 16px;
+  padding: 18px 20px;
+}
+
+.yd-reports-card {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  padding: 16px 18px;
+  border: 1.5px solid var(--yd-ink);
+  background: var(--yd-paper);
+  color: var(--yd-ink);
+  font-size: 15px;
+}
+
+.yd-reports-card.is-medium {
+  border: 2px solid var(--yd-stamp);
+}
+
+.yd-reports-card.is-high,
+.yd-reports-card.is-fell {
+  border: 3px solid var(--yd-stamp);
+}
+
+.yd-reports-card h3,
+.yd-reports-card h4 {
+  margin: 0;
+  font-family: var(--yd-display);
+  font-weight: 700;
+}
+
+.yd-reports-card h3 {
+  font-size: 19px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.yd-reports-card h4 {
+  margin-bottom: 4px;
+  font-size: 15px;
+  line-height: 1.3;
+}
+
+.yd-reports-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 14px;
+}
+
+.yd-reports-card-who {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.yd-reports-card-risk {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.yd-reports-card-body {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.yd-reports-figure {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 6px 4px;
+  border: 1px solid var(--yd-rule-soft);
+  font: 600 12px/1.3 var(--yd-display);
+  text-align: center;
+}
+
+.yd-reports-body {
+  position: relative;
+  display: block;
+  width: 72px;
+  height: 135px;
+  color: var(--yd-ink);
+}
+
+.yd-reports-body svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.yd-reports-body .yd-reports-body-on {
+  color: var(--yd-stamp);
+}
+
+.yd-reports-card-found {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.yd-reports-symptoms {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.yd-reports-symptoms li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--yd-rule-soft);
+}
+
+.yd-reports-symptoms li > span:first-child::before {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border: 1.5px solid var(--yd-ink);
+  background: var(--yd-ink);
+  content: '';
+  vertical-align: 1px;
+}
+
+.yd-reports-symptoms li.is-fall {
+  color: var(--yd-stamp);
+  font-weight: 600;
+}
+
+.yd-reports-symptoms li.is-fall > span:first-child::before {
+  border-color: var(--yd-stamp);
+  background: var(--yd-stamp);
+}
+
+.yd-reports-box {
+  padding: 10px 14px;
+  border: 1px solid var(--yd-rule-soft);
+}
+
+.yd-reports-bullets {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* การ์ดแคบ (จอโทรศัพท์): รูปคนขึ้นไปอยู่บนรายการอาการ ไม่บีบข้อความไทยให้ขาดกลางคำ */
+@container (max-width: 300px) {
+  .yd-reports-card-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .yd-reports-figure {
+    flex-direction: row;
+    justify-content: center;
+    gap: 12px;
+  }
+}
+
+.yd-reports-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--yd-rule-soft);
+}
+
+/* ---------- สถิติการใช้ห้อง ---------- */
+.yd-reports-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.yd-reports-detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px 20px;
+}
+
+.yd-reports-detail-head h2 {
+  font-size: clamp(20px, 2.3vw, 26px);
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+/* รายการรอบยาวได้หลายสิบแถว: เลื่อนในกรอบ รายละเอียดของรอบที่เลือกจึงอยู่ใกล้รายการ */
+.yd-reports-pick-wrap {
+  max-height: 460px;
+  overflow-y: auto;
+}
+
+.yd-reports-pick th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--yd-paper);
+  /* เส้นใต้หัวตารางเลื่อนตามหัวที่ติดอยู่ (เส้นขอบของตาราง collapse ไม่ตามมา) */
+  box-shadow: inset 0 -2px 0 var(--yd-ink);
+}
+
+.yd-reports-pick tbody tr {
+  cursor: pointer;
+}
+
+@media (max-width: 1180px) {
+  .yd-reports-grid,
+  .yd-reports-room-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .yd-reports-today {
+    margin-left: 0;
+  }
+
+  .yd-reports-count {
+    padding-bottom: 0;
+  }
+}
+
+@media print {
+  /* ให้พื้นหมึกของหัวแผงกับตรายางพิมพ์ออกมาด้วย (สีพิมพ์ของธีมมืดกลับเป็นปกติใน yd-envelope.css) */
+  .yd:has(.yd-reports-datebar) {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  :root:has(.yd-reports-datebar),
+  :root:has(.yd-reports-datebar) body {
+    background: none;
+  }
+
+  .yd:has(.yd-reports-datebar) .yd-dash-fall,
+  .yd:has(.yd-reports-datebar) .yd-dash-perf {
+    display: none;
+  }
+
+  .yd:has(.yd-reports-datebar) .yd-dash {
+    min-height: 0;
+    padding-top: 0;
+  }
+
+  .yd:has(.yd-reports-datebar) .yd-dash-sheet {
+    gap: 16px;
+    padding: 0;
+  }
+
+  .yd-reports-print-only {
+    display: block;
+  }
+
+  .yd-reports-keep,
+  .yd-reports-card,
+  .yd:has(.yd-reports-datebar) .yd-ledger,
+  .yd:has(.yd-reports-datebar) .yd-table tr {
+    break-inside: avoid;
+  }
+
+  .yd:has(.yd-reports-datebar) .yd-panel-head {
+    break-after: avoid;
+  }
+
+  .yd-reports-chart {
+    min-width: 0;
+  }
+}

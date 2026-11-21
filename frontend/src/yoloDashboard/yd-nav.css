@@ -1,0 +1,166 @@
+/* แถบเมนูของหน้า YOLO — สำเนาของ components/AppNavigation.css (token จาก yd-envelope.css) */
+.yd-nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--yd-band);
+  color: var(--yd-band-fg);
+  font-family: var(--yd-display);
+}
+
+.yd-nav :focus-visible {
+  outline-color: var(--yd-band-fg);
+  outline-offset: -3px;
+}
+
+.yd-nav-inner {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: 'brand links tools';
+  align-items: stretch;
+  column-gap: clamp(20px, 3vw, 44px);
+  width: min(100%, 1600px);
+  min-height: 64px;
+  margin: 0 auto;
+  padding: 0 var(--yd-gutter);
+}
+
+.yd-nav-brand {
+  grid-area: brand;
+  align-self: center;
+  padding: 10px 0;
+  color: inherit;
+  font: 700 26px/1 var(--yd-display);
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.yd-nav-links {
+  grid-area: links;
+  display: flex;
+  align-items: stretch;
+  gap: clamp(14px, 2vw, 30px);
+  min-width: 0;
+}
+
+.yd-nav-links > a {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 2px;
+  border-top: 3px solid transparent;
+  border-bottom: 3px solid transparent;
+  color: inherit;
+  font: 600 15px/1.2 var(--yd-display);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: border-color 0.15s ease;
+}
+
+.yd-nav-links > a:hover {
+  border-bottom-color: color-mix(in srgb, var(--yd-band-fg) 45%, transparent);
+}
+
+.yd-nav-links > a.is-active {
+  border-bottom-color: var(--yd-band-fg);
+  font-weight: 700;
+}
+
+.yd-nav-tools {
+  grid-area: tools;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.yd-nav-icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 1.5px solid color-mix(in srgb, var(--yd-band-fg) 55%, transparent);
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.yd-nav-icon:hover {
+  border-color: var(--yd-band-fg);
+  background: color-mix(in srgb, var(--yd-band-fg) 12%, transparent);
+}
+
+.yd-nav-console {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 2px solid var(--yd-band-fg);
+  color: inherit;
+  font: 700 14px/1 var(--yd-display);
+  letter-spacing: 0.03em;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.yd-nav-console:hover {
+  background: var(--yd-band-fg);
+  color: var(--yd-band);
+}
+
+/* จอกลางลงมา: ลิงก์ย้ายลงแถวที่สอง เลื่อนแนวนอนได้ */
+@media (max-width: 1180px) {
+  .yd-nav-inner {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'brand tools'
+      'links links';
+    min-height: 0;
+  }
+
+  .yd-nav-brand {
+    font-size: 24px;
+  }
+
+  .yd-nav-tools {
+    padding: 10px 0;
+  }
+
+  .yd-nav-links {
+    min-height: 44px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    border-top: 1px solid color-mix(in srgb, var(--yd-band-fg) 30%, transparent);
+  }
+}
+
+@media (max-width: 760px) {
+  .yd-nav {
+    position: static;
+  }
+
+  .yd-nav-links {
+    gap: 20px;
+  }
+
+  .yd-nav-links > a {
+    font-size: 14px;
+  }
+}
+
+@media print {
+  .yd-nav {
+    display: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .yd-nav-links > a,
+  .yd-nav-icon,
+  .yd-nav-console {
+    transition: none;
+  }
+}

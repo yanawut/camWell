@@ -1,0 +1,684 @@
+/*
+ * ส่วนภาพรวมของหน้า YOLO — สำเนาของ dashboard/dashboard.css เปลี่ยน prefix เป็น yd-dash- และ yd-plan-
+ */
+.yd-dash {
+  min-height: calc(100vh - 64px);
+  padding-top: 12px;
+  background: var(--yd-fiber), var(--yd-paper);
+  color: var(--yd-ink);
+  font: 400 16px/1.6 var(--yd-form);
+}
+
+.yd-dash h1,
+.yd-dash h2 {
+  margin: 0;
+  font-family: var(--yd-display);
+  font-weight: 700;
+  text-wrap: balance;
+}
+
+/* รอยปรุฉีกใต้แถบหัวซอง เหมือนหน้าแรก */
+/* เว้นด้วย padding ของ .yd-dash ไม่ใช่ margin ของรอยปรุ — margin จะทะลุออกนอก .yd-dash แล้วเห็นพื้นหลังของ body */
+.yd-dash-perf {
+  width: min(100%, 1600px);
+  margin: 0 auto;
+  padding: 0 var(--yd-gutter);
+}
+
+.yd-dash-perf::before {
+  display: block;
+  border-top: 2px dashed var(--yd-rule-soft);
+  content: '';
+}
+
+.yd-dash-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: min(100%, 1600px);
+  margin: 0 auto;
+  padding: 22px var(--yd-gutter) 56px;
+}
+
+/* ---------- แถบเตือนการล้ม: แผ่นแดงทึบ ดังที่สุดในหน้า ---------- */
+.yd-dash-fall {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px 20px;
+  padding: 18px 22px;
+  background: var(--yd-stamp);
+  color: var(--yd-paper);
+}
+
+.yd-dash-fall :focus-visible {
+  outline-color: var(--yd-paper);
+}
+
+.yd-dash-fall-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.yd-dash-fall-copy strong {
+  font: 700 22px/1.3 var(--yd-display);
+}
+
+.yd-dash-fall-copy span {
+  font-size: 15px;
+}
+
+.yd-dash-fall-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.yd-dash-fall-actions button {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 2px solid var(--yd-paper);
+  border-radius: 0;
+  cursor: pointer;
+  font: 700 16px/1 var(--yd-display);
+  white-space: nowrap;
+}
+
+/* "รับทราบเหตุการณ์" = ตรายางประทับรับทราบ: พื้นกระดาษ กรอบคู่ เอียงเล็กน้อย */
+.yd-dash-fall-actions .yd-dash-fall-ack {
+  padding: 4px;
+  border-radius: 6px;
+  background: var(--yd-paper);
+  color: var(--yd-stamp);
+  transform: rotate(-2deg);
+  transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.16s ease;
+}
+
+.yd-dash-fall-ack > span {
+  display: flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1.5px solid var(--yd-stamp);
+  border-radius: 3px;
+}
+
+.yd-dash-fall-ack:hover {
+  background: color-mix(in srgb, var(--yd-paper) 88%, var(--yd-stamp));
+  transform: rotate(-1deg) translateY(1px);
+}
+
+.yd-dash-fall-ack:active {
+  transform: rotate(-1deg) translateY(2px) scale(0.98);
+}
+
+.yd-dash-fall-where {
+  background: transparent;
+  color: var(--yd-paper);
+}
+
+.yd-dash-fall-where:hover {
+  background: color-mix(in srgb, var(--yd-paper) 16%, transparent);
+}
+
+/* ---------- หัวหน้า: ชื่อหน้า + ช่องกรอกจำนวน ---------- */
+.yd-dash-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 40px;
+  padding-bottom: 18px;
+  border-bottom: 2px solid var(--yd-ink);
+}
+
+.yd-dash-head-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+
+.yd-dash-head h1 {
+  font-size: clamp(28px, 3vw, 40px);
+  line-height: 1.25;
+}
+
+.yd-dash-head-title .yd-sample {
+  margin-left: 0;
+  vertical-align: 0;
+}
+
+.yd-dash-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 10px;
+  border: 1.5px solid var(--yd-ink);
+  font: 700 13px/1.4 var(--yd-display);
+  letter-spacing: 0.08em;
+}
+
+/* จุดพิมพ์สี่เหลี่ยมกะพริบช้า ๆ บอกว่าหน้านี้อัปเดตสด (มุมมนสงวนไว้ให้ตรายาง) */
+.yd-dash-live-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--yd-ink);
+  animation: yd-dash-live 1.8s ease-in-out infinite;
+}
+
+@keyframes yd-dash-live {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.yd-dash-tally {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 28px;
+}
+
+.yd-dash-tally .yd-ruled {
+  font-size: 15px;
+}
+
+/* ---------- ช่องติ๊กควบคุม + คำอธิบายเครื่องหมาย ---------- */
+.yd-dash-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 32px;
+}
+
+.yd-dash-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 28px;
+}
+
+.yd-dash-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  cursor: pointer;
+  font: 600 16px/1.3 var(--yd-display);
+}
+
+.yd-dash-check:hover .yd-box {
+  background: color-mix(in srgb, var(--yd-ink) 8%, transparent);
+}
+
+.yd-dash-check input:focus-visible + .yd-box {
+  outline: 3px solid var(--yd-pen);
+  outline-offset: 3px;
+}
+
+.yd-dash-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+  margin: 0;
+  font: 600 14px/1.3 var(--yd-display);
+}
+
+.yd-dash-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.yd-dash-hint {
+  margin: -8px 0 0;
+  font-size: 15px;
+}
+
+.yd-dash-hint strong {
+  font-family: var(--yd-display);
+}
+
+/* ---------- พื้นที่ห้อง + ภาพสด ---------- */
+.yd-dash-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.yd-dash-workspace.is-split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
+.yd-dash-rooms {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* ห้อง = ส่วนพิมพ์บนแผ่นเดียวกัน กรอบหมึก 2px; ห้องที่มีคนล้มกรอบแดงหนา */
+.yd-dash-room {
+  container-type: inline-size;
+  border: 2px solid var(--yd-ink);
+  scroll-margin-top: 88px;
+}
+
+.yd-dash-room.is-fall {
+  border: 4px solid var(--yd-stamp);
+}
+
+.yd-dash-room-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  padding: 14px 20px;
+  border-bottom: 2px solid var(--yd-ink);
+}
+
+.yd-dash-room.is-fall .yd-dash-room-head {
+  border-bottom-color: var(--yd-stamp);
+}
+
+.yd-dash-room-heading {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.yd-dash-room-head h2 {
+  font-size: clamp(20px, 1.8vw, 24px);
+  line-height: 1.3;
+}
+
+.yd-dash-room-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font: 600 15px/1.3 var(--yd-display);
+}
+
+.yd-dash-room-status.is-alert {
+  color: var(--yd-stamp);
+}
+
+.yd-dash-open-live.is-fall {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 0;
+  background: var(--yd-stamp);
+  color: var(--yd-paper);
+  cursor: pointer;
+  font: 700 16px/1 var(--yd-display);
+  white-space: nowrap;
+}
+
+.yd-dash-room-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+}
+
+/* ---------- ผังห้อง (SVG ลายเส้นหมึก) ---------- */
+.yd-dash-plan {
+  position: relative;
+  aspect-ratio: 400 / 250;
+  border-right: 2px solid var(--yd-ink);
+}
+
+.yd-dash-plan svg {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  color: var(--yd-ink);
+}
+
+.yd-plan-grid line {
+  stroke: var(--yd-rule-soft);
+  stroke-width: 0.5;
+}
+
+.yd-plan-wall {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 4;
+}
+
+.yd-plan-paper {
+  fill: var(--yd-paper);
+}
+
+.yd-plan-window path,
+.yd-plan-door,
+.yd-plan-keys,
+.yd-plan-plant circle,
+.yd-plan-plant path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.2;
+}
+
+.yd-plan-desk {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+.yd-plan-screen {
+  fill: currentColor;
+}
+
+.yd-plan-chair {
+  fill: none;
+  stroke: var(--yd-rule-soft);
+  stroke-width: 1.6;
+}
+
+.yd-plan-shoulders {
+  fill: currentColor;
+}
+
+.yd-plan-head {
+  fill: var(--yd-paper);
+  stroke: currentColor;
+  stroke-width: 2.2;
+}
+
+/* วงแดงรอบคนที่มีอาการค้าง วาดเข้าทีละเส้นแบบปากกา */
+.yd-plan-ring {
+  fill: none;
+  stroke: var(--yd-stamp);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  animation: yd-draw 0.45s cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+
+.yd-plan-person {
+  animation: yd-plan-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.yd-plan-person.is-leaving {
+  animation: yd-plan-out 0.7s ease forwards;
+}
+
+@keyframes yd-plan-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes yd-plan-out {
+  to {
+    opacity: 0;
+  }
+}
+
+/* ชื่อเขียนมือใต้เก้าอี้ (HTML ทับบนผัง) */
+.yd-plan-tag {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 5px;
+  background: var(--yd-paper);
+  transform: translateX(-50%);
+  white-space: nowrap;
+  transition: opacity 0.7s;
+}
+
+.yd-plan-tag.is-above {
+  transform: translate(-50%, -100%);
+}
+
+.yd-plan-tag.is-leaving {
+  opacity: 0;
+}
+
+.yd-plan-tag .yd-zz {
+  width: 20px;
+  height: 14px;
+}
+
+.yd-plan-name {
+  color: var(--yd-pen);
+  font: 400 clamp(14px, 1.7cqi, 19px)/1.25 var(--yd-hand);
+}
+
+.yd-plan-tag.is-alert .yd-plan-name {
+  color: var(--yd-stamp);
+}
+
+/* จำนวนแจ้งเตือนวันนี้: กล่องพิมพ์, เกิน 10 ครั้ง = วงแดง */
+.yd-plan-count {
+  display: inline-grid;
+  min-width: 20px;
+  height: 20px;
+  place-items: center;
+  padding: 0 4px;
+  border: 1.5px solid var(--yd-ink);
+  background: var(--yd-paper);
+  color: var(--yd-ink);
+  font: 700 12px/1 var(--yd-display);
+  font-variant-numeric: tabular-nums;
+}
+
+.yd-plan-count.is-many {
+  min-width: 24px;
+  height: 24px;
+  border-color: var(--yd-stamp);
+  border-radius: 50%;
+  color: var(--yd-stamp);
+}
+
+/* ---------- ตารางคนในห้อง ---------- */
+.yd-dash-roster {
+  min-width: 0;
+}
+
+.yd-dash-roster table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.yd-dash-roster caption {
+  padding: 12px 18px;
+  background: var(--yd-ink);
+  color: var(--yd-paper);
+  font: 700 17px/1.3 var(--yd-display);
+  text-align: left;
+}
+
+.yd-dash-roster tbody tr {
+  border-bottom: 1px solid var(--yd-rule-soft);
+}
+
+.yd-dash-roster td,
+.yd-dash-roster th {
+  padding: 12px 10px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.yd-dash-roster td:first-child {
+  width: 46px;
+  padding-left: 18px;
+}
+
+.yd-dash-roster-name {
+  display: block;
+  font: 700 17px/1.3 var(--yd-display);
+}
+
+.yd-dash-roster-what {
+  display: block;
+  font: 400 14px/1.45 var(--yd-form);
+}
+
+.yd-dash-roster tr.is-alert .yd-dash-roster-what,
+.yd-dash-roster tr.is-fall .yd-dash-roster-what,
+.yd-dash-roster tr.is-fall .yd-dash-roster-name {
+  color: var(--yd-stamp);
+  font-weight: 600;
+}
+
+.yd-dash-roster td.yd-dash-roster-count {
+  padding-right: 18px;
+  font-size: 18px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.yd-dash-roster td.yd-dash-roster-count.is-many {
+  color: var(--yd-stamp);
+}
+
+.yd-dash-roster-empty {
+  margin: 0;
+  padding: 18px;
+  font-size: 15px;
+}
+
+/* ห้องแคบ (มือถือ หรือแบ่งครึ่งจอกับภาพสด): ตารางย้ายลงใต้ผัง */
+@container (max-width: 780px) {
+  .yd-dash-room-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .yd-dash-plan {
+    border-right: 0;
+    border-bottom: 2px solid var(--yd-ink);
+  }
+}
+
+/* ---------- ภาพสดจากกล้อง ---------- */
+.yd-dash-live-cameras {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: 20px;
+  min-width: 0;
+}
+
+.yd-dash-live-cameras[hidden] {
+  display: none;
+}
+
+.yd-dash-workspace.is-split .yd-dash-live-cameras {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.yd-dash-camera {
+  min-width: 0;
+  border: 2px solid var(--yd-ink);
+  scroll-margin-top: 88px;
+}
+
+/* ---------- หมายเหตุท้ายหน้า ---------- */
+.yd-dash-notes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  align-items: start;
+  gap: 20px;
+}
+
+.yd-dash-break {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 18px;
+  border: 2px solid var(--yd-ink);
+}
+
+.yd-dash-break > .yd-glyph {
+  margin-top: 2px;
+}
+
+.yd-dash-break > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.yd-dash-break strong {
+  font: 700 18px/1.3 var(--yd-display);
+}
+
+.yd-dash-break p {
+  margin: 4px 0 0;
+  font-size: 15px;
+}
+
+.yd-dash-break-dismiss {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--yd-ink);
+  cursor: pointer;
+}
+
+.yd-dash-break-dismiss:hover {
+  background: color-mix(in srgb, var(--yd-ink) 10%, transparent);
+}
+
+.yd-dash-promise p {
+  font-size: 18px;
+}
+
+@media (max-width: 1024px) {
+  .yd-dash-workspace.is-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .yd-dash-sheet {
+    gap: 20px;
+    padding-top: 22px;
+  }
+
+  .yd-dash-room-head {
+    flex-wrap: wrap;
+    padding: 12px 14px;
+  }
+
+  .yd-dash-fall {
+    grid-template-columns: auto minmax(0, 1fr);
+    padding: 16px;
+  }
+
+  .yd-dash-fall-actions {
+    grid-column: 1 / -1;
+  }
+
+  .yd-dash-tally {
+    gap: 10px 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .yd-dash-live-dot,
+  .yd-plan-ring,
+  .yd-plan-person,
+  .yd-plan-person.is-leaving {
+    animation: none;
+  }
+
+  .yd-plan-tag,
+  .yd-dash-fall-actions .yd-dash-fall-ack {
+    transition: none;
+  }
+}
