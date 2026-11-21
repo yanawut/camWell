@@ -125,19 +125,59 @@ dev.bat ตรวจแพ็กเกจทุกครั้งที่เป
 ทำหัวข้อนี้เฉพาะเมื่อจะให้ระบบ YOLOv8 อ่านภาพจากกล้อง IP ผ่าน RTSP
 แหล่งภาพอื่น ได้แก่ ไฟล์วิดีโอ ไฟล์รูปภาพ กล้อง browser และ Simulator ไม่ต้องใช้ go2rtc
 
-[go2rtc](https://github.com/AlexxIT/go2rtc) เป็นโปรแกรมแยกที่รับสตรีมจากกล้องแล้วส่งต่อ ติดตั้งได้สองแบบ เลือกแบบที่สะดวก
+[go2rtc](https://github.com/AlexxIT/go2rtc) เป็นโปรแกรมแยกที่รับสตรีมจากกล้องแล้วส่งต่อ
+yolo-backend ใช้พอร์ตของ go2rtc สองพอร์ต คือ RTSP ที่ 8554 และหน้าเว็บกับ API ที่ 1984
+ติดตั้ง go2rtc ได้สองแบบ เลือกแบบที่สะดวก
 
-- **clone repo แล้วรัน** ต้องมี Docker ในเครื่อง
-- **ดาวน์โหลดไฟล์ exe มารัน** ต้องมี Python และต้องลง ffmpeg
+#### แบบที่ 1 รันด้วย Docker
 
-หลังเปิด go2rtc แล้ว ให้ส่งภาพเข้าระบบ YOLOv8 ตามขั้นตอนนี้
+แบบนี้ต้องมี Docker Desktop และไม่ต้อง clone repo เพราะ image `alexxit/go2rtc` มี go2rtc และ FFmpeg มาให้แล้ว
+รันคำสั่งนี้ใน Command Prompt
+
+```bat
+docker run -d --name go2rtc --restart unless-stopped -p 1984:1984 -p 8554:8554 -v %USERPROFILE%\go2rtc:/config alexxit/go2rtc
+```
+
+go2rtc เก็บ `go2rtc.yaml` ไว้ใน `%USERPROFILE%\go2rtc`
+คู่มือของ go2rtc ใช้ `--network host` แต่ Docker Desktop ใช้ host networking ได้เฉพาะรุ่น 4.34 ขึ้นไป และต้องเปิด **Enable host networking** ใน Settings ก่อน
+Camwell ใช้แค่พอร์ต 1984 และ 8554 คำสั่งด้านบนจึงเปิดสองพอร์ตนี้ด้วย `-p` แทน
+
+#### แบบที่ 2 ใช้ go2rtc.exe
+
+1. ดาวน์โหลด `go2rtc_win64.zip` จาก [release ล่าสุดของ go2rtc](https://github.com/AlexxIT/go2rtc/releases/latest)
+2. แตกไฟล์ zip จะได้ `go2rtc.exe` ไฟล์เดียว
+3. ลง FFmpeg
+   go2rtc เรียก `ffmpeg` จาก PATH เมื่อต้องแปลงสตรีม เช่น แปลงภาพ H264 จากกล้องเป็น MJPEG
+
+   ```bat
+   winget install --id Gyan.FFmpeg --exact
+   ```
+
+4. เปิด terminal ใหม่ในโฟลเดอร์ที่มี `go2rtc.exe` แล้วรัน `go2rtc.exe`
+   go2rtc อ่าน `go2rtc.yaml` จากโฟลเดอร์ที่รันคำสั่ง
+
+#### เพิ่มกล้องใน go2rtc
+
+แก้ `go2rtc.yaml` ได้จากหน้าเว็บของ go2rtc ที่ `http://localhost:1984` หรือแก้ไฟล์เอง
+ใส่ลิงก์ RTSP ของกล้องตามคู่มือของกล้องรุ่นนั้น ตัวอย่างนี้มาจากคู่มือของ go2rtc
+
+```yaml
+streams:
+  camera1: rtsp://admin:password@192.168.1.123/cam/realmonitor?channel=1&subtype=0
+```
+
+`camera1` คือชื่อสตรีมที่ใช้ในลิงก์ของขั้นถัดไป
+
+#### ส่งภาพเข้าระบบ YOLOv8
 
 1. เปิด `/?yolo-dashboard` แล้วไปที่ส่วน "ภาพจากกล้อง"
 2. เลือกแหล่งภาพ "go2rtc"
-3. วางลิงก์ของกล้องในช่อง "ลิงก์ go2rtc" ใช้ได้ทั้ง `rtsp://<host>:8554/<ชื่อกล้อง>` และลิงก์หน้าเว็บของ go2rtc ที่มี `src` เช่น `http://<host>:1984/stream.html?src=<ชื่อกล้อง>`
+3. วางลิงก์ในช่อง "ลิงก์ go2rtc" เช่น `rtsp://127.0.0.1:8554/camera1` เมื่อ go2rtc รันบนเครื่องเดียวกับ yolo-backend
 
-ถ้าวางลิงก์หน้าเว็บ yolo-backend ลองเปิด RTSP ที่พอร์ต 8554 ก่อน แล้วค่อยลอง MJPEG ผ่านหน้าเว็บของ go2rtc
-พอร์ต 8554 คือค่าเริ่มต้นของ go2rtc ถ้าตั้ง RTSP ไว้ที่พอร์ตอื่น ให้วางลิงก์ `rtsp://` ที่มีพอร์ตนั้นแทน
+ช่อง "ลิงก์ go2rtc" รับลิงก์หน้าเว็บของ go2rtc ที่มี `src` ได้ด้วย เช่น `http://127.0.0.1:1984/stream.html?src=camera1`
+เมื่อได้ลิงก์หน้าเว็บ yolo-backend ลองเปิด RTSP ที่พอร์ต 8554 ก่อน แล้วค่อยลอง MJPEG ที่ `/api/stream.mjpeg`
+กล้อง H264 หรือ H265 ส่ง MJPEG ได้ก็ต่อเมื่อตั้งให้ go2rtc แปลงด้วย FFmpeg ตาม[คู่มือ MJPEG ของ go2rtc](https://github.com/AlexxIT/go2rtc/blob/master/internal/mjpeg/README.md)
+yolo-backend ถือว่า RTSP อยู่ที่พอร์ต 8554 ซึ่งเป็นค่าเริ่มต้นของ go2rtc ถ้าตั้ง RTSP ไว้ที่พอร์ตอื่น ให้วางลิงก์ `rtsp://` ที่มีพอร์ตนั้นแทน
 
 ## เปิดทุกส่วนพร้อมกัน
 
