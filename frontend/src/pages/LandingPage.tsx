@@ -10,9 +10,8 @@ import './LandingPage.css'
 // ตัวเลขบนฉลากคือค่าเริ่มต้นจริงในโค้ด (types/posture.ts, types/wellbeing.ts, types/fall.ts) — แก้ค่าเริ่มต้นที่นั่นแล้วต้องแก้ที่นี่ด้วย
 // หน้านี้ไม่โหลดกล้องหรือโมเดล AI
 
-const DASHBOARD_HREF = '?dashboard'
-const CAMERA_HREF = '?camera'
-// ปุ่ม "เข้าสู่ระบบ" พาไปหน้าเลือกระบบ (SystemChooserPage: MediaPipe หรือ YOLOv8) ก่อนเข้า Dashboard
+// ทุกทางเข้าแอปจากหน้านี้ผ่านหน้าเลือกระบบ (SystemChooserPage: MediaPipe หรือ YOLOv8)
+// จึงไม่มีลิงก์ตรงไปหน้ากล้อง รายชื่อ หรือภาพรวมของระบบใดระบบหนึ่ง
 const LOGIN_HREF = '?systems'
 
 // "วิธีใช้": สิ่งที่กล้องดู และนานแค่ไหนถึงเตือน (ค่าเริ่มต้น)
@@ -60,12 +59,13 @@ const LOG: { time: string; mark: MarkState; event: string; result: string }[] = 
 ]
 
 // "วิธีเริ่มใช้" เขียนแบบบรรทัดวิธีใช้บนฉลาก: ค่าที่แต่ละออฟฟิศกรอกเอง เขียนด้วยลายมือบนเส้นประ
+// ทุกขั้นทำในระบบที่เลือกหลังเข้าสู่ระบบ ลิงก์จึงมีที่ขั้นสุดท้ายขั้นเดียว และพาไปหน้าเลือกระบบ
 type StepPart = string | { hand: string }
 const STEPS: { title: string; parts: StepPart[]; href?: string; link?: string }[] = [
-  { title: 'ตั้งกล้อง', parts: ['ใช้', { hand: 'เว็บแคม / USB / IP' }, 'วางตามมุมที่แนะนำ'], href: CAMERA_HREF, link: 'ตั้งค่ากล้อง' },
+  { title: 'ตั้งกล้อง', parts: ['ใช้', { hand: 'เว็บแคม / USB / IP' }, 'วางตามมุมที่แนะนำ'] },
   { title: 'Calibrate ท่านั่ง', parts: ['นั่งตรง', { hand: '3' }, 'วินาที ครั้งเดียวต่อกล้อง'] },
-  { title: 'ลงทะเบียนบุคคล', parts: [{ hand: 'เลือกทำ' }, 'เพื่อแยกการเตือนรายคน ต้องได้รับความยินยอมก่อน'], href: '?people', link: 'รายชื่อบุคคล' },
-  { title: 'ดูภาพรวม', parts: ['แดชบอร์ด ประวัติแจ้งเตือน และรายงาน', { hand: 'รายวัน' }], href: DASHBOARD_HREF, link: 'ภาพรวม' },
+  { title: 'ลงทะเบียนบุคคล', parts: [{ hand: 'เลือกทำ' }, 'เพื่อแยกการเตือนรายคน ต้องได้รับความยินยอมก่อน'] },
+  { title: 'ดูภาพรวม', parts: ['แดชบอร์ด ประวัติแจ้งเตือน และรายงาน', { hand: 'รายวัน' }], href: LOGIN_HREF, link: 'เข้าสู่ระบบ' },
 ]
 
 const TODAY = new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date())
@@ -106,10 +106,13 @@ export default function LandingPage() {
               <Phrases text="Camwell เตือนเมื่อท่านั่งผิดค้าง นานพอจะเป็นปัญหา แจ้งทันทีเมื่อมีคนล้ม และประมวลผลทุกอย่าง บนเครื่องในออฟฟิศ" />
             </p>
             <div className="rx-actions">
-              <a className="rx-stamp" href={LOGIN_HREF}>
+              <a className="rx-stamp" href={LOGIN_HREF} aria-describedby="rx-next">
                 <span className="rx-stamp-face">เข้าสู่ระบบ <Arrow size={24} /></span>
               </a>
-              <a className="rx-secondary" href={CAMERA_HREF}>ตั้งค่ากล้อง</a>
+              <p className="rx-next" id="rx-next">
+                <span className="rx-ph">แล้วเลือกระบบตรวจจับ</span>{' '}
+                <span className="rx-ph"><strong>MediaPipe</strong> หรือ <strong>YOLOv8</strong></span>
+              </p>
             </div>
           </div>
 
