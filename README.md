@@ -2,14 +2,14 @@
 
 Webapp เชื่อมกล้องเพื่อตรวจจับท่านั่ง ความเหนื่อยล้า และการหกล้มของพนักงานออฟฟิศ แล้วแจ้งเตือนเมื่อพบปัญหาต่อเนื่อง
 
-- **AI รันในเครื่อง** — โหมด YOLO ส่งเฟรมผ่าน localhost ไปยัง Python vision service ที่ผูกกับ `127.0.0.1`; ภาพไม่ออกจากเครื่อง ส่วน face/fatigue และ fallback MediaPipe ยังรันใน browser
+- **การตรวจจับทั้งหมดรันในเบราว์เซอร์ (local AI)** — กล้อง + โมเดล + ตรรกะแจ้งเตือนอยู่ฝั่ง client ไม่มีภาพ/วิดีโอส่งออกจากเครื่อง
 - **camwell-backend (`backend/`)** — ใช้เฉพาะฟีเจอร์ "จำหน้า/ระบุตัวตนพนักงาน" (เก็บ face descriptor ลง SQLite และจับคู่ใบหน้าแทนเบราว์เซอร์)
   ไม่รัน backend แอปก็ยังตรวจจับท่านั่ง/ความเหนื่อยล้า/ระยะห่างจอ/หกล้มได้ปกติ — ดู `backend/README.md`
 - ยังไม่ได้ทำ: ส่ง log เหตุการณ์แจ้งเตือนไป backend, dashboard HR, แจ้งเตือนผ่าน LINE — ดู "แผนถัดไป" ด้านล่าง
 
 ## ฟีเจอร์ที่มีตอนนี้
 
-1. **ท่านั่ง** — ก้มคอ/ยื่นคอ, หลังค่อม/โน้มตัว, นั่งเอียงข้าง (YOLO person/pose detection + CamWell posture classifier; MediaPipe ยังเลือกใช้ได้)
+1. **ท่านั่ง** — ก้มคอ/ยื่นคอ, หลังค่อม/โน้มตัว, นั่งเอียงข้าง (MediaPipe Pose Landmarker)
    พร้อมปุ่ม **Calibrate ท่านั่ง** (นั่งท่าดี 3 วินาที → เก็บเป็น baseline แยกต่อกล้อง)
 2. **หกล้ม / ตกจากเก้าอี้** — ลำตัวร่วงเร็ว + เอียงใกล้แนวนอน หรือร่วงเร็วแล้วหายจากเฟรม (แจ้งทันที ไม่ต้องรอสะสมเวลา)
 3. **ความเหนื่อยล้า** — ง่วง/หลับตานาน (Eye Aspect Ratio), หาวถี่ผิดปกติ (Mouth Aspect Ratio) (@vladmandic/face-api)
@@ -28,27 +28,14 @@ Webapp เชื่อมกล้องเพื่อตรวจจับท�
 - **react-webcam** — เข้าถึงกล้องผ่าน `getUserMedia`
 - **@mediapipe/tasks-vision (Pose Landmarker / BlazePose)** — ตรวจท่านั่ง/หกล้ม รันในเบราว์เซอร์ผ่าน WebAssembly
   (ไม่เรียก API ภายนอกตอนใช้งานจริง) — License Apache 2.0 ใช้เชิงพาณิชย์ได้ฟรี
-- **Ultralytics YOLOv8m + YOLOv8m-pose** — person/chair/table detection, ByteTrack และ COCO keypoints ผ่าน Python service บน localhost
 - **@vladmandic/face-api** — ตรวจความเหนื่อยล้า/ระยะห่างจอ/ดึง face descriptor รันในเบราว์เซอร์ผ่าน TensorFlow.js
   — License MIT ใช้เชิงพาณิชย์ได้ฟรีเช่นกัน
 - **vitest** (test) · **oxlint** (lint)
 
 ## เริ่มต้นใช้งาน
 
-เตรียม YOLO service ครั้งแรกจาก root ของโปรเจกต์:
-
-```bat
-py -3.12 -m venv vision_service\.venv
-vision_service\.venv\Scripts\python.exe -m pip install -r vision_service\requirements.txt
-```
-
-เปิด service และ frontend ในคนละ terminal:
-
 ```bash
-npm run dev:vision
-```
-
-```bash
+cd frontend
 npm install       # ติดตั้ง dependency + รัน postinstall (scripts/setup-assets.mjs) ที่จะ:
                    #   1) คัดลอก WASM runtime ของ MediaPipe มาไว้ที่ public/wasm
                    #   2) ดาวน์โหลดโมเดล pose_landmarker_{lite,full,heavy}.task (~44MB รวม) มาไว้ที่ public/models
@@ -58,21 +45,13 @@ npm install       # ติดตั้ง dependency + รัน postinstall (sc
 npm run dev        # เปิด dev server (http://localhost:5173)
 ```
 
-ครั้งแรกที่ YOLO ทำ inference จะดาวน์โหลด `yolov8m.pt` และ `yolov8m-pose.pt` หากยังไม่มีไฟล์ใน cache ของ Ultralytics
-ถ้า YOLO service ไม่ทำงาน CamWell จะใช้ MediaPipe Lite ต่อ และแสดงสถานะ service ใน Dev Console
-
-เพิ่มกล้อง RTSP ได้จากการตั้งค่าแหล่งภาพ เลือก **กล้องเครือข่าย (RTSP / go2rtc)** แล้วใส่ URL กล้องโดยตรง เช่น
-`rtsp://user:password@192.168.1.50:554/cam/realmonitor?channel=1&subtype=1` หรือ URL หน้า go2rtc เช่น
-`http://go2rtc:1984/stream.html?src=cam` — vision service จะลอง RTSP port 8554 ก่อนแล้ว fallback เป็น MJPEG
-URL พร้อม credential ถูกเก็บใน localStorage ของ browser เครื่องนี้ อย่าใช้ URL ที่ฝังรหัสผ่านซึ่งแชร์กับผู้อื่น
-
-ไฟล์ที่ข้ามไปแล้วจะไม่ดาวน์โหลดซ้ำ ถ้าเครือข่ายบล็อกการดาวน์โหลดโมเดลใด ดูวิธีดาวน์โหลดเองที่ `public/models/README.md`
-และ `public/models/face-api/README.md` หรือรัน `npm run setup:assets` ใหม่ภายหลัง
+ไฟล์ที่ข้ามไปแล้วจะไม่ดาวน์โหลดซ้ำ ถ้าเครือข่ายบล็อกการดาวน์โหลดโมเดลใด ดูวิธีดาวน์โหลดเองที่ `frontend/public/models/README.md`
+และ `frontend/public/models/face-api/README.md` หรือรัน `npm run setup:assets` ใน `frontend/` ใหม่ภายหลัง
 
 ถ้าต้องการฟีเจอร์ระบุตัวตน ให้รัน backend ด้วย (`cd backend && npm install && npm run dev` — รายละเอียดใน `backend/README.md`)
-ที่อยู่ backend ตั้งได้ผ่าน `VITE_API_BASE_URL` ใน `.env` (ค่าเริ่มต้น `http://localhost:4000`)
+ที่อยู่ backend ตั้งได้ผ่าน `VITE_API_BASE_URL` ใน `frontend/.env` (ค่าเริ่มต้น `http://localhost:4000`)
 
-คำสั่งอื่น: `npm test` (vitest) · `npm run lint` (oxlint) · `npm run build` (tsc + vite build)
+คำสั่งอื่นใน `frontend/`: `npm test` (vitest) · `npm run lint` (oxlint) · `npm run build` (tsc + vite build)
 
 ### หน้าที่เปิดได้
 
@@ -80,6 +59,28 @@ URL พร้อม credential ถูกเก็บใน localStorage ขอ�
 |---|---|
 | `/` | หน้าหลักเดิม — กล้อง + แผงตั้งค่าความไว + ประวัติแจ้งเตือน (ใช้โมเดล `lite` และโครงร่างแบบ `basic` เสมอ) |
 | `/?console` | Dev Console — ใช้ state และ logic ชุดเดียวกับหน้าหลัก แต่จัดหน้าใหม่ + มีเครื่องมือสำหรับนักพัฒนา |
+| `/?yolo-console` | YOLO Console — วิเคราะห์ทั้งห้องด้วย `yolo-backend` (ดูหัวข้อด้านล่าง) |
+
+## YOLO Console (`/?yolo-console`)
+
+สลับจาก Dev Console ได้ที่ปุ่ม **Engine: MediaPipe / YOLO** ใน sidebar — สลับแล้วเปลี่ยนทั้งหน้า กล้องและโมเดลของหน้าเดิมถูกปิด
+กดกลับมา MediaPipe แล้ว console เดิมโหลดค่าเดิมจาก localStorage และ session ของ YOLO ถูกสั่งหยุด
+
+ต้องเปิด `yolo-backend` ไว้ด้วย (ครั้งแรกให้สร้าง `.venv` ก่อน):
+
+```bat
+py -3.12 -m venv yolo-backend\.venv
+yolo-backend\.venv\Scripts\python.exe -m pip install -r yolo-backend\requirements.txt
+npm run dev:yolo
+```
+
+`npm run dev:all` เปิดให้ด้วยถ้ามี `yolo-backend\.venv` แล้ว — frontend เรียก `/yolo/...` และ Vite ส่งต่อไปที่ `127.0.0.1:8000`
+(`frontend/vite.config.ts`) backend รับเฉพาะหน้าเว็บที่เปิดจาก `localhost:5173` จึงต้องเปิด dev server ที่พอร์ตนี้
+
+- **Live** — แหล่งภาพ: ไฟล์วิดีโอ, ไฟล์รูปภาพ, กล้อง browser, go2rtc, Simulator · ภาพสดพร้อมกรอบคน/สิ่งของ/เส้นทางเดิน,
+  แผงสถิติ, heatmap, ผังพื้น · หยุดชั่วคราว/จบ/เริ่มใหม่
+- **Floor & Zones** — calibrate พื้น (ลาก 4 มุม คลิกบนเส้นกรอบเพื่อเพิ่มจุด) และแบ่งโซน บันทึกลง `yolo-backend/data/settings.json`
+- **Reports** — รายงานของทุก session ที่จบแล้ว + ดาวน์โหลด `tracks.csv`
 
 ## Dev Console (`/?console`)
 
@@ -98,19 +99,16 @@ URL พร้อม credential ถูกเก็บใน localStorage ขอ�
 
 กล้องไม่ถูก unmount ตอนสลับแท็บ (แค่ซ่อน) จึงไม่ต้องโหลดกล้อง/โมเดลใหม่
 
-### เลือก Pose model
+### เลือกรุ่นโมเดล Pose (lite / full / heavy)
 
-MediaPipe ให้ landmark 33 จุด ส่วน YOLO ให้ 17 จุด COCO ที่ map เข้าช่อง landmark เดิมและทำจุดที่ไม่มีเป็น invisible
-— ดูค่า ms ในแถบสถิติเพื่อเทียบบนเครื่องจริง (ระบบจำกัดไว้ 12 fps = งบ ~83 ms ต่อรอบต่อกล้อง)
+ทุกรุ่นให้ landmark 33 จุดรูปแบบเดียวกัน ต่างกันที่ความแม่นยำกับความเร็ว — ดูค่า ms ในแถบสถิติเพื่อเทียบบนเครื่องจริง
+(ระบบจำกัดไว้ 12 fps = งบ ~83 ms ต่อรอบต่อกล้อง)
 
-| รุ่น | โมเดล | ขนาดโดยประมาณ |
+| รุ่น | ไฟล์ | ขนาดโดยประมาณ |
 |---|---|---|
-| yolo (ค่าเริ่มต้น) | `yolov8m.pt` + `yolov8m-pose.pt` | ดาวน์โหลดครั้งแรกจาก Ultralytics |
-| lite | `pose_landmarker_lite.task` | ~5.5 MB |
+| lite (ค่าเริ่มต้น) | `pose_landmarker_lite.task` | ~5.5 MB |
 | full | `pose_landmarker_full.task` | ~9 MB |
 | heavy | `pose_landmarker_heavy.task` | ~29 MB |
-
-YOLO ส่ง keypoints 17 จุดแบบ COCO; CamWell map จุดหู ไหล่ สะโพก และจุดที่เกี่ยวข้องเข้า posture feature เดิม จุดที่โมเดลไม่มีจะถูกทำเครื่องหมายว่าไม่เห็น ค่า baseline, smoothing และ alert logic ยังใช้ของ CamWell โหมด YOLO โหลดโมเดลแยกต่อกล้อง (สูงสุด 2 กล้อง) และอาจใช้หน่วยความจำ GPU มากกว่า MediaPipe
 
 - เปลี่ยนรุ่นแล้วโมเดลโหลดใหม่ทุกกล้อง — **ควร Calibrate ท่านั่งใหม่** เพราะมุมที่วัดได้ต่างกันเล็กน้อย
 - เปลี่ยนรุ่นไม่ได้ระหว่างกำลังบันทึก dataset
@@ -135,7 +133,7 @@ YOLO ส่ง keypoints 17 จุดแบบ COCO; CamWell map จุดหู
 - ระหว่างบันทึกจะเห็น `● REC` + ค่า 4 feature ซ้อนบนภาพกล้องที่กำลังบันทึก
 - **ไม่ปน dataset ข้ามรุ่นโมเดล** — dataset ล็อกตามรุ่นของ sample แรก ถ้ารุ่นไม่ตรงจะเริ่มบันทึกไม่ได้จนกว่าจะ Export แล้วล้างข้อมูล
 - ไฟล์ export มี `meta.schemaVersion`, `exportedAt`, `poseModel`, `thresholdsAtExport` + `samples[]`
-  (แต่ละ sample มี `cameraId`, `label`, มุมต่างๆ, `quality`, `landmarks` 33 จุดพร้อม `visibility`, `minVisibility`; YOLO map เฉพาะจุด COCO ที่มีและ `worldLandmarks` เป็น `[]`)
+  (แต่ละ sample มี `cameraId`, `label`, มุมต่างๆ, `quality`, `landmarks`/`worldLandmarks` 33 จุดพร้อม `visibility`, `minVisibility`)
 
 ข้อควรระวัง:
 - เก็บในหน่วยความจำของแท็บเท่านั้น — **รีเฟรช/ปิดแท็บแล้วหาย ต้อง Export ก่อน** และกินหน่วยความจำเพิ่มขึ้นระหว่างบันทึก (อัดเป็นช่วงแล้ว export ทยอย)
@@ -148,19 +146,17 @@ YOLO ส่ง keypoints 17 จุดแบบ COCO; CamWell map จุดหู
 ## วิธีทำงานของแต่ละฟีเจอร์
 
 ### ท่านั่ง + หกล้ม + เตือนพัก (PostureEngine)
-1. แหล่ง RTSP ให้ `vision_service` เปิดสตรีมด้วย OpenCV/FFmpeg ผ่าน TCP และส่งภาพ preview แบบ MJPEG ผ่าน localhost; go2rtc page จะลอง RTSP port 8554 ก่อน fallback เป็น MJPEG; แหล่งอื่นส่ง JPEG เฟรมจาก browser เข้า service
-2. YOLOv8m ตรวจคน/เก้าอี้/โต๊ะ, ByteTrack (`bytetrack_room.yaml`) จับกรอบข้ามเฟรม, `vision_service/people.py` ตัดสินว่าแต่ละกรอบเป็นใคร (คนเดียวได้กรอบเดียว, คนนั่งนิ่งได้ ID เดิม, กรอบที่ตรงกับเก้าอี้ไม่นับเป็นคน) แล้ว YOLOv8m-pose หา COCO 17 keypoints ให้คนที่เห็นในเฟรมนั้น คนที่ถูกบังชั่วคราวส่งเป็น `held: true` โดยไม่มี keypoints
-3. `lib/yoloPose.ts` map keypoints เข้ากับ posture engine; โหมด MediaPipe เดิมยังอยู่เป็น fallback และเป็นตัวเลือกใน Dev Console
-4. `lib/poseThrottle.ts` จำกัดการรันไว้ 12 fps ต่อกล้องและส่งเฉพาะเฟรมใหม่ของวิดีโอ
-5. `lib/postureEngine.ts` (หนึ่ง instance ต่อกล้อง) รวมขั้นตอนต่อเฟรม:
-   - `vision_service/people.py` ให้ ID ในโหมด YOLO; `lib/tracker.ts` จับคู่คนข้ามเฟรมในโหมด MediaPipe
+1. `usePoseLandmarker` โหลดโมเดล BlazePose (33 keypoints) รุ่นที่เลือกจากไฟล์ local (GPU delegate, fallback เป็น CPU)
+2. `lib/poseThrottle.ts` จำกัดการรันโมเดลไว้ 12 fps ต่อกล้อง และรันเฉพาะเมื่อเฟรมวิดีโอเปลี่ยนจริง
+3. `lib/postureEngine.ts` (หนึ่ง instance ต่อกล้อง) รวมขั้นตอนต่อเฟรม:
+   - `lib/tracker.ts` จับคู่คนข้ามเฟรมให้มี trackId คงที่
    - `lib/postureAnalysis.ts` คำนวณมุมคอ/มุมลำตัว/มุมเอียงไหล่/`headHeightRatio` (ข้ามจุดที่ visibility < `minVisibility`)
      และแยก `full_body` / `upper_body`
    - `lib/smoothing.ts` ทำค่าให้นิ่ง (EMA) ก่อนจัดท่า → `classifyPosture` → forward_head / slouching / leaning / good
      (ถ้า Calibrate แล้ว ตัดสินจากส่วนต่างเทียบ baseline ของกล้องนั้น + สัดส่วนหัวที่ต่ำลง)
    - `lib/fallDetection.ts` ตรวจการร่วงตัวเร็ว / หายจากเฟรม
    - `lib/breakReminder.ts` จับเวลานั่งต่อเนื่อง
-6. Baseline ท่านั่งเก็บใน localStorage แยกต่อกล้อง (`camwell:posture-baseline:v1:<cameraId>`, ดู `services/postureBaselineStore.ts`)
+4. Baseline ท่านั่งเก็บใน localStorage แยกต่อกล้อง (`camwell:posture-baseline:v1:<cameraId>`, ดู `services/postureBaselineStore.ts`)
 
 ### ความเหนื่อยล้า + ระยะห่างจอ + ระบุตัวตน
 1. `useFaceApiModels` โหลดโมเดล TinyFaceDetector + FaceLandmark68 + FaceRecognition จากไฟล์ local
@@ -181,7 +177,7 @@ YOLO ส่ง keypoints 17 จุดแบบ COCO; CamWell map จุดหู
 ## โครงสร้างโค้ดที่สำคัญ
 
 ```
-src/
+frontend/src/
   App.tsx                         state กลาง + หน้าหลัก (/) — ถ้ามี ?console จะแสดง DevConsole แทน
   hooks/usePoseLandmarker.ts      โหลด MediaPipe Pose Landmarker (เลือกรุ่น lite/full/heavy, รายงาน GPU/CPU)
   hooks/useFaceApiModels.ts       โหลดโมเดลของ face-api
@@ -243,13 +239,15 @@ descriptor เก็บไว้ที่ **camwell-backend (SQLite) เท่�
 
 ## ข้อควรทราบเรื่องโมเดล AI
 
-CamWell ใช้ YOLO เป็นค่าเริ่มต้นสำหรับตรวจคน/วัตถุ/โครงร่าง และยังเลือก MediaPipe Lite/Full/Heavy ได้จาก Dev Console
-หรือใช้ MediaPipe Lite อัตโนมัติเมื่อ YOLO service ไม่พร้อม รายการ license ของ dependency และโมเดลที่นำไปแจกจ่าย
-ต้องสอดคล้องกับรูปแบบการใช้งานและการเผยแพร่ของระบบ
+โปรเจกต์นี้ตั้งใจใช้เฉพาะโมเดลที่ license เป็น Apache 2.0 (MediaPipe) หรือ MIT (face-api) เพื่อให้ใช้ใน
+ซอฟต์แวร์เชิงพาณิชย์ปิด (closed-source) ของบริษัทได้โดยไม่มีปัญหาลิขสิทธิ์
+
+รุ่น Pose เลือกได้ใน Dev Console (lite/full/heavy) — หน้าหลักใช้ `lite` ค่าคงที่รุ่นอยู่ที่ `POSE_MODELS` ใน
+`frontend/src/hooks/usePoseLandmarker.ts` (ต้องตรงกับรายการใน `frontend/scripts/setup-assets.mjs`)
 
 ## แผนถัดไป (ยังไม่ได้ทำ)
 
-- ส่งเหตุการณ์แจ้งเตือนไป backend (`createWebSocketAlertReporter()` ใน `src/services/alertReporter.ts` เตรียมไว้แล้ว
+- ส่งเหตุการณ์แจ้งเตือนไป backend (`createWebSocketAlertReporter()` ใน `frontend/src/services/alertReporter.ts` เตรียมไว้แล้ว
   ใช้โครงสร้าง `AlertEvent` เดียวกันทุกหมวด) และเก็บ log พร้อม employeeId/cameraId
 - Dashboard รวมสำหรับ HR/หัวหน้างาน
 - แจ้งเตือนภายนอกผ่าน LINE Messaging API + LINE Official Account (LINE Notify ปิดให้บริการไปแล้วตั้งแต่ 31 มี.ค. 2025)

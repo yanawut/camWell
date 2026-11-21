@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "broken-image",
+        "value": "*",
+        "files": [
+          "frontend/src/components/CameraStage.tsx"
+        ],
+        "createdAt": "2026-11-20T19:06:31.291Z",
+        "reason": "Claude, verified in code: the go2rtc <img> gets its src at runtime from WebSocket MJPEG frames (blob URLs set in the useEffect at CameraStage.tsx:244), not a placeholder"
+      }
+    ]
+  }
+}

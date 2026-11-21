@@ -44,7 +44,7 @@ npm start       # รัน dist/index.js
 | GET    | `/api/employees`       | รายชื่อพนักงานที่ลงทะเบียนไว้ (ไม่มี descriptor ติดมาด้วย) |
 | POST   | `/api/employees`       | ลงทะเบียนพนักงานใหม่ — body: `{ name, descriptor: number[], consentGiven: true }` |
 | DELETE | `/api/employees/:id`   | ลบพนักงาน + descriptor ของคนนั้นทั้งหมด |
-| PATCH  | `/api/employees/:id`   | เปลี่ยนชื่อ — body: `{ name, consentGiven? }` (`consentGiven: true` บันทึกความยินยอมให้คนที่ลงทะเบียนอัตโนมัติ) |
+| PATCH  | `/api/employees/:id`   | เปลี่ยนชื่อ — body: `{ name, consentGiven? }` (`true` บันทึกความยินยอม เช่น ให้คนที่ลงทะเบียนอัตโนมัติ, `false` ล้างบันทึกกรณีติ๊กผิด, ไม่ส่ง = ไม่เปลี่ยน) |
 | POST   | `/api/employees/identify` | ส่ง `{ descriptor: number[], autoEnroll?: boolean }` ไปหาว่าตรงกับใครที่ลงทะเบียนไว้ไหม — ถ้า `autoEnroll: true` และไม่ตรงกับใคร จะลงทะเบียนเป็นคนใหม่ชื่อ "คนที่ N" (เลขรันต่อไปเรื่อยๆ ไม่ใช้เลขซ้ำแม้ลบคนไปแล้ว) แล้วคืนคนนั้นใน `created` |
 | GET    | `/api/presence?limit=50` | บันทึกการเข้า-ออกล่าสุด (ใคร / กล้องไหน / เข้า / ออก) |
 | POST   | `/api/presence`        | เปิดช่วงเข้า — body: `{ employeeId, personName, cameraId, cameraLabel, startedAt? }` |

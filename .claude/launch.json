@@ -8,15 +8,15 @@
       "port": 4000
     },
     {
-      "name": "vision",
+      "name": "yolo-backend",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev:vision"],
-      "port": 8001
+      "runtimeArgs": ["run", "dev:yolo"],
+      "port": 8000
     },
     {
       "name": "frontend",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": ["--prefix", "frontend", "run", "dev"],
       "port": 5173
     }
   ]

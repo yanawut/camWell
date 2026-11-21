@@ -1,0 +1,525 @@
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import CameraStage from './components/CameraStage'
+import CameraSourceSelector from './components/CameraSourceSelector'
+import SettingsPanel from './components/SettingsPanel'
+import EventLog from './components/EventLog'
+import EnrollmentPanel from './components/EnrollmentPanel'
+import DatasetRecorderPanel from './components/DatasetRecorderPanel'
+import AttendancePanel from './components/AttendancePanel'
+import { DEFAULT_THRESHOLDS, type PostureThresholds } from './types/posture'
+import {
+  MAX_CAMERA_SLOTS,
+  createCameraSlot,
+  restoreCameraSource,
+  type CameraSlot,
+  type CameraSource,
+} from './types/cameraSource'
+import {
+  DEFAULT_BREAK_THRESHOLDS,
+  DEFAULT_DISTANCE_THRESHOLDS,
+  DEFAULT_FATIGUE_THRESHOLDS,
+  type BreakThresholds,
+  type DistanceThresholds,
+  type FatigueThresholds,
+} from './types/wellbeing'
+import { DEFAULT_FALL_THRESHOLDS, type FallThresholds } from './types/fall'
+import type { AlertEvent } from './types/alerts'
+import type { EnrolledPerson } from './types/identity'
+import type { PersonSummary } from './types/person'
+import { isDetectionMode } from './lib/multiPerson'
+import { DEFAULT_FACE_FEATURES_ENABLED, getCameraPeopleVisibility } from './lib/featureVisibility'
+import DevConsole, { type CameraStageExtras } from './console/DevConsole'
+import OfficeDashboard from './dashboard/OfficeDashboard'
+import AppNavigation from './components/AppNavigation'
+import AlertsPage from './pages/AlertsPage'
+import GaitAssessmentPage from './pages/GaitAssessmentPage'
+import PeoplePage from './pages/PeoplePage'
+import ReportsPage from './pages/ReportsPage'
+import { backendAlertReporter } from './services/alertReporter'
+import { listEnrolledPeople, removePerson, renamePerson } from './services/faceEnrollment'
+import { usePersistentState } from './hooks/usePersistentState'
+import { WarnGlyph } from './envelope/marks'
+import './App.css'
+
+// โหลดเฉพาะตอนเปิด /?yolo-console — หน้าอื่นไม่ต้องดาวน์โหลดโค้ดส่วนนี้
+const YoloConsole = lazy(() => import('./yoloConsole/YoloConsole'))
+
+// ponytail: เปิด Dev Console ได้ทุก build ผ่าน /?console — กำหนดสิทธิ์ใหม่เมื่อออกจากช่วง dev
+const IS_DEV_CONSOLE = new URLSearchParams(window.location.search).has('console')
+// หน้าแรก (/) = LandingPage (main.tsx) — Dashboard ห้องทำงาน pixel art อยู่ที่ /?dashboard
+// หน้ากล้อง/ตั้งค่าเดิมอยู่ที่ /?camera
+const IS_DASHBOARD = !IS_DEV_CONSOLE && !new URLSearchParams(window.location.search).has('camera')
+
+const BASELINE_STORAGE_KEY = 'camwell:distance-baseline-px:v1'
+const CAMERA_SLOTS_STORAGE_KEY = 'camwell:camera-slots:v1'
+const AUTO_ENROLL_STORAGE_KEY = 'camwell:auto-enroll:v1'
+
+interface FallAlertItem {
+  id: string
+  message: string
+  cameraId?: string
+  cameraLabel?: string
+}
+
+export default function App() {
+  const page = new URLSearchParams(window.location.search)
+  if (page.has('alerts')) return <AlertsPage />
+  if (page.has('people')) return <PeoplePage />
+  if (page.has('report')) return <ReportsPage />
+  if (page.has('gait')) return <GaitAssessmentPage />
+  if (page.has('yolo-console')) {
+    return (
+      <Suspense fallback={null}>
+        <YoloConsole />
+      </Suspense>
+    )
+  }
+  return <CameraApp />
+}
+
+function CameraApp() {
+  const [postureThresholds, setPostureThresholds] = usePersistentState('camwell:settings:posture:v1', DEFAULT_THRESHOLDS)
+  const [fatigueThresholds, setFatigueThresholds] = usePersistentState('camwell:settings:fatigue:v1', DEFAULT_FATIGUE_THRESHOLDS)
+  const [distanceThresholds, setDistanceThresholds] = usePersistentState('camwell:settings:distance:v1', DEFAULT_DISTANCE_THRESHOLDS)
+  const [breakThresholds, setBreakThresholds] = usePersistentState('camwell:settings:break:v1', DEFAULT_BREAK_THRESHOLDS)
+  const [fallThresholds, setFallThresholds] = usePersistentState('camwell:settings:fall:v1', DEFAULT_FALL_THRESHOLDS)
+  const [soundEnabled, setSoundEnabled] = usePersistentState('camwell:settings:sound-enabled:v1', true)
+  const [faceFeaturesEnabled, setFaceFeaturesEnabled] = usePersistentState(
+    'camwell:settings:face-features-enabled:v1',
+    DEFAULT_FACE_FEATURES_ENABLED,
+  )
+  // Dashboard เริ่มที่โหมดหลายคนเสมอ (ต้องเห็นทุกคนในห้อง) — หน้ากล้อง/console เริ่มที่ 1 คนต่อกล้องเหมือนเดิม
+  const [detectionMode, setDetectionMode] = usePersistentState(
+    'camwell:settings:detection-mode:v1',
+    IS_DASHBOARD ? 'multi' : 'workstation',
+    isDetectionMode,
+  )
+  // ลงทะเบียนใบหน้าที่ไม่รู้จักอัตโนมัติเป็น "คนที่ N" — เปิดไว้เป็นค่าเริ่มต้น จำค่าที่ผู้ใช้ปิด/เปิดไว้ใน localStorage
+  const [autoEnrollEnabled, setAutoEnrollEnabled] = useState(() => localStorage.getItem(AUTO_ENROLL_STORAGE_KEY) !== 'false')
+
+  const [events, setEvents] = useState<AlertEvent[]>([])
+  // (Phase 2) รายชื่อพนักงานที่ลงทะเบียนใบหน้าไว้ย้ายมาเก็บที่ camwell-backend แล้ว — ดึงมาตอน mount ด้วย
+  // useEffect แทน lazy initializer เดิม (ตอนยังเก็บ localStorage อยู่ ดึงแบบ sync ได้เลยไม่ต้องรอ)
+  const [enrolledPeople, setEnrolledPeople] = useState<EnrolledPerson[]>([])
+  const [enrolledPeopleError, setEnrolledPeopleError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    listEnrolledPeople()
+      .then((people) => {
+        if (!cancelled) setEnrolledPeople(people)
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return
+        setEnrolledPeopleError(
+          err instanceof Error ? err.message : 'โหลดรายชื่อพนักงานที่ลงทะเบียนไว้ไม่สำเร็จ',
+        )
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  const [baselineFaceWidthPx, setBaselineFaceWidthPx] = useState<number | null>(() => {
+    const saved = localStorage.getItem(BASELINE_STORAGE_KEY)
+    return saved ? Number(saved) : null
+  })
+  const [breakMessage, setBreakMessage] = useState<string | null>(null)
+  const [fallAlerts, setFallAlerts] = useState<FallAlertItem[]>([])
+  // รายชื่อ "ใครอยู่บ้าง" แยกเก็บตามกล้อง (slotId) — แต่ละ CameraStage ตรวจจับคนอิสระจากกัน จึงรายงานแยกกัน
+  const [peopleBySlot, setPeopleBySlot] = useState<Record<string, PersonSummary[]>>({})
+  // ต่อกล้องได้พร้อมกันหลายตัว (grid) — อ่านค่าเริ่มต้นจาก localStorage ตอน init state โดยตรงเช่นเดียวกับ state อื่นๆ
+  const [cameraSlots, setCameraSlots] = useState<CameraSlot[]>(() => {
+    try {
+      const saved = localStorage.getItem(CAMERA_SLOTS_STORAGE_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved) as CameraSlot[]
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.slice(0, MAX_CAMERA_SLOTS).map((slot) => ({ ...slot, source: restoreCameraSource(slot.source) }))
+        }
+      }
+    } catch {
+      // ค่าที่เก็บไว้เสีย/อ่านไม่ออก — ใช้ค่าเริ่มต้นกล้องเดียวด้านล่างแทน
+    }
+    return [createCameraSlot('cam-1', 'กล้อง 1')]
+  })
+  const multiCameraMode = cameraSlots.length > 1
+
+  const persistCameraSlots = useCallback((slots: CameraSlot[]) => {
+    localStorage.setItem(CAMERA_SLOTS_STORAGE_KEY, JSON.stringify(slots))
+  }, [])
+
+  const handleCameraSlotSourceChange = useCallback(
+    (id: string, source: CameraSource) => {
+      setCameraSlots((prev) => {
+        const next = prev.map((slot) => (slot.id === id ? { ...slot, source } : slot))
+        persistCameraSlots(next)
+        return next
+      })
+    },
+    [persistCameraSlots],
+  )
+
+  const handleAddCameraSlot = useCallback(() => {
+    setCameraSlots((prev) => {
+      if (prev.length >= MAX_CAMERA_SLOTS) return prev
+      const nextIndex = prev.length + 1
+      const next = [...prev, createCameraSlot(`cam-${nextIndex}-${Date.now()}`, `กล้อง ${nextIndex}`)]
+      persistCameraSlots(next)
+      return next
+    })
+  }, [persistCameraSlots])
+
+  const handleRemoveCameraSlot = useCallback(
+    (id: string) => {
+      setCameraSlots((prev) => {
+        if (prev.length <= 1) return prev
+        const next = prev.filter((slot) => slot.id !== id)
+        persistCameraSlots(next)
+        return next
+      })
+      setPeopleBySlot((prev) => {
+        const next = { ...prev }
+        delete next[id]
+        return next
+      })
+    },
+    [persistCameraSlots],
+  )
+
+  const handlePeopleUpdate = useCallback((slotId: string, summaries: PersonSummary[]) => {
+    setPeopleBySlot((prev) => ({ ...prev, [slotId]: summaries }))
+  }, [])
+
+  const handleAlertStart = useCallback((event: AlertEvent) => {
+    setEvents((prev) => [...prev, event])
+    backendAlertReporter.reportStart(event)
+  }, [])
+
+  const handleAlertEnd = useCallback((event: AlertEvent) => {
+    setEvents((prev) => prev.map((e) => (e.id === event.id ? event : e)))
+    backendAlertReporter.reportEnd(event)
+  }, [])
+
+  const handleCalibrateDistance = useCallback((widthPx: number) => {
+    setBaselineFaceWidthPx(widthPx)
+    localStorage.setItem(BASELINE_STORAGE_KEY, String(widthPx))
+  }, [])
+
+  const handleBreakDue = useCallback((personLabel: string, continuousMinutes: number) => {
+    setBreakMessage(`${personLabel} นั่งต่อเนื่องมาแล้วประมาณ ${continuousMinutes} นาที ลองลุกไปยืดเส้นยืดสายสักครู่นะครับ`)
+  }, [])
+
+  const handleFallDetected = useCallback((event: AlertEvent) => {
+    const personLabel = event.personName ?? 'พนักงาน'
+    const message =
+      event.type === 'fall_suspected_left_frame'
+        ? `สงสัยว่า ${personLabel} หกล้ม/ตกจากเก้าอี้ แล้วหายไปจากมุมกล้องกะทันหัน — กรุณาตรวจสอบด่วน!`
+        : `ตรวจพบว่า ${personLabel} อาจหกล้มหรือตกจากเก้าอี้ — กรุณาตรวจสอบด่วน!`
+    setFallAlerts((prev) => [
+      ...prev,
+      { id: event.id, message, cameraId: event.cameraId, cameraLabel: event.cameraLabel },
+    ])
+  }, [])
+
+  const handleAcknowledgeFall = useCallback((id: string) => {
+    setFallAlerts((prev) => prev.filter((a) => a.id !== id))
+  }, [])
+
+  const handlePersonEnrolled = useCallback((person: EnrolledPerson) => {
+    // กล้องหลายตัวอาจรายงานคนเดียวกันซ้ำไม่ได้ (backend สร้างแค่ครั้งเดียว) แต่กันไว้เผื่อ id ซ้ำอยู่แล้ว
+    setEnrolledPeople((prev) => (prev.some((p) => p.id === person.id) ? prev : [...prev, person]))
+  }, [])
+
+  const handleAutoEnrollEnabledChange = useCallback((enabled: boolean) => {
+    setAutoEnrollEnabled(enabled)
+    localStorage.setItem(AUTO_ENROLL_STORAGE_KEY, String(enabled))
+  }, [])
+
+  const handleRenamePerson = useCallback(async (id: string, name: string, consentGiven?: boolean) => {
+    try {
+      const updated = await renamePerson(id, name, consentGiven)
+      setEnrolledPeople((prev) => prev.map((p) => (p.id === id ? updated : p)))
+      setEnrolledPeopleError(null)
+    } catch (err) {
+      setEnrolledPeopleError(err instanceof Error ? err.message : 'เปลี่ยนชื่อไม่สำเร็จ')
+      throw err
+    }
+  }, [])
+
+  const handleRemovePerson = useCallback((id: string) => {
+    removePerson(id)
+      .then(() => {
+        setEnrolledPeople((prev) => prev.filter((p) => p.id !== id))
+      })
+      .catch((err: unknown) => {
+        setEnrolledPeopleError(err instanceof Error ? err.message : 'ลบพนักงานไม่สำเร็จ')
+      })
+  }, [])
+
+  if (IS_DASHBOARD) {
+    // Dashboard ห้องทำงาน: ใช้ state/การตรวจจับชุดเดียวกับหน้าหลักทั้งหมด แค่เปลี่ยนวิธีแสดงผลเป็นห้อง pixel art
+    const renderCameraStage = (slot: CameraSlot) => (
+      <CameraStage
+        postureThresholds={postureThresholds}
+        fatigueThresholds={fatigueThresholds}
+        distanceThresholds={distanceThresholds}
+        breakThresholds={breakThresholds}
+        fallThresholds={fallThresholds}
+        soundEnabled={soundEnabled}
+        faceFeaturesEnabled={faceFeaturesEnabled}
+        detectionMode={detectionMode}
+        autoEnrollEnabled={autoEnrollEnabled}
+        enrolledPeople={enrolledPeople}
+        baselineFaceWidthPx={baselineFaceWidthPx}
+        cameraSource={slot.source}
+        cameraId={slot.id}
+        cameraLabel={slot.label}
+        multiCameraMode={multiCameraMode}
+        onCalibrateDistance={handleCalibrateDistance}
+        onAlertStart={handleAlertStart}
+        onAlertEnd={handleAlertEnd}
+        onBreakDue={handleBreakDue}
+        onFallDetected={handleFallDetected}
+        onPeopleUpdate={(summaries) => handlePeopleUpdate(slot.id, summaries)}
+        onPersonEnrolled={handlePersonEnrolled}
+      />
+    )
+    return (
+      <>
+        <OfficeDashboard
+          cameraSlots={cameraSlots}
+          peopleBySlot={peopleBySlot}
+          renderCameraStage={renderCameraStage}
+          detectionMode={detectionMode}
+          onDetectionModeChange={setDetectionMode}
+          alertEventCount={events.length}
+          fallAlerts={fallAlerts}
+          onAcknowledgeFall={handleAcknowledgeFall}
+          breakMessage={breakMessage}
+          onDismissBreak={() => setBreakMessage(null)}
+        />
+      </>
+    )
+  }
+
+  if (IS_DEV_CONSOLE) {
+    // ส่ง props ชุดเดียวกับหน้าหลักทุกตัว + ของเสริมสำหรับ console (onStats/overlay)
+    const renderCameraStage = (slot: CameraSlot, extras: CameraStageExtras) => (
+      <CameraStage
+        postureThresholds={postureThresholds}
+        fatigueThresholds={fatigueThresholds}
+        distanceThresholds={distanceThresholds}
+        breakThresholds={breakThresholds}
+        fallThresholds={fallThresholds}
+        soundEnabled={soundEnabled}
+        faceFeaturesEnabled={faceFeaturesEnabled}
+        detectionMode={detectionMode}
+        autoEnrollEnabled={autoEnrollEnabled}
+        enrolledPeople={enrolledPeople}
+        baselineFaceWidthPx={baselineFaceWidthPx}
+        cameraSource={slot.source}
+        cameraId={slot.id}
+        cameraLabel={slot.label}
+        multiCameraMode={multiCameraMode}
+        onCalibrateDistance={handleCalibrateDistance}
+        onAlertStart={handleAlertStart}
+        onAlertEnd={handleAlertEnd}
+        onBreakDue={handleBreakDue}
+        onFallDetected={handleFallDetected}
+        onPeopleUpdate={(summaries) => handlePeopleUpdate(slot.id, summaries)}
+        onPersonEnrolled={handlePersonEnrolled}
+        onStats={extras.onStats}
+        overlay={extras.overlay}
+        poseModel={extras.poseModel}
+        skeletonMode={extras.skeletonMode}
+      />
+    )
+    return (
+      <DevConsole
+        renderCameraStage={renderCameraStage}
+        cameraSlots={cameraSlots}
+        peopleBySlot={peopleBySlot}
+        onAddCameraSlot={handleAddCameraSlot}
+        onRemoveCameraSlot={handleRemoveCameraSlot}
+        onCameraSlotSourceChange={handleCameraSlotSourceChange}
+        events={events}
+        fallAlerts={fallAlerts}
+        onAcknowledgeFall={handleAcknowledgeFall}
+        breakMessage={breakMessage}
+        onDismissBreak={() => setBreakMessage(null)}
+        enrolledPeople={enrolledPeople}
+        enrolledPeopleError={enrolledPeopleError}
+        onRemovePerson={handleRemovePerson}
+        postureThresholds={postureThresholds}
+        onPostureChange={setPostureThresholds}
+        fatigueThresholds={fatigueThresholds}
+        onFatigueChange={setFatigueThresholds}
+        distanceThresholds={distanceThresholds}
+        onDistanceChange={setDistanceThresholds}
+        breakThresholds={breakThresholds}
+        onBreakChange={setBreakThresholds}
+        fallThresholds={fallThresholds}
+        onFallChange={setFallThresholds}
+        soundEnabled={soundEnabled}
+        onSoundEnabledChange={setSoundEnabled}
+        faceFeaturesEnabled={faceFeaturesEnabled}
+        onFaceFeaturesEnabledChange={setFaceFeaturesEnabled}
+        autoEnrollEnabled={autoEnrollEnabled}
+        onAutoEnrollEnabledChange={handleAutoEnrollEnabledChange}
+        detectionMode={detectionMode}
+        onDetectionModeChange={setDetectionMode}
+      />
+    )
+  }
+
+  return (
+    <>
+      <AppNavigation active="camera" />
+      <div className="camera-status-bar" aria-label="สถานะการตรวจจับ">
+        <span className="camera-status-active"><span className="camera-status-dot" aria-hidden="true" /> ประมวลผลวิดีโอในเครื่อง</span>
+        <span>กล้องที่ตั้งค่า {cameraSlots.length}/{MAX_CAMERA_SLOTS} ตัว</span>
+        <span className="camera-status-privacy">วิดีโอไม่ถูกส่งออกจากอุปกรณ์</span>
+      </div>
+      <div className="app-shell">
+      <header className="page-heading">
+        <h1>ตั้งค่ากล้องและการตรวจสอบ</h1>
+        <p>จัดการแหล่งภาพ ปรับแต่งการตรวจจับ และลงทะเบียนบุคคล</p>
+      </header>
+
+      {fallAlerts.map((alert) => (
+        <div key={alert.id} className="fall-alert-banner" role="alert">
+          <span>{alert.message}</span>
+          <button type="button" onClick={() => handleAcknowledgeFall(alert.id)}>
+            รับทราบ
+          </button>
+        </div>
+      ))}
+
+      {breakMessage && (
+        <div className="break-banner" role="status">
+          <span>{breakMessage}</span>
+          <button type="button" onClick={() => setBreakMessage(null)}>
+            รับทราบ
+          </button>
+        </div>
+      )}
+
+      <main className="app-grid">
+        <section className="camera-column">
+          <div className="camera-grid">
+            {cameraSlots.map((slot) => {
+              const people = peopleBySlot[slot.id] ?? []
+              const peopleVisibility = getCameraPeopleVisibility(people.length)
+              return (
+                <div key={slot.id} className="camera-cell">
+                  <CameraSourceSelector
+                    value={slot.source}
+                    onChange={(source) => handleCameraSlotSourceChange(slot.id, source)}
+                    title={slot.label}
+                    headerExtra={
+                      cameraSlots.length > 1 ? (
+                        <button type="button" className="link-button" onClick={() => handleRemoveCameraSlot(slot.id)}>
+                          ลบกล้องนี้
+                        </button>
+                      ) : undefined
+                    }
+                  />
+                  <CameraStage
+                    postureThresholds={postureThresholds}
+                    fatigueThresholds={fatigueThresholds}
+                    distanceThresholds={distanceThresholds}
+                    breakThresholds={breakThresholds}
+                    fallThresholds={fallThresholds}
+                    soundEnabled={soundEnabled}
+                    faceFeaturesEnabled={faceFeaturesEnabled}
+                    detectionMode={detectionMode}
+                    autoEnrollEnabled={autoEnrollEnabled}
+                    enrolledPeople={enrolledPeople}
+                    baselineFaceWidthPx={baselineFaceWidthPx}
+                    cameraSource={slot.source}
+                    cameraId={slot.id}
+                    cameraLabel={slot.label}
+                    multiCameraMode={multiCameraMode}
+                    onCalibrateDistance={handleCalibrateDistance}
+                    onAlertStart={handleAlertStart}
+                    onAlertEnd={handleAlertEnd}
+                    onBreakDue={handleBreakDue}
+                    onFallDetected={handleFallDetected}
+                    onPeopleUpdate={(summaries) => handlePeopleUpdate(slot.id, summaries)}
+                    onPersonEnrolled={handlePersonEnrolled}
+                  />
+                  {peopleVisibility.showPeopleList && (
+                    <ul className="people-list">
+                      {people.map((person) => (
+                        <li key={person.trackId}>
+                          <strong>{person.label}</strong> — {person.postureStatus}
+                          {person.fatigueActive && ' · ความเหนื่อยล้า/หาว'}
+                          {person.distanceActive && ' · นั่งใกล้จอเกินไป'}
+                          {person.yawnCount > 0 && ` · หาวสะสม ${person.yawnCount} ครั้ง`}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {peopleVisibility.showEmptyState && <p className="identity-line">ยังไม่พบคนในเฟรม</p>}
+                </div>
+              )
+            })}
+            {cameraSlots.length < MAX_CAMERA_SLOTS && (
+              <button type="button" className="camera-add-slot" onClick={handleAddCameraSlot}>
+                <span className="camera-add-slot-icon" aria-hidden="true">+</span>
+                <strong>ยังไม่ได้ตั้งค่ากล้องตัวที่ {cameraSlots.length + 1}</strong>
+                <span>รองรับสูงสุด {MAX_CAMERA_SLOTS} กล้อง</span>
+                <span className="camera-add-slot-action">เพิ่มกล้อง</span>
+              </button>
+            )}
+          </div>
+        </section>
+
+        <section className="side-column">
+          <SettingsPanel
+            postureThresholds={postureThresholds}
+            onPostureChange={setPostureThresholds}
+            fatigueThresholds={fatigueThresholds}
+            onFatigueChange={setFatigueThresholds}
+            distanceThresholds={distanceThresholds}
+            onDistanceChange={setDistanceThresholds}
+            breakThresholds={breakThresholds}
+            onBreakChange={setBreakThresholds}
+            fallThresholds={fallThresholds}
+            onFallChange={setFallThresholds}
+            soundEnabled={soundEnabled}
+            onSoundEnabledChange={setSoundEnabled}
+            faceFeaturesEnabled={faceFeaturesEnabled}
+            onFaceFeaturesEnabledChange={setFaceFeaturesEnabled}
+            detectionMode={detectionMode}
+            onDetectionModeChange={setDetectionMode}
+            autoEnrollEnabled={autoEnrollEnabled}
+            onAutoEnrollEnabledChange={handleAutoEnrollEnabledChange}
+          />
+          {faceFeaturesEnabled && enrolledPeopleError && <p className="panel-note panel-warning">{enrolledPeopleError}</p>}
+          {faceFeaturesEnabled && (
+            <EnrollmentPanel people={enrolledPeople} onRemove={handleRemovePerson} onRename={handleRenamePerson} />
+          )}
+          {faceFeaturesEnabled && <AttendancePanel />}
+          <EventLog events={events} />
+          {import.meta.env.DEV && <DatasetRecorderPanel postureThresholds={postureThresholds} />}
+        </section>
+      </main>
+
+      <footer className="app-footer">
+        <p>
+          ระบบจดจำใบหน้า/ระบุตัวตนพนักงาน เชื่อมกับ backend (camwell-backend) + ฐานข้อมูล SQLite แล้ว ทำให้พนักงาน
+          คนเดียวกันถูกจำได้ทุกเครื่อง/ทุกกล้องในออฟฟิศ — ส่วนการตรวจจับท่านั่ง/ความเหนื่อยล้า/ระยะห่างจอ/หกล้ม
+          ยังเป็น local AI ในเบราว์เซอร์ล้วนเหมือนเดิม บันทึกการเข้า-ออกและเหตุการณ์แจ้งเตือน (ผูกกับพนักงานที่ระบุตัวได้)
+          ถูกส่งไปเก็บที่ backend แล้ว ขั้นต่อไป: dashboard ของ HR/หัวหน้างาน และแจ้งเตือนผ่าน LINE Messaging API
+        </p>
+        <p className="pdpa-note">
+          <WarnGlyph /> ฟีเจอร์ face recognition เก็บข้อมูลชีวภาพ (biometric) ไว้ที่ backend/ฐานข้อมูลของระบบนี้เท่านั้น (ดู
+          camwell-backend/README.md) การใช้งานจริงกับพนักงานต้องขอความยินยอมตาม พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล
+          (PDPA) ก่อนเสมอ — โปรดปรึกษาฝ่ายกฎหมาย/HR ก่อนนำไปใช้งานจริง
+        </p>
+      </footer>
+      </div>
+    </>
+  )
+}

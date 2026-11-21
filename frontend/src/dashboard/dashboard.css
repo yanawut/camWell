@@ -1,0 +1,796 @@
+/*
+ * Dashboard ห้องทำงาน (/?dashboard) — โลกภาพซองยา (token และชิ้นส่วนร่วมอยู่ใน envelope/envelope.css)
+ * หมึกเขียวสีเดียวสำหรับทุกเส้นและตัวพิมพ์, ปากกาน้ำเงินสำหรับชื่อที่เขียนมือ, สีแดงเฉพาะการเตือนและการล้ม
+ */
+.dash {
+  min-height: calc(100vh - 64px);
+  padding-top: 12px;
+  background: var(--rx-fiber), var(--rx-paper);
+  color: var(--rx-ink);
+  font: 400 16px/1.6 var(--rx-form);
+}
+
+.dash h1,
+.dash h2 {
+  margin: 0;
+  font-family: var(--rx-display);
+  font-weight: 700;
+  text-wrap: balance;
+}
+
+/* รอยปรุฉีกใต้แถบหัวซอง เหมือนหน้าแรก */
+/* เว้นด้วย padding ของ .dash ไม่ใช่ margin ของรอยปรุ — margin จะทะลุออกนอก .dash แล้วเห็นพื้นหลังของ body */
+.dash-perf {
+  width: min(100%, 1600px);
+  margin: 0 auto;
+  padding: 0 var(--rx-gutter);
+}
+
+.dash-perf::before {
+  display: block;
+  border-top: 2px dashed var(--rx-rule-soft);
+  content: '';
+}
+
+.dash-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: min(100%, 1600px);
+  margin: 0 auto;
+  padding: 22px var(--rx-gutter) 56px;
+}
+
+/* ---------- แถบเตือนการล้ม: แผ่นแดงทึบ ดังที่สุดในหน้า ---------- */
+.dash-fall {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px 20px;
+  padding: 18px 22px;
+  background: var(--rx-stamp);
+  color: var(--rx-paper);
+}
+
+.dash-fall :focus-visible {
+  outline-color: var(--rx-paper);
+}
+
+.dash-fall-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dash-fall-copy strong {
+  font: 700 22px/1.3 var(--rx-display);
+}
+
+.dash-fall-copy span {
+  font-size: 15px;
+}
+
+.dash-fall-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.dash-fall-actions button {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 2px solid var(--rx-paper);
+  border-radius: 0;
+  cursor: pointer;
+  font: 700 16px/1 var(--rx-display);
+  white-space: nowrap;
+}
+
+/* "รับทราบเหตุการณ์" = ตรายางประทับรับทราบ: พื้นกระดาษ กรอบคู่ เอียงเล็กน้อย */
+.dash-fall-actions .dash-fall-ack {
+  padding: 4px;
+  border-radius: 6px;
+  background: var(--rx-paper);
+  color: var(--rx-stamp);
+  transform: rotate(-2deg);
+  transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.16s ease;
+}
+
+.dash-fall-ack > span {
+  display: flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1.5px solid var(--rx-stamp);
+  border-radius: 3px;
+}
+
+.dash-fall-ack:hover {
+  background: color-mix(in srgb, var(--rx-paper) 88%, var(--rx-stamp));
+  transform: rotate(-1deg) translateY(1px);
+}
+
+.dash-fall-ack:active {
+  transform: rotate(-1deg) translateY(2px) scale(0.98);
+}
+
+.dash-fall-where {
+  background: transparent;
+  color: var(--rx-paper);
+}
+
+.dash-fall-where:hover {
+  background: color-mix(in srgb, var(--rx-paper) 16%, transparent);
+}
+
+/* ---------- หัวหน้า: ชื่อหน้า + ช่องกรอกจำนวน ---------- */
+.dash-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 40px;
+  padding-bottom: 18px;
+  border-bottom: 2px solid var(--rx-ink);
+}
+
+.dash-head-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+
+.dash-head h1 {
+  font-size: clamp(28px, 3vw, 40px);
+  line-height: 1.25;
+}
+
+.dash-head-title .rx-sample {
+  margin-left: 0;
+  vertical-align: 0;
+}
+
+.dash-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 10px;
+  border: 1.5px solid var(--rx-ink);
+  font: 700 13px/1.4 var(--rx-display);
+  letter-spacing: 0.08em;
+}
+
+/* จุดพิมพ์สี่เหลี่ยมกะพริบช้า ๆ บอกว่าหน้านี้อัปเดตสด (มุมมนสงวนไว้ให้ตรายาง) */
+.dash-live-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--rx-ink);
+  animation: dash-live 1.8s ease-in-out infinite;
+}
+
+@keyframes dash-live {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.dash-tally {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 28px;
+}
+
+.dash-tally .rx-field {
+  font-size: 15px;
+}
+
+/* ---------- ช่องติ๊กควบคุม + คำอธิบายเครื่องหมาย ---------- */
+.dash-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 32px;
+}
+
+.dash-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 28px;
+}
+
+.dash-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  cursor: pointer;
+  font: 600 16px/1.3 var(--rx-display);
+}
+
+.dash-check:hover .rx-box {
+  background: color-mix(in srgb, var(--rx-ink) 8%, transparent);
+}
+
+.dash-check input:focus-visible + .rx-box {
+  outline: 3px solid var(--rx-pen);
+  outline-offset: 3px;
+}
+
+.dash-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+  margin: 0;
+  font: 600 14px/1.3 var(--rx-display);
+}
+
+.dash-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dash-hint {
+  margin: -8px 0 0;
+  font-size: 15px;
+}
+
+.dash-hint strong {
+  font-family: var(--rx-display);
+}
+
+/* ---------- พื้นที่ห้อง + ภาพสด ---------- */
+.dash-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.dash-workspace.is-split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
+.dash-rooms {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* ห้อง = ส่วนพิมพ์บนแผ่นเดียวกัน กรอบหมึก 2px; ห้องที่มีคนล้มกรอบแดงหนา */
+.dash-room {
+  container-type: inline-size;
+  border: 2px solid var(--rx-ink);
+  scroll-margin-top: 88px;
+}
+
+.dash-room.is-fall {
+  border: 4px solid var(--rx-stamp);
+}
+
+.dash-room-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  padding: 14px 20px;
+  border-bottom: 2px solid var(--rx-ink);
+}
+
+.dash-room.is-fall .dash-room-head {
+  border-bottom-color: var(--rx-stamp);
+}
+
+.dash-room-heading {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dash-room-head h2 {
+  font-size: clamp(20px, 1.8vw, 24px);
+  line-height: 1.3;
+}
+
+.dash-room-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font: 600 15px/1.3 var(--rx-display);
+}
+
+.dash-room-status.is-alert {
+  color: var(--rx-stamp);
+}
+
+.dash-open-live.is-fall {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 0;
+  background: var(--rx-stamp);
+  color: var(--rx-paper);
+  cursor: pointer;
+  font: 700 16px/1 var(--rx-display);
+  white-space: nowrap;
+}
+
+.dash-room-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+}
+
+/* ---------- ผังห้อง (SVG ลายเส้นหมึก) ---------- */
+.dash-plan {
+  position: relative;
+  aspect-ratio: 400 / 250;
+  border-right: 2px solid var(--rx-ink);
+}
+
+.dash-plan svg {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  color: var(--rx-ink);
+}
+
+.plan-grid line {
+  stroke: var(--rx-rule-soft);
+  stroke-width: 0.5;
+}
+
+.plan-wall {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 4;
+}
+
+.plan-paper {
+  fill: var(--rx-paper);
+}
+
+.plan-window path,
+.plan-door,
+.plan-keys,
+.plan-plant circle,
+.plan-plant path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.2;
+}
+
+.plan-desk {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+.plan-screen {
+  fill: currentColor;
+}
+
+.plan-chair {
+  fill: none;
+  stroke: var(--rx-rule-soft);
+  stroke-width: 1.6;
+}
+
+.plan-shoulders {
+  fill: currentColor;
+}
+
+.plan-head {
+  fill: var(--rx-paper);
+  stroke: currentColor;
+  stroke-width: 2.2;
+}
+
+/* วงแดงรอบคนที่มีอาการค้าง วาดเข้าทีละเส้นแบบปากกา */
+.plan-ring {
+  fill: none;
+  stroke: var(--rx-stamp);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  animation: rx-draw 0.45s cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+
+.plan-person {
+  animation: plan-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.plan-person.is-leaving {
+  animation: plan-out 0.7s ease forwards;
+}
+
+@keyframes plan-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes plan-out {
+  to {
+    opacity: 0;
+  }
+}
+
+/* ชื่อเขียนมือใต้เก้าอี้ (HTML ทับบนผัง) */
+.plan-tag {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 5px;
+  background: var(--rx-paper);
+  transform: translateX(-50%);
+  white-space: nowrap;
+  transition: opacity 0.7s;
+}
+
+.plan-tag.is-above {
+  transform: translate(-50%, -100%);
+}
+
+.plan-tag.is-leaving {
+  opacity: 0;
+}
+
+.plan-tag .rx-zz {
+  width: 20px;
+  height: 14px;
+}
+
+.plan-name {
+  color: var(--rx-pen);
+  font: 400 clamp(14px, 1.7cqi, 19px)/1.25 var(--rx-hand);
+}
+
+.plan-tag.is-alert .plan-name {
+  color: var(--rx-stamp);
+}
+
+/* จำนวนแจ้งเตือนวันนี้: กล่องพิมพ์, เกิน 10 ครั้ง = วงแดง */
+.plan-count {
+  display: inline-grid;
+  min-width: 20px;
+  height: 20px;
+  place-items: center;
+  padding: 0 4px;
+  border: 1.5px solid var(--rx-ink);
+  background: var(--rx-paper);
+  color: var(--rx-ink);
+  font: 700 12px/1 var(--rx-display);
+  font-variant-numeric: tabular-nums;
+}
+
+.plan-count.is-many {
+  min-width: 24px;
+  height: 24px;
+  border-color: var(--rx-stamp);
+  border-radius: 50%;
+  color: var(--rx-stamp);
+}
+
+/* ---------- ตารางคนในห้อง ---------- */
+.dash-roster {
+  min-width: 0;
+}
+
+.dash-roster table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.dash-roster caption {
+  padding: 12px 18px;
+  background: var(--rx-ink);
+  color: var(--rx-paper);
+  font: 700 17px/1.3 var(--rx-display);
+  text-align: left;
+}
+
+.dash-roster tbody tr {
+  border-bottom: 1px solid var(--rx-rule-soft);
+}
+
+.dash-roster td,
+.dash-roster th {
+  padding: 12px 10px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.dash-roster td:first-child {
+  width: 46px;
+  padding-left: 18px;
+}
+
+.dash-roster-name {
+  display: block;
+  font: 700 17px/1.3 var(--rx-display);
+}
+
+.dash-roster-what {
+  display: block;
+  font: 400 14px/1.45 var(--rx-form);
+}
+
+.dash-roster tr.is-alert .dash-roster-what,
+.dash-roster tr.is-fall .dash-roster-what,
+.dash-roster tr.is-fall .dash-roster-name {
+  color: var(--rx-stamp);
+  font-weight: 600;
+}
+
+.dash-roster td.dash-roster-count {
+  padding-right: 18px;
+  font-size: 18px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.dash-roster td.dash-roster-count.is-many {
+  color: var(--rx-stamp);
+}
+
+.dash-roster-empty {
+  margin: 0;
+  padding: 18px;
+  font-size: 15px;
+}
+
+/* ห้องแคบ (มือถือ หรือแบ่งครึ่งจอกับภาพสด): ตารางย้ายลงใต้ผัง */
+@container (max-width: 780px) {
+  .dash-room-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dash-plan {
+    border-right: 0;
+    border-bottom: 2px solid var(--rx-ink);
+  }
+}
+
+/* ---------- ภาพสดจากกล้อง ---------- */
+.dash-live-cameras {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: 20px;
+  min-width: 0;
+}
+
+.dash-live-cameras[hidden] {
+  display: none;
+}
+
+.dash-workspace.is-split .dash-live-cameras {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.dash-camera {
+  min-width: 0;
+  border: 2px solid var(--rx-ink);
+  scroll-margin-top: 88px;
+}
+
+/* CameraStage ใช้ร่วมกับหน้าตั้งค่ากล้อง (สไตล์หลักใน App.css) — ใน Dashboard ปรับให้เป็นวัสดุเดียวกับฉลาก
+   ใช้ :root[data-theme] เพื่อให้ชนะกฎช่องกรอกธีมมืดใน index.css (index.css โหลดก่อนไฟล์นี้) */
+.dash-camera .posture-monitor {
+  gap: 12px;
+  padding-bottom: 16px;
+}
+
+.dash-camera .posture-monitor > :not(.camera-frame) {
+  margin-right: 16px;
+  margin-left: 16px;
+}
+
+.dash-camera .camera-frame {
+  border: 0;
+  border-bottom: 2px solid var(--rx-ink);
+  border-radius: 0;
+  background: var(--rx-paper);
+  box-shadow: none;
+}
+
+.dash-camera .camera-frame.alerting {
+  border: 4px solid var(--rx-stamp);
+}
+
+.dash-camera .camera-status-banner {
+  border-radius: 0;
+  background: var(--rx-ink);
+  color: var(--rx-paper);
+  font-family: var(--rx-display);
+}
+
+.dash-camera .camera-status-banner.banner-error,
+.dash-camera .camera-status-banner.banner-alert {
+  background: var(--rx-stamp);
+  color: var(--rx-paper);
+}
+
+/* ช่องยืนยัน PDPA: ช่องติ๊กพิมพ์ 26px แบบเดียวกับทั้งหน้า (ยังเป็น checkbox จริง) */
+/* ใน markup ข้อความมาก่อน checkbox — กลับลำดับให้ช่องติ๊กนำหน้าข้อความเหมือนช่องติ๊กอื่นในหน้า */
+.dash-camera .consent-checkbox {
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+:root[data-theme] .dash-camera .consent-checkbox input[type='checkbox'] {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  margin: 0;
+  border: 2px solid var(--rx-ink);
+  border-radius: 0;
+  background: transparent no-repeat center / 22px 22px;
+  cursor: pointer;
+  appearance: none;
+}
+
+.dash-camera .consent-checkbox input[type='checkbox']:checked {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3.6 13.2c1.9 1.4 3.6 3.4 5.1 6.1C11.4 12.6 15.6 6.9 21.4 2.2' fill='none' stroke='%231f3fbf' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+:root[data-theme='dark'] .dash-camera .consent-checkbox input[type='checkbox']:checked {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3.6 13.2c1.9 1.4 3.6 3.4 5.1 6.1C11.4 12.6 15.6 6.9 21.4 2.2' fill='none' stroke='%23b4c3ff' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+.dash-camera .current-issue {
+  color: var(--rx-ink);
+  font: 600 14px/1.5 var(--rx-display);
+}
+
+.dash-camera .secondary-button {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 2px solid var(--rx-ink);
+  border-radius: 0;
+  background: transparent;
+  color: var(--rx-ink);
+  font: 600 14px/1.3 var(--rx-display);
+}
+
+.dash-camera .secondary-button:hover:not(:disabled) {
+  border-color: var(--rx-ink);
+  background: var(--rx-ink);
+  color: var(--rx-paper);
+}
+
+:root[data-theme] .dash-camera .enroll-row input[type='text'] {
+  min-height: 40px;
+  border: 0;
+  border-bottom: 1.5px solid var(--rx-ink);
+  border-radius: 0;
+  background: transparent;
+  color: var(--rx-ink);
+  font: 400 15px/1.4 var(--rx-form);
+}
+
+.dash-camera .enroll-row input::placeholder {
+  color: color-mix(in srgb, var(--rx-ink) 85%, var(--rx-paper));
+}
+
+.dash-camera .privacy-note,
+.dash-camera .panel-note,
+.dash-camera .consent-checkbox {
+  color: var(--rx-ink);
+  font-size: 13px;
+}
+
+/* ---------- หมายเหตุท้ายหน้า ---------- */
+.dash-notes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  align-items: start;
+  gap: 20px;
+}
+
+.dash-break {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 18px;
+  border: 2px solid var(--rx-ink);
+}
+
+.dash-break > .rx-glyph {
+  margin-top: 2px;
+}
+
+.dash-break > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.dash-break strong {
+  font: 700 18px/1.3 var(--rx-display);
+}
+
+.dash-break p {
+  margin: 4px 0 0;
+  font-size: 15px;
+}
+
+.dash-break-dismiss {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--rx-ink);
+  cursor: pointer;
+}
+
+.dash-break-dismiss:hover {
+  background: color-mix(in srgb, var(--rx-ink) 10%, transparent);
+}
+
+.dash-promise p {
+  font-size: 18px;
+}
+
+@media (max-width: 1024px) {
+  .dash-workspace.is-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .dash-sheet {
+    gap: 20px;
+    padding-top: 22px;
+  }
+
+  .dash-room-head {
+    flex-wrap: wrap;
+    padding: 12px 14px;
+  }
+
+  .dash-fall {
+    grid-template-columns: auto minmax(0, 1fr);
+    padding: 16px;
+  }
+
+  .dash-fall-actions {
+    grid-column: 1 / -1;
+  }
+
+  .dash-tally {
+    gap: 10px 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dash-live-dot,
+  .plan-ring,
+  .plan-person,
+  .plan-person.is-leaving {
+    animation: none;
+  }
+
+  .plan-tag,
+  .dash-fall-actions .dash-fall-ack {
+    transition: none;
+  }
+}

@@ -1,0 +1,197 @@
+/* --- PeoplePage (/?people) --- */
+.people-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.people-back {
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.people-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.people-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.people-stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.people-stat-value.is-warn {
+  color: var(--warn);
+}
+
+.people-stat-label {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.people-toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.people-toolbar input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  font: inherit;
+  font-size: 14px;
+}
+
+.people-table-wrap {
+  overflow-x: auto;
+}
+
+.people-table-wrap td {
+  white-space: nowrap;
+}
+
+.people-name {
+  font-weight: 600;
+}
+
+.people-muted {
+  color: var(--text-muted);
+}
+
+.people-good {
+  color: var(--good);
+}
+
+.people-warn {
+  color: var(--warn);
+}
+
+.people-actions {
+  text-align: right;
+}
+
+.people-actions .link-button + .link-button {
+  margin-left: 12px;
+}
+
+.people-link-primary {
+  color: var(--accent);
+}
+
+.people-alert-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.people-alert-link:hover {
+  text-decoration: underline;
+}
+
+.people-tag {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 0;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.people-header {
+  align-items: flex-end;
+}
+
+.people-page .event-log {
+  overflow: hidden;
+}
+
+.people-page .people-toolbar {
+  margin: 0;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.people-page .people-toolbar input {
+  min-height: 48px;
+  border-radius: 0;
+  padding: 8px 14px;
+  background: var(--rx-paper);
+}
+
+.people-page .event-log > .panel-note,
+.people-page .event-log > .empty-state {
+  margin: 0;
+  padding: 12px 16px;
+}
+
+.people-page .people-table-wrap th {
+  background: var(--rx-paper);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.people-page .people-table-wrap th,
+.people-page .people-table-wrap td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--rx-rule-soft);
+}
+
+.people-page .people-table-wrap thead th {
+  border-bottom: 2px solid var(--rx-ink);
+}
+
+.people-page .people-table-wrap tbody tr:hover {
+  background: var(--rx-paper);
+}
+
+.people-table-wrap td {
+  white-space: normal;
+}
+
+/* แถวที่กำลังเปลี่ยนชื่อ: พื้นหมึกจาง ช่องชื่อเป็นช่องกรอกเส้นหมึก */
+.people-page .people-table-wrap tr.is-editing,
+.people-page .people-table-wrap tr.is-editing:hover {
+  background: color-mix(in srgb, var(--rx-ink) 6%, transparent);
+}
+
+.people-page .people-name-input {
+  width: 100%;
+  min-width: 160px;
+  min-height: 40px;
+  padding: 6px 10px;
+  font: 600 16px/1.3 var(--rx-form);
+}
+
+.people-consent-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--rx-ink);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .people-header {
+    align-items: flex-start;
+  }
+
+  .people-table-wrap td {
+    white-space: nowrap;
+  }
+}

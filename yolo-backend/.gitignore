@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+# ไฟล์ที่ backend สร้างตอนใช้งาน: calibration พื้น/โซน (settings.json), รายงานของแต่ละ session และไฟล์ที่อัปโหลด
+# ไม่มี settings.json = backend ใช้ค่า default ในโค้ด (default_settings ใน app/settings.py)
+data/

@@ -1,0 +1,193 @@
+/*
+ * ฐานของทุกหน้า: โลกภาพ "ซองยาประจำออฟฟิศ" (token อยู่ใน envelope/envelope.css ที่ :root)
+ * token ชุดเดิม (--bg, --text, --accent, ...) ยังมีไว้ให้ CSS เดิมใช้ได้ แต่ชี้ไปที่ค่าของซองยาทั้งหมด
+ * ธีมมืดไม่ต้องกำหนดซ้ำ: --rx-* พิมพ์กลับสีเองที่ :root[data-theme='dark']
+ */
+:root {
+  --bg: var(--rx-paper);
+  --panel-bg: var(--rx-paper);
+  /* เส้นคั่นบาง (แถวตาราง ช่องแบ่ง) — กรอบหลักของแผงใช้ --rx-ink โดยตรง */
+  --border: var(--rx-rule-soft);
+  /* หมึกเดียว: ข้อความรองใช้หมึกเดียวกัน แยกลำดับด้วยขนาดและน้ำหนักแทนสีจาง */
+  --text: var(--rx-ink);
+  --text-muted: var(--rx-ink);
+  --accent: var(--rx-ink);
+  --accent-fill: var(--rx-ink);
+  --on-accent: var(--rx-paper);
+  --focus-ring: var(--rx-pen);
+  /* สถานะ: เรียบร้อย = ปากกาน้ำเงิน, เตือน/อันตราย = แดงตรายาง */
+  --good: var(--rx-pen);
+  --warn: var(--rx-stamp);
+  --danger: var(--rx-stamp);
+  --font-body: var(--rx-form);
+  --font-heading: var(--rx-display);
+  color-scheme: light;
+  font: 16px/1.55 var(--font-body);
+  color: var(--text);
+  background: var(--rx-fiber), var(--rx-paper);
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: var(--rx-fiber), var(--rx-paper);
+  color: var(--rx-ink);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--rx-pen) 28%, transparent);
+}
+
+/* ---------- ช่องกรอกแบบพิมพ์: กรอบหมึกเหลี่ยม พื้นกระดาษ ---------- */
+input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+select,
+textarea {
+  border: 1.5px solid var(--rx-ink);
+  border-radius: 0;
+  background-color: var(--rx-paper);
+  color: var(--rx-ink);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: color-mix(in srgb, var(--rx-ink) 88%, var(--rx-paper));
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled,
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* ช่องติ๊กทุกช่องเป็นช่องพิมพ์ + รอยติ๊กปากกาน้ำเงิน (ยังเป็น checkbox จริง) */
+input[type='checkbox'] {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  border: 2px solid var(--rx-ink);
+  border-radius: 0;
+  background: transparent no-repeat center / 17px 17px;
+  cursor: pointer;
+  vertical-align: middle;
+  appearance: none;
+}
+
+input[type='checkbox']:checked {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3.6 13.2c1.9 1.4 3.6 3.4 5.1 6.1C11.4 12.6 15.6 6.9 21.4 2.2' fill='none' stroke='%231f3fbf' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+:root[data-theme='dark'] input[type='checkbox']:checked {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3.6 13.2c1.9 1.4 3.6 3.4 5.1 6.1C11.4 12.6 15.6 6.9 21.4 2.2' fill='none' stroke='%23b4c3ff' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+input[type='checkbox']:disabled {
+  opacity: 0.45;
+}
+
+/* radio และ slider คงรูปแบบมาตรฐาน (ผู้ใช้คุ้น) แต่ใช้สีหมึก */
+input[type='radio'],
+input[type='range'] {
+  accent-color: var(--rx-ink);
+}
+
+/* ตัวเลขในตารางและสถิติเรียงหลักตรงกัน */
+table {
+  font-variant-numeric: tabular-nums;
+}
+
+/* พื้นที่กดขั้นต่ำ ~24px+ สำหรับตัวเลือกและลิงก์ในตาราง (ไม่เปลี่ยนเลย์เอาต์ ขยายด้วย padding) */
+input[type='radio'] {
+  width: 18px;
+  height: 18px;
+}
+
+label:has(> input[type='radio']),
+label:has(> input[type='checkbox']) {
+  padding-block: 6px;
+  cursor: pointer;
+}
+
+.link-button,
+.people-alert-link,
+.alerts-person-link {
+  display: inline-block;
+  padding-block: 6px;
+}
+
+/* ปุ่มเลือกไฟล์ของเบราว์เซอร์ = ปุ่มรองกรอบหมึก */
+input[type='file'] {
+  color: var(--rx-ink);
+}
+
+input[type='file']::file-selector-button {
+  min-height: 36px;
+  margin-right: 10px;
+  border: 2px solid var(--rx-ink);
+  border-radius: 0;
+  padding: 0 12px;
+  background: transparent;
+  color: var(--rx-ink);
+  cursor: pointer;
+  font: 600 14px / 1 var(--rx-display);
+}
+
+input[type='file']::file-selector-button:hover {
+  background: var(--rx-ink);
+  color: var(--rx-paper);
+}
+
+/* radio: วงหมึกพิมพ์ (กลับสีเองในธีมมืด) จุดในเป็นหมึกทึบเมื่อเลือก — คงรูปวงกลมตามแบบแผนของ radio */
+input[type='radio'] {
+  flex: none;
+  margin: 0;
+  border: 2px solid var(--rx-ink);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  vertical-align: middle;
+  appearance: none;
+}
+
+input[type='radio']:checked {
+  background: radial-gradient(circle, var(--rx-ink) 0 4px, transparent 4.5px);
+}
+
+input[type='radio']:disabled {
+  opacity: 0.45;
+}

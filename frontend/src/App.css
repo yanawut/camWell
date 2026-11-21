@@ -1,0 +1,1279 @@
+.app-shell {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.app-header h1 {
+  margin: 0 0 4px;
+  font-size: 26px;
+}
+
+.app-header p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.app-header-links {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.app-header-link {
+  display: inline-block;
+  margin-top: 6px;
+  color: var(--accent);
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.app-header-link:hover {
+  text-decoration: underline;
+}
+
+.app-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(340px, 0.9fr);
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .app-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.side-column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  padding: 18px 20px;
+}
+
+.panel h2 {
+  margin: 0 0 12px;
+  font-size: 16px;
+}
+
+.panel-note {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin: -6px 0 12px;
+}
+
+/* --- CameraStage (กล้อง + overlay) --- */
+.posture-monitor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.camera-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: var(--rx-ink);
+  border-radius: 0;
+  overflow: hidden;
+  border: 3px solid transparent;
+  transition: border-color 0.2s ease;
+}
+
+.camera-frame.alerting {
+  border-color: var(--danger);
+}
+
+.camera-video,
+.camera-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.camera-status-banner {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  padding: 8px 12px;
+  border-radius: 0;
+  background: color-mix(in srgb, var(--rx-ink) 85%, transparent);
+  color: var(--rx-paper);
+  font-size: 13px;
+}
+
+.banner-error {
+  background: color-mix(in srgb, var(--rx-stamp) 90%, transparent);
+}
+
+.banner-alert {
+  top: 12px;
+  bottom: auto;
+  background: var(--danger);
+  font-weight: 600;
+}
+
+.current-issue {
+  font-weight: 600;
+}
+
+.privacy-note {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* --- SettingsPanel --- */
+.settings-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+  font-size: 13px;
+}
+
+.settings-row input[type='range'] {
+  width: 100%;
+}
+
+.settings-checkbox {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* --- EventLog --- */
+.event-log table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.event-log th,
+.event-log td {
+  text-align: left;
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.event-log tr.row-active td {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.empty-state {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.app-footer {
+  color: var(--text-muted);
+  font-size: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pdpa-note {
+  color: var(--warn);
+}
+
+/* --- Break reminder banner --- */
+.break-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: color-mix(in srgb, var(--rx-stamp) 10%, var(--rx-paper));
+  border: 1px solid var(--rx-stamp);
+  color: var(--rx-stamp);
+  border-radius: 0;
+  padding: 10px 16px;
+  font-size: 14px;
+}
+
+.break-banner button {
+  border: none;
+  background: var(--rx-stamp);
+  color: var(--rx-paper);
+  padding: 6px 12px;
+  border-radius: 0;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+/* --- Fall alert banner (urgent — หกล้ม/ตกจากเก้าอี้) --- */
+.fall-alert-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--rx-stamp);
+  border: 2px solid var(--rx-stamp);
+  color: var(--rx-paper);
+  border-radius: 0;
+  padding: 12px 16px;
+  font-size: 15px;
+  font-weight: 600;
+  animation: fall-alert-pulse 1s ease-in-out infinite;
+}
+
+.fall-alert-banner button {
+  border: none;
+  background: var(--rx-stamp);
+  color: var(--rx-paper);
+  padding: 8px 14px;
+  border-radius: 0;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+@keyframes fall-alert-pulse {
+  0%,
+  100% {
+    box-shadow: none;
+  }
+  50% {
+    box-shadow: none;
+  }
+}
+
+/* --- CameraStage extras --- */
+.secondary-button {
+  align-self: flex-start;
+  border: 1px solid var(--border);
+  background: var(--panel-bg);
+  color: var(--text);
+  padding: 6px 12px;
+  border-radius: 0;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.secondary-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.enroll-row {
+  display: flex;
+  gap: 8px;
+}
+
+.enroll-row input[type='text'] {
+  flex: 1;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  font-size: 13px;
+}
+
+.identity-line {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* --- People summary list (multi-person) --- */
+.people-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.people-list li {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
+}
+
+/* --- Multi-camera grid ---
+   ใช้ auto-fit + minmax แทน @media (min-width: ...) เดิม — media query อิงความกว้างของ "ทั้งหน้าจอ" ไม่ใช่
+   ความกว้างจริงของ .camera-column (ซึ่งถูกจำกัดไว้แค่ minmax(360px, 640px) โดย .app-grid) ทำให้ตอนจอกว้าง
+   มันบังคับ 2 คอลัมน์ทั้งที่พื้นที่จริงแคบกว่านั้นมาก กล้องตัวที่ 2 เลยล้นไปทับแผงตั้งค่าด้านขวา
+   auto-fit จะคำนวณจากความกว้างของ container ตัวเองเสมอ เลยไม่ล้นแบบนี้อีก */
+.camera-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.camera-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  background: var(--rx-paper);
+  box-shadow: none;
+}
+
+.camera-cell > .camera-source-selector.panel {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.camera-source-selector .panel-header-row {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.camera-source-selector .panel-header-row h2 {
+  font-size: 18px;
+}
+
+.camera-source-selector > .settings-row {
+  margin: 0 0 8px;
+}
+
+.camera-cell .camera-source-local,
+.camera-cell .camera-source-ip {
+  margin: 4px 0 14px 22px;
+  padding: 12px;
+  border-radius: 0;
+  background: var(--rx-paper);
+}
+
+.camera-cell .current-issue {
+  margin: 0;
+}
+
+.camera-add-slot {
+  display: flex;
+  min-height: 320px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  border: 1px dashed var(--rx-rule-soft);
+  border-radius: 0;
+  background: var(--rx-paper);
+  color: var(--text-muted);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+.camera-add-slot:hover {
+  border-color: var(--accent);
+  background: var(--rx-paper);
+}
+
+.camera-add-slot strong {
+  color: var(--text);
+  font-size: 16px;
+}
+
+.camera-add-slot-icon {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border-radius: 0;
+  background: var(--rx-paper);
+  color: var(--accent);
+  font-size: 32px;
+  line-height: 1;
+}
+
+.camera-add-slot-action {
+  margin-top: 6px;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.panel-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.panel-header-row h2 {
+  margin: 0;
+}
+
+/* --- CameraSourceSelector --- */
+.camera-source-local,
+.camera-source-ip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 12px 22px;
+}
+
+.camera-source-local select {
+  flex: 1;
+  min-width: 180px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  font-size: 13px;
+}
+
+.camera-source-ip input[type='text'] {
+  flex: 1;
+  min-width: 180px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  font-size: 13px;
+}
+
+.camera-source-local .panel-note,
+.camera-source-ip .panel-note {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.panel-warning {
+  color: var(--warn);
+}
+
+/* --- SettingsPanel extras --- */
+.settings-panel h3 {
+  margin: 16px 0 8px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+/* --- EnrollmentPanel --- */
+.enrolled-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.enrolled-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+
+.link-button {
+  border: none;
+  background: none;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0;
+}
+
+.link-button-primary {
+  color: var(--accent);
+}
+
+.link-button-muted {
+  color: var(--text-muted);
+}
+
+.link-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.enrolled-actions {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.enrolled-list li.enrolled-edit {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.enrolled-edit input[type='text'] {
+  flex: 1 1 140px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  font-size: 13px;
+}
+
+.enrolled-edit .settings-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-basis: 100%;
+  font-size: 12px;
+}
+
+.tag-warning {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 0;
+  background: color-mix(in srgb, var(--warn) 15%, transparent);
+  color: var(--warn);
+  font-size: 11px;
+}
+
+.attendance-panel tr.row-present td {
+  color: var(--good);
+  font-weight: 600;
+}
+
+.metrics-cell {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Shared Camwell navigation and page layout */
+.camera-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-height: 34px;
+  padding: 4px clamp(18px, 4vw, 64px);
+  border-bottom: 1px solid var(--border);
+  background: var(--rx-paper);
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.camera-status-active {
+  color: var(--good);
+  font-weight: 650;
+}
+
+.camera-status-active span {
+  margin-right: 6px;
+}
+
+.camera-status-privacy {
+  margin-left: auto;
+}
+
+.app-shell {
+  max-width: 1560px;
+  padding: 28px clamp(18px, 4vw, 64px) 36px;
+  gap: 24px;
+}
+
+.page-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.page-heading h1 {
+  margin: 0 0 4px;
+  color: var(--text);
+  font-size: clamp(25px, 3vw, 34px);
+  letter-spacing: -0.035em;
+}
+
+.page-heading p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.page-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.primary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  border: 1px solid var(--accent);
+  border-radius: 0;
+  padding: 0 16px;
+  background: var(--accent);
+  color: var(--rx-paper);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.primary-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--rx-ink) 7%, var(--rx-paper));
+}
+
+.primary-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.panel {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.secondary-button {
+  border-radius: 0;
+  padding: 9px 14px;
+  font-weight: 600;
+  transition: background-color 120ms ease, border-color 120ms ease, transform 120ms ease;
+}
+
+.secondary-button:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--rx-paper);
+}
+
+.camera-frame {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.camera-source-local select,
+.camera-source-ip input[type='text'],
+.enroll-row input[type='text'],
+.people-toolbar input,
+.alerts-filters select {
+  min-height: 42px;
+  border-color: var(--rx-rule-soft);
+  border-radius: 0;
+  background-color: var(--rx-paper);
+}
+
+.settings-panel,
+.event-log,
+.camera-source-panel,
+.enrollment-panel,
+.attendance-panel {
+  border-radius: 0;
+}
+
+.settings-panel > h2 {
+  margin: 0 0 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 18px;
+}
+
+.settings-panel > .settings-checkbox {
+  gap: 12px;
+  padding: 12px;
+  border-radius: 0;
+  background: var(--rx-paper);
+}
+
+.settings-panel input[type='checkbox'],
+.settings-panel input[type='radio'],
+.settings-panel input[type='range'] {
+  accent-color: var(--accent);
+}
+
+.people-page .panel {
+  padding: 0;
+}
+
+.people-page .people-stat {
+  min-height: 92px;
+  padding: 18px 20px;
+}
+
+.people-stat-value {
+  font-size: 30px;
+}
+
+.people-table-wrap {
+  border-radius: 0;
+}
+
+.people-table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.people-table-wrap th {
+  background: var(--rx-paper);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.people-table-wrap th,
+.people-table-wrap td {
+  padding: 15px 16px;
+  border-bottom: 1px solid var(--rx-rule-soft);
+}
+
+.people-table-wrap tbody tr:hover {
+  background: var(--rx-paper);
+}
+
+.people-toolbar {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.people-toolbar input {
+  padding: 8px 12px;
+}
+
+.pdpa-note {
+  margin: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--rx-stamp);
+  border-radius: 0;
+  background: var(--rx-paper);
+  color: var(--rx-stamp);
+  font-size: 13px;
+}
+
+.app-footer {
+  margin-top: 8px;
+  padding: 18px 0 0;
+}
+
+.app-footer p {
+  margin: 0;
+}
+
+@media (max-width: 760px) {
+  .camera-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .camera-status-bar {
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    padding: 6px 16px;
+  }
+
+  .camera-status-privacy {
+    margin-left: 0;
+  }
+
+  .app-shell {
+    padding: 22px 16px 28px;
+  }
+
+  .page-heading {
+    align-items: flex-start;
+  }
+
+  .page-heading-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .page-heading-actions > * {
+    flex: 1 1 auto;
+  }
+
+  .people-page .people-stat {
+    min-height: 76px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.fall-alert-banner {
+  margin: 18px clamp(18px, 4vw, 64px) 0;
+  border: 0;
+  border-radius: 0;
+  padding: 18px 22px;
+  background: var(--rx-stamp);
+  box-shadow: none;
+}
+
+/* --- Camera Angle Recommendation Presets --- */
+.angle-presets-section {
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.angle-presets-section.is-console {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.angle-presets-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.angle-presets-head h3 {
+  margin: 0 0 6px;
+}
+
+.angle-preset-custom {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 2px 8px;
+  border-radius: 0;
+  border: 1px solid var(--border);
+}
+
+.angle-presets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.angle-preset-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  background: color-mix(in srgb, color-mix(in srgb, var(--rx-ink) 7%, var(--rx-paper)) 6%, transparent);
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.angle-preset-card.is-active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, color-mix(in srgb, var(--rx-ink) 7%, var(--rx-paper)) 6%, transparent);
+  box-shadow: none;
+}
+
+.angle-preset-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.angle-preset-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--rx-paper);
+  background: var(--accent);
+  padding: 2px 8px;
+  border-radius: 0;
+  white-space: nowrap;
+}
+
+.angle-preset-sub {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.angle-preset-list {
+  margin: 2px 0 6px;
+  padding-left: 16px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-muted);
+  flex: 1;
+}
+
+.angle-preset-btn {
+  width: 100%;
+  min-height: 36px;
+  font-size: 13px;
+}
+
+/* =====================================================================
+ * ซองยา: ชิ้นส่วนร่วมของทุกหน้าในแอป (ดู DESIGN.md)
+ * กรอบหมึก 2px เหลี่ยม, ไม่มีเงา, หัวเรื่อง Anuphan, สีแดงเฉพาะการเตือน/การล้ม
+ * ===================================================================== */
+.app-shell {
+  max-width: 1600px;
+  padding-right: var(--rx-gutter);
+  padding-left: var(--rx-gutter);
+}
+
+.page-heading {
+  padding-bottom: 18px;
+  border-bottom: 2px solid var(--rx-ink);
+}
+
+.page-heading h1 {
+  font: 700 clamp(28px, 3vw, 40px) / 1.25 var(--rx-display);
+  letter-spacing: 0;
+}
+
+.page-heading p {
+  font-size: 15px;
+}
+
+.panel,
+.camera-cell {
+  border: 2px solid var(--rx-ink);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.panel h2 {
+  font: 700 20px / 1.3 var(--rx-display);
+}
+
+.panel-note,
+.empty-state,
+.privacy-note,
+.identity-line {
+  color: var(--rx-ink);
+}
+
+.primary-button {
+  min-height: 44px;
+  border: 2px solid var(--rx-ink);
+  border-radius: 0;
+  padding: 0 18px;
+  background: var(--rx-ink);
+  color: var(--rx-paper);
+  font: 700 16px / 1 var(--rx-display);
+}
+
+.primary-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--rx-ink) 85%, var(--rx-paper));
+}
+
+.secondary-button {
+  min-height: 40px;
+  border: 2px solid var(--rx-ink);
+  border-radius: 0;
+  padding: 0 14px;
+  background: transparent;
+  color: var(--rx-ink);
+  font: 600 15px / 1.25 var(--rx-display);
+}
+
+.secondary-button:hover:not(:disabled) {
+  border-color: var(--rx-ink);
+  background: var(--rx-ink);
+  color: var(--rx-paper);
+}
+
+.link-button {
+  padding-block: 8px;
+  font-family: var(--rx-display);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+/* ตาราง: หัวตารางพิมพ์ด้วย Anuphan เส้นหมึก 2px ใต้หัว แถวคั่นเส้นบาง */
+.event-log th,
+.people-table-wrap th {
+  background: transparent;
+  color: var(--rx-ink);
+  font: 600 13px / 1.3 var(--rx-display);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.event-log thead th,
+.people-table-wrap thead th {
+  border-bottom: 2px solid var(--rx-ink);
+}
+
+.event-log tbody tr:hover,
+.people-table-wrap tbody tr:hover {
+  background: color-mix(in srgb, var(--rx-ink) 5%, transparent);
+}
+
+/* ป้ายพิมพ์เล็ก: กรอบหมึกบาง ไม่มีพื้นสี */
+.tag-warning,
+.angle-preset-custom {
+  border: 1.5px solid currentColor;
+  border-radius: 0;
+  background: transparent;
+  font-family: var(--rx-display);
+  font-weight: 600;
+}
+
+/* ---------- แถบสถานะใต้แถบเมนู (หน้าตั้งค่ากล้อง) ---------- */
+.camera-status-bar {
+  border-bottom: 2px dashed var(--rx-rule-soft);
+  background: transparent;
+  color: var(--rx-ink);
+  font: 600 13px / 1.3 var(--rx-display);
+}
+
+.camera-status-active {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--rx-ink);
+}
+
+.camera-status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: var(--rx-ink);
+}
+
+/* ---------- กล้อง ---------- */
+.camera-frame {
+  border: 2px solid var(--rx-ink);
+  border-radius: 0;
+  background: color-mix(in srgb, var(--rx-ink) 4%, var(--rx-paper));
+  box-shadow: none;
+}
+
+.camera-frame.alerting {
+  border: 4px solid var(--rx-stamp);
+}
+
+.camera-status-banner {
+  border-radius: 0;
+  background: var(--rx-ink);
+  color: var(--rx-paper);
+  font-family: var(--rx-display);
+}
+
+.banner-error,
+.banner-alert {
+  background: var(--rx-stamp);
+  color: var(--rx-paper);
+}
+
+.camera-cell .camera-source-local,
+.camera-cell .camera-source-ip,
+.settings-panel > .settings-checkbox {
+  border-radius: 0;
+  background: color-mix(in srgb, var(--rx-ink) 6%, transparent);
+}
+
+.camera-add-slot {
+  border: 2px dashed var(--rx-rule-soft);
+  border-radius: 0;
+  background: transparent;
+  color: var(--rx-ink);
+}
+
+.camera-add-slot:hover {
+  border-color: var(--rx-ink);
+  background: color-mix(in srgb, var(--rx-ink) 5%, transparent);
+}
+
+.camera-add-slot-icon {
+  border: 2px solid var(--rx-ink);
+  border-radius: 0;
+  background: transparent;
+  color: var(--rx-ink);
+}
+
+.camera-add-slot-action {
+  color: var(--rx-ink);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+/* ---------- มุมกล้องแนะนำ ---------- */
+.angle-preset-card {
+  border: 1.5px solid var(--rx-ink);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.angle-preset-card.is-active {
+  border-width: 3px;
+  background: color-mix(in srgb, var(--rx-ink) 6%, transparent);
+  box-shadow: none;
+}
+
+.angle-preset-badge {
+  border-radius: 0;
+  background: var(--rx-ink);
+  color: var(--rx-paper);
+  font-family: var(--rx-display);
+}
+
+.angle-preset-sub,
+.angle-preset-list {
+  color: var(--rx-ink);
+}
+
+/* ---------- แถบเตือน ---------- */
+.fall-alert-banner {
+  border: 0;
+  border-radius: 0;
+  background: var(--rx-stamp);
+  color: var(--rx-paper);
+  font-family: var(--rx-display);
+  box-shadow: none;
+  animation: none;
+}
+
+.fall-alert-banner button {
+  min-height: 40px;
+  border: 2px solid var(--rx-paper);
+  border-radius: 0;
+  background: var(--rx-paper);
+  color: var(--rx-stamp);
+  font: 700 15px / 1 var(--rx-display);
+}
+
+.break-banner {
+  border: 2px solid var(--rx-ink);
+  border-radius: 0;
+  background: transparent;
+  color: var(--rx-ink);
+  font-family: var(--rx-display);
+}
+
+.break-banner button {
+  min-height: 40px;
+  border: 2px solid var(--rx-ink);
+  border-radius: 0;
+  background: transparent;
+  color: var(--rx-ink);
+  font: 600 15px / 1 var(--rx-display);
+}
+
+.break-banner button:hover {
+  background: var(--rx-ink);
+  color: var(--rx-paper);
+}
+
+/* ---------- ช่องสถิติ (รายชื่อบุคคล / ประวัติแจ้งเตือน): แถวเดียวในกรอบหมึก คั่นด้วยเส้น ---------- */
+.people-stats {
+  gap: 0;
+  border: 2px solid var(--rx-ink);
+}
+
+.people-page .people-stat,
+.people-page .people-stat:first-child,
+.directory-page .people-stat:nth-child(2),
+.directory-page .people-stat:nth-child(3),
+.alerts-stat-button {
+  min-height: 0;
+  border: 0;
+  border-left: 1px solid var(--rx-rule-soft);
+  border-radius: 0;
+  padding: 16px 20px;
+  background: transparent;
+}
+
+.people-page .people-stat:first-child,
+.people-stats > :first-child {
+  border-left: 0;
+}
+
+.people-stat-value {
+  font: 700 34px / 1.1 var(--rx-display);
+  font-variant-numeric: tabular-nums;
+}
+
+.people-stat-label {
+  color: var(--rx-ink);
+  font: 600 14px / 1.35 var(--rx-display);
+}
+
+.alerts-stat-button:hover {
+  background: color-mix(in srgb, var(--rx-ink) 6%, transparent);
+}
+
+/* ตัวกรองที่เลือกอยู่: พื้นหมึก ตัวพิมพ์สีกระดาษ */
+.alerts-stat-button.is-active {
+  background: var(--rx-ink);
+  color: var(--rx-paper);
+}
+
+.alerts-stat-button.is-active .people-stat-value,
+.alerts-stat-button.is-active .people-stat-label {
+  color: var(--rx-paper);
+}
+
+.people-tag {
+  border: 1.5px solid var(--rx-ink);
+  background: transparent;
+  color: var(--rx-ink);
+  font-family: var(--rx-display);
+  font-weight: 600;
+}
+
+/* คำเตือนเรื่องข้อมูลชีวภาพ (PDPA): เป็นข้อควรระวังจริง จึงใช้กรอบแดง */
+.pdpa-note {
+  border: 2px solid var(--rx-stamp);
+  border-radius: 0;
+  background: transparent;
+  color: var(--rx-stamp);
+  font-family: var(--rx-display);
+  font-weight: 600;
+}
+
+/* จอแคบ: หัวเรื่องกับคำอธิบายเรียงลงแนวตั้ง ไม่ให้หัวเรื่องถูกบีบ */
+@media (max-width: 760px) {
+  .page-heading {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}
+
+/* จอแคบ: ช่องสถิติเป็นตาราง 2 คอลัมน์ คั่นด้วยเส้นบนและซ้าย (ช่องที่ขึ้นแถวใหม่ไม่มีเส้นซ้าย) */
+@media (max-width: 760px) {
+  .people-page .people-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .people-page .people-stats > .people-stat {
+    border-top: 1px solid var(--rx-rule-soft);
+    border-left: 1px solid var(--rx-rule-soft);
+    padding: 12px 14px;
+  }
+
+  .people-page .people-stats > .people-stat:nth-child(odd) {
+    border-left: 0;
+  }
+
+  .people-page .people-stats > .people-stat:nth-child(-n + 2) {
+    border-top: 0;
+  }
+
+  .people-stat-value {
+    font-size: 28px;
+  }
+}

@@ -1,0 +1,976 @@
+/* --- ReportsPage (/?report) --- */
+.reports-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.reports-page .panel {
+  padding: 20px 24px;
+}
+
+.reports-page .reports-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 16px 24px;
+}
+
+.reports-date-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.reports-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  background: var(--panel-bg);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease, transform 120ms ease;
+}
+
+.reports-pill-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, color-mix(in srgb, var(--rx-ink) 7%, var(--rx-paper)) 6%, transparent);
+}
+
+.reports-pill-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.reports-pill-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.reports-date-nav input[type='date'] {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  background: var(--panel-bg);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 140ms ease;
+}
+
+.reports-date-nav input[type='date']:hover,
+.reports-date-nav input[type='date']:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.reports-today-btn.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--rx-paper);
+  opacity: 1;
+  cursor: default;
+}
+
+.reports-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 960px) {
+  .reports-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.reports-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.reports-panel-head h2,
+.reports-types-panel h2,
+.reports-page .panel > h2 {
+  margin: 0 0 14px;
+  font-size: 16px;
+}
+
+.reports-panel-head h2 {
+  margin-bottom: 0;
+}
+
+.reports-legend {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.reports-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.reports-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 0;
+  display: inline-block;
+}
+
+.reports-dot.is-posture,
+.reports-hour-seg.is-posture {
+  background: color-mix(in srgb, var(--rx-ink) 7%, var(--rx-paper));
+}
+
+.reports-dot.is-fatigue,
+.reports-hour-seg.is-fatigue {
+  background: var(--rx-stamp);
+}
+
+.reports-dot.is-distance,
+.reports-hour-seg.is-distance {
+  background: color-mix(in srgb, var(--rx-ink) 7%, var(--rx-paper));
+}
+
+.reports-dot.is-fall,
+.reports-hour-seg.is-fall {
+  background: var(--rx-stamp);
+}
+
+.reports-hourly-chart {
+  display: grid;
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+  gap: 4px;
+  align-items: end;
+  height: 190px;
+  padding-top: 8px;
+}
+
+.reports-hour-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  gap: 4px;
+}
+
+.reports-hour-count {
+  font-size: 10px;
+  line-height: 1;
+  min-height: 12px;
+  color: var(--text-muted);
+}
+
+.reports-hour-bar-track {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  background: color-mix(in srgb, color-mix(in srgb, var(--rx-ink) 7%, var(--rx-paper)) 14%, transparent);
+  border-radius: 0;
+  overflow: hidden;
+}
+
+.reports-hour-bar {
+  width: 100%;
+  display: flex;
+  flex-direction: column-reverse;
+  min-height: 0;
+  transition: height 180ms ease;
+}
+
+.reports-hour-seg {
+  width: 100%;
+  display: block;
+}
+
+.reports-hour-label {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.reports-type-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.reports-type-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.reports-type-bar {
+  height: 8px;
+  border-radius: 0;
+  background: color-mix(in srgb, color-mix(in srgb, var(--rx-ink) 7%, var(--rx-paper)) 20%, transparent);
+  overflow: hidden;
+}
+
+.reports-type-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 0;
+}
+
+.reports-table th,
+.reports-table td {
+  padding: 12px 14px;
+  vertical-align: middle;
+  font-variant-numeric: tabular-nums;
+}
+
+.reports-table th.is-left,
+.reports-table td.is-left {
+  text-align: left;
+}
+
+.reports-table th.is-center,
+.reports-table td.is-center {
+  text-align: center;
+}
+
+.reports-risk-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.reports-risk-note {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.reports-risk-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.reports-risk-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 0;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.reports-risk-badge.is-high {
+  background: color-mix(in srgb, var(--rx-stamp) 12%, transparent);
+  color: var(--rx-stamp);
+}
+
+.reports-risk-badge.is-moderate {
+  background: color-mix(in srgb, var(--rx-stamp) 14%, transparent);
+  color: var(--rx-stamp);
+}
+
+.reports-risk-badge.is-low {
+  background: color-mix(in srgb, var(--rx-ink) 12%, transparent);
+  color: var(--rx-pen);
+}
+
+.reports-risk-badge.is-chronic {
+  background: color-mix(in srgb, color-mix(in srgb, var(--rx-ink) 7%, var(--rx-paper)) 12%, transparent);
+  color: var(--rx-ink);
+}
+
+.reports-risk-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.reports-risk-card {
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reports-risk-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.reports-risk-card-head > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reports-risk-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.reports-risk-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.reports-risk-breakdown > span {
+  padding: 2px 8px;
+  border-radius: 0;
+  background: color-mix(in srgb, color-mix(in srgb, var(--rx-ink) 7%, var(--rx-paper)) 14%, transparent);
+}
+
+.reports-risk-factors,
+.reports-risk-rec {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.reports-chronic-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 6px;
+  border-radius: 0;
+  font-size: 11px;
+  font-weight: 700;
+  background: color-mix(in srgb, color-mix(in srgb, var(--rx-ink) 7%, var(--rx-paper)) 14%, transparent);
+  color: var(--rx-ink);
+}
+
+.reports-factors-cell {
+  white-space: normal !important;
+  min-width: 190px;
+  font-size: 13px;
+}
+
+.reports-risk-filter-btn {
+  border: 1px solid var(--border);
+  border-radius: 0;
+  padding: 5px 12px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  background: var(--panel-bg);
+  color: inherit;
+  transition: box-shadow 140ms ease, transform 120ms ease;
+}
+
+.reports-risk-filter-btn.reports-risk-badge {
+  border-color: transparent;
+}
+
+.reports-risk-filter-btn:hover {
+  transform: translateY(-1px);
+}
+
+.reports-risk-filter-btn.is-active {
+  box-shadow: none;
+}
+
+.reports-people-head {
+  margin-bottom: 14px;
+}
+
+.reports-people-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.reports-search-input {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  min-width: 190px;
+}
+
+.reports-search-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.reports-view-toggle {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.reports-view-toggle .reports-pill-btn.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--rx-paper);
+}
+
+.reports-person-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 14px;
+}
+
+.reports-person-card {
+  border: 1px solid var(--border);
+  border-radius: 0;
+  padding: 16px;
+  background: var(--panel-bg);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: none;
+}
+
+.reports-person-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.reports-person-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.reports-score-pill-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.reports-trend-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.reports-symptom-layout {
+  display: grid;
+  grid-template-columns: 116px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+}
+
+@media (max-width: 440px) {
+  .reports-symptom-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.reports-body-map {
+  border: 1px solid var(--border);
+  border-radius: 0;
+  background: var(--bg);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.reports-body-svg {
+  width: 92px;
+  height: 102px;
+  display: block;
+}
+
+.reports-body-caption {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.reports-symptom-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.reports-symptom-heading {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.reports-symptom-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--rx-rule-soft) 20%, transparent);
+  font-size: 13px;
+}
+
+.reports-symptom-row:last-child {
+  border-bottom: 0;
+}
+
+.reports-symptom-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 500;
+}
+
+.reports-symptom-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 0;
+  flex-shrink: 0;
+  background: color-mix(in srgb, var(--rx-ink) 7%, var(--rx-paper));
+}
+
+.reports-symptom-dot.is-low {
+  background: var(--rx-ink);
+}
+
+.reports-symptom-dot.is-moderate {
+  background: var(--rx-stamp);
+}
+
+.reports-symptom-dot.is-high {
+  background: var(--rx-stamp);
+}
+
+.reports-symptom-val {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.reports-symptom-val.is-low {
+  color: var(--rx-pen);
+}
+
+.reports-symptom-val.is-moderate {
+  color: var(--rx-stamp);
+}
+
+.reports-symptom-val.is-high {
+  color: var(--rx-stamp);
+}
+
+.reports-conditions-box {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.reports-conditions-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.reports-conditions-empty {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.reports-conditions-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.reports-condition-item {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text);
+}
+
+.reports-condition-reason {
+  color: var(--text-muted);
+}
+
+.reports-person-notes {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text);
+}
+
+.reports-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px dashed color-mix(in srgb, var(--rx-rule-soft) 35%, transparent);
+}
+
+.reports-card-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  background: var(--panel-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+}
+
+.reports-card-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--panel-bg));
+}
+
+.reports-card-btn.is-line {
+  background: var(--rx-ink);
+  border-color: var(--rx-ink);
+  color: var(--rx-paper);
+}
+
+.reports-card-btn.is-line:hover {
+  background: var(--rx-ink);
+  border-color: var(--rx-ink);
+  color: var(--rx-paper);
+}
+
+.reports-card-feedback {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--good);
+}
+
+.reports-table-actions {
+  display: inline-flex;
+  gap: 6px;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .reports-page {
+    padding: 0;
+  }
+}
+
+/* =====================================================================
+ * ซองยา: หน้ารายงาน
+ * ระดับความเสี่ยง: สูง = พื้นแดงทึบ, ปานกลาง = กรอบแดง, ต่ำ = กรอบหมึก, เรื้อรัง = กรอบหมึกเส้นประ
+ * ประเภทการแจ้งเตือนในกราฟ: แยกด้วยลายพิมพ์ ไม่ใช่สี — ท่านั่ง = หมึกทึบ, ความล้า = เส้นทแยง,
+ * ระยะจอ = ลายจุด, การล้ม = แดงทึบ
+ * ===================================================================== */
+.reports-panel-head h2,
+.reports-types-panel h2,
+.reports-page .panel > h2 {
+  font: 700 20px / 1.3 var(--rx-display);
+}
+
+.reports-pill-btn,
+.reports-card-btn {
+  min-height: 40px;
+  border: 2px solid var(--rx-ink);
+  border-radius: 0;
+  background: transparent;
+  color: var(--rx-ink);
+  font: 600 14px / 1.2 var(--rx-display);
+}
+
+.reports-pill-btn:hover:not(:disabled),
+.reports-card-btn:hover {
+  border-color: var(--rx-ink);
+  background: var(--rx-ink);
+  color: var(--rx-paper);
+}
+
+.reports-today-btn.is-active,
+.reports-view-toggle .reports-pill-btn.is-active,
+.reports-card-btn.is-line {
+  border-color: var(--rx-ink);
+  background: var(--rx-ink);
+  color: var(--rx-paper);
+}
+
+.reports-date-nav input[type='date'] {
+  border: 2px solid var(--rx-ink);
+  background: transparent;
+}
+
+.reports-legend,
+.reports-hour-count,
+.reports-hour-label,
+.reports-trend-sub,
+.reports-body-caption,
+.reports-conditions-empty,
+.reports-condition-reason {
+  color: var(--rx-ink);
+}
+
+.reports-legend {
+  font: 600 13px / 1.3 var(--rx-display);
+}
+
+/* ---------- ลายพิมพ์ของแต่ละประเภท ---------- */
+.reports-dot {
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--rx-ink);
+}
+
+.reports-dot.is-posture,
+.reports-hour-seg.is-posture {
+  background: var(--rx-ink);
+}
+
+.reports-dot.is-fatigue,
+.reports-hour-seg.is-fatigue {
+  background: repeating-linear-gradient(135deg, var(--rx-ink) 0 1.5px, transparent 1.5px 5px);
+}
+
+.reports-dot.is-distance,
+.reports-hour-seg.is-distance {
+  background: radial-gradient(circle, var(--rx-ink) 1.1px, transparent 1.4px) 0 0 / 5px 5px;
+}
+
+.reports-dot.is-fall,
+.reports-hour-seg.is-fall {
+  border-color: var(--rx-stamp);
+  background: var(--rx-stamp);
+}
+
+/* ส่วนของแท่ง: เส้นหมึกบางคั่นแต่ละประเภทให้ลายแยกกันชัด */
+.reports-hour-seg {
+  box-shadow: inset 0 0 0 1px var(--rx-ink);
+}
+
+.reports-hour-seg.is-fall {
+  box-shadow: none;
+}
+
+.reports-hour-bar-track {
+  border-bottom: 2px solid var(--rx-ink);
+  background: transparent;
+}
+
+.reports-type-bar {
+  height: 10px;
+  border: 1.5px solid var(--rx-ink);
+  background: transparent;
+}
+
+.reports-type-bar > span {
+  background: var(--rx-ink);
+}
+
+/* ---------- ป้ายระดับความเสี่ยง ---------- */
+.reports-risk-badge {
+  border: 1.5px solid var(--rx-ink);
+  background: transparent;
+  color: var(--rx-ink);
+  font: 700 13px / 1.2 var(--rx-display);
+}
+
+.reports-risk-badge.is-high {
+  border-color: var(--rx-stamp);
+  background: var(--rx-stamp);
+  color: var(--rx-paper);
+}
+
+.reports-risk-badge.is-moderate {
+  border-color: var(--rx-stamp);
+  background: transparent;
+  color: var(--rx-stamp);
+}
+
+.reports-risk-badge.is-low {
+  border-color: var(--rx-ink);
+  background: transparent;
+  color: var(--rx-ink);
+}
+
+.reports-risk-badge.is-chronic,
+.reports-chronic-tag {
+  border: 1.5px dashed var(--rx-ink);
+  background: transparent;
+  color: var(--rx-ink);
+}
+
+.reports-risk-filter-btn {
+  min-height: 40px;
+  border: 1.5px solid var(--rx-ink);
+  font-family: var(--rx-display);
+}
+
+.reports-risk-filter-btn:hover {
+  transform: none;
+}
+
+/* ตัวกรองที่เลือกอยู่: ขีดเส้นใต้หนา (ไม่ใช้เงา) */
+.reports-risk-filter-btn.is-active {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+  outline: 2px solid var(--rx-ink);
+  outline-offset: 2px;
+}
+
+/* ---------- การ์ดความเสี่ยง และการ์ดรายคน: กรอบเต็ม ไม่มีแถบสีด้านเดียว ---------- */
+.reports-risk-card,
+.reports-person-card {
+  border: 1.5px solid var(--rx-ink);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.reports-risk-card.is-moderate,
+.reports-person-card.is-moderate {
+  border: 2px solid var(--rx-stamp);
+  background: transparent;
+}
+
+.reports-risk-card.is-high,
+.reports-person-card.is-high {
+  border: 3px solid var(--rx-stamp);
+  background: transparent;
+}
+
+.reports-person-card.has-fall {
+  background: color-mix(in srgb, var(--rx-stamp) 6%, transparent);
+}
+
+.reports-person-title {
+  font: 700 19px / 1.3 var(--rx-display);
+}
+
+.reports-body-map,
+.reports-conditions-box,
+.reports-person-notes {
+  border: 1px solid var(--rx-rule-soft);
+  background: transparent;
+}
+
+/* จุดอาการ: ต่ำ = หมึก, ปานกลาง = วงแดงกลวง, สูง = แดงทึบ */
+.reports-symptom-dot {
+  border: 1.5px solid var(--rx-ink);
+  background: transparent;
+}
+
+.reports-symptom-dot.is-low {
+  background: var(--rx-ink);
+}
+
+.reports-symptom-dot.is-moderate {
+  border-color: var(--rx-stamp);
+  background: transparent;
+}
+
+.reports-symptom-dot.is-high {
+  border-color: var(--rx-stamp);
+  background: var(--rx-stamp);
+}
+
+.reports-symptom-val {
+  color: var(--rx-ink);
+}
+
+.reports-symptom-val.is-low {
+  color: var(--rx-ink);
+}
+
+.reports-symptom-val.is-moderate,
+.reports-symptom-val.is-high {
+  color: var(--rx-stamp);
+  font-weight: 700;
+}
+
+.reports-card-actions {
+  border-top: 1px dashed var(--rx-rule-soft);
+}
+
+.reports-card-feedback {
+  color: var(--rx-pen);
+  font-family: var(--rx-hand);
+  font-size: 15px;
+  font-weight: 400;
+}
+
+/* การ์ดคนที่มีเหตุการณ์ล้ม: กรอบแดงหนา (ไม่ใช้พื้นสี) */
+.reports-person-card.has-fall {
+  border: 3px solid var(--rx-stamp);
+  background: transparent;
+}
+
+/* แถวสถิติ 7 ช่อง: แถวเดียวบนจอกว้าง */
+@media (min-width: 1100px) {
+  .reports-page .people-stats {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+}
