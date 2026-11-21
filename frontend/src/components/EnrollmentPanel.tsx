@@ -4,7 +4,8 @@ import type { EnrolledPerson } from '../types/identity'
 interface Props {
   people: EnrolledPerson[]
   onRemove: (id: string) => void
-  onRename: (id: string, name: string, consentGiven: boolean) => Promise<void>
+  /** consentGiven: true = บันทึกความยินยอม, undefined = ไม่เปลี่ยน (false จะล้างบันทึก — แผงนี้ไม่ใช้) */
+  onRename: (id: string, name: string, consentGiven?: boolean) => Promise<void>
 }
 
 export default function EnrollmentPanel({ people, onRemove, onRename }: Props) {
@@ -22,7 +23,7 @@ export default function EnrollmentPanel({ people, onRemove, onRename }: Props) {
   const saveEdit = (person: EnrolledPerson) => {
     if (!draftName.trim()) return
     setSaving(true)
-    onRename(person.id, draftName, draftConsent && person.consentGivenAt === null)
+    onRename(person.id, draftName, draftConsent && person.consentGivenAt === null ? true : undefined)
       .then(() => setEditingId(null))
       .catch(() => {
         // App แสดงข้อความ error ให้แล้ว — คงช่องแก้ไขไว้ให้ลองใหม่

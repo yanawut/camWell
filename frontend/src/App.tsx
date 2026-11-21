@@ -235,7 +235,7 @@ function CameraApp() {
     localStorage.setItem(AUTO_ENROLL_STORAGE_KEY, String(enabled))
   }, [])
 
-  const handleRenamePerson = useCallback(async (id: string, name: string, consentGiven: boolean) => {
+  const handleRenamePerson = useCallback(async (id: string, name: string, consentGiven?: boolean) => {
     try {
       const updated = await renamePerson(id, name, consentGiven)
       setEnrolledPeople((prev) => prev.map((p) => (p.id === id ? updated : p)))

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { EnrolledPerson } from '../types/identity'
 import { listEnrolledPeople, removePerson, renamePerson } from '../services/faceEnrollment'
 import { getAlertSummary, type AlertSummary } from '../services/alertHistory'
@@ -6,6 +6,7 @@ import { ALERT_CATEGORY_LABELS_TH, type AlertCategory } from '../types/alerts'
 import '../App.css'
 import './PeoplePage.css'
 import AppNavigation from '../components/AppNavigation'
+import { useConfirm } from '../components/ConfirmDialog'
 import { WarnGlyph } from '../envelope/marks'
 
 // หน้ารายชื่อบุคคลที่ลงทะเบียนใบหน้าไว้ใน DB (camwell-backend) — เปิดผ่าน /?people แยกจากหน้ากล้อง
@@ -35,6 +36,13 @@ export default function PeoplePage() {
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [removingId, setRemovingId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [draftName, setDraftName] = useState('')
+  const [draftConsent, setDraftConsent] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const lastEditedRef = useRef<string | null>(null)
+  const tableRef = useRef<HTMLTableElement>(null)
+  const [confirm, confirmDialog] = useConfirm()
 
   const fetchPeople = useCallback(() => {
     Promise.all([listEnrolledPeople(), getAlertSummary()])
@@ -60,26 +68,88 @@ export default function PeoplePage() {
     fetchPeople()
   }, [fetchPeople])
 
-  const handleRemove = useCallback((person: EnrolledPerson) => {
-    // ลบแล้วข้อมูลใบหน้าหายถาวร (สิทธิ์ขอลบตาม PDPA) — ยืนยันก่อนกันกดพลาด
-    if (!window.confirm(`ลบ "${person.name}" และข้อมูลใบหน้าทั้งหมดของคนนี้ออกจากระบบ?`)) return
-    setRemovingId(person.id)
-    removePerson(person.id)
-      .then(() => setPeople((prev) => prev.filter((p) => p.id !== person.id)))
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'ลบไม่สำเร็จ'))
-      .finally(() => setRemovingId(null))
-  }, [])
+  const handleRemove = useCallback(
+    async (person: EnrolledPerson) => {
+      // ลบแล้วข้อมูลใบหน้าหายถาวร (สิทธิ์ขอลบตาม PDPA) — ยืนยันก่อนกันกดพลาด
+      const confirmed = await confirm({
+        title: 'ลบข้อมูลใบหน้า',
+        message: (
+          <>
+            <p>
+              ข้อมูลใบหน้าทั้งหมดของ <strong>{person.name}</strong> จะถูกลบออกจากระบบ
+            </p>
+            <p>ลบแล้วกู้คืนไม่ได้ ถ้าต้องการให้ระบบจำคนนี้อีกต้องลงทะเบียนใหม่</p>
+          </>
+        ),
+        confirmLabel: 'ลบถาวร',
+        danger: true,
+      })
+      if (!confirmed) return
+      setRemovingId(person.id)
+      removePerson(person.id)
+        .then(() => setPeople((prev) => prev.filter((p) => p.id !== person.id)))
+        .catch((err: unknown) => setError(err instanceof Error ? err.message : 'ลบไม่สำเร็จ'))
+        .finally(() => setRemovingId(null))
+    },
+    [confirm],
+  )
 
-  const handleRename = useCallback((person: EnrolledPerson) => {
-    const name = window.prompt(`เปลี่ยนชื่อ "${person.name}" เป็น`, person.name)?.trim()
-    if (!name || name === person.name) return
-    // คนที่ลงทะเบียนอัตโนมัติยังไม่มีบันทึกความยินยอม — ถามไปพร้อมกันตอนตั้งชื่อจริง
-    const consentGiven =
-      person.consentGivenAt === null && window.confirm(`ได้ขอความยินยอม (PDPA) จาก "${name}" แล้วใช่หรือไม่?`)
+  // เปลี่ยนชื่อในแถวนั้นเลย: ช่องชื่อกลายเป็นช่องกรอก และช่อง PDPA กลายเป็นช่องติ๊ก
+  // ติ๊กเพื่อบันทึกความยินยอม (เช่น คนที่ลงทะเบียนอัตโนมัติ) หรือเอาติ๊กออกเมื่อเผลอติ๊กผิด
+  const startEdit = (person: EnrolledPerson) => {
+    setEditingId(person.id)
+    setDraftName(person.name)
+    setDraftConsent(person.consentGivenAt !== null)
+  }
+
+  const closeEdit = () => {
+    lastEditedRef.current = editingId
+    setEditingId(null)
+  }
+
+  const saveEdit = async (person: EnrolledPerson) => {
+    const name = draftName.trim()
+    if (!name || saving) return
+    // undefined = ไม่เปลี่ยนบันทึกความยินยอม
+    const consentGiven = draftConsent === (person.consentGivenAt !== null) ? undefined : draftConsent
+    if (name === person.name && consentGiven === undefined) {
+      closeEdit()
+      return
+    }
+    if (consentGiven === false) {
+      const confirmed = await confirm({
+        title: 'ล้างบันทึกความยินยอม',
+        message: (
+          <>
+            <p>
+              บันทึกความยินยอม (PDPA) ของ <strong>{person.name}</strong> จะถูกล้าง และกลับเป็น "ไม่มีบันทึก"
+            </p>
+            <p>ใช้กรณีติ๊กผิดเท่านั้น ถ้าพนักงานขอถอนความยินยอมเอง ให้กด "ลบ" ข้อมูลใบหน้าของคนนี้แทน</p>
+          </>
+        ),
+        confirmLabel: 'ล้างบันทึก',
+      })
+      if (!confirmed) return
+    }
+    setSaving(true)
     renamePerson(person.id, name, consentGiven)
-      .then((updated) => setPeople((prev) => prev.map((p) => (p.id === updated.id ? updated : p))))
+      .then((updated) => {
+        setPeople((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
+        setError(null)
+        closeEdit()
+      })
+      // คงช่องแก้ไขไว้ให้ลองใหม่
       .catch((err: unknown) => setError(err instanceof Error ? err.message : 'เปลี่ยนชื่อไม่สำเร็จ'))
-  }, [])
+      .finally(() => setSaving(false))
+  }
+
+  // ปิดช่องแก้ไขแล้วคืนโฟกัสให้ปุ่ม "เปลี่ยนชื่อ" ของแถวเดิม (ผู้ใช้คีย์บอร์ดไม่หลุดไปต้นหน้า)
+  useEffect(() => {
+    const id = lastEditedRef.current
+    if (editingId !== null || id === null) return
+    lastEditedRef.current = null
+    tableRef.current?.querySelector<HTMLButtonElement>(`[data-rename-id="${CSS.escape(id)}"]`)?.focus()
+  }, [editingId])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -139,7 +209,7 @@ export default function PeoplePage() {
           <p className="empty-state">{people.length === 0 ? 'ยังไม่มีใครลงทะเบียนไว้' : 'ไม่พบรายชื่อที่ค้นหา'}</p>
         ) : (
           <div className="people-table-wrap">
-            <table>
+            <table ref={tableRef}>
               <thead>
                 <tr>
                   <th>#</th>
@@ -152,38 +222,90 @@ export default function PeoplePage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((p, idx) => (
-                  <tr key={p.id}>
-                    <td className="people-muted">{idx + 1}</td>
-                    <td className="people-name">
-                      {p.name}
-                      {p.autoEnrolled && <span className="people-tag">อัตโนมัติ</span>}
-                    </td>
-                    <td>{formatDateTime(p.enrolledAt)}</td>
-                    <td className={p.consentGivenAt ? 'people-good' : 'people-warn'}>
-                      {p.consentGivenAt ? `✓ ${formatDateTime(p.consentGivenAt)}` : 'ไม่มีบันทึก'}
-                    </td>
-                    <td>
-                      <AlertCountCell summary={alertSummary.get(p.id)} employeeId={p.id} />
-                    </td>
-                    <td className="metrics-cell" title={p.id}>
-                      {p.id.slice(0, 8)}
-                    </td>
-                    <td className="people-actions">
-                      <button type="button" className="link-button people-link-primary" onClick={() => handleRename(p)}>
-                        เปลี่ยนชื่อ
-                      </button>
-                      <button
-                        type="button"
-                        className="link-button"
-                        onClick={() => handleRemove(p)}
-                        disabled={removingId === p.id}
-                      >
-                        {removingId === p.id ? 'กำลังลบ...' : 'ลบ'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {filtered.map((p, idx) => {
+                  const editing = editingId === p.id
+                  return (
+                    <tr key={p.id} className={editing ? 'is-editing' : undefined}>
+                      <td className="people-muted">{idx + 1}</td>
+                      <td className="people-name">
+                        {editing ? (
+                          <input
+                            type="text"
+                            className="people-name-input"
+                            aria-label={`ชื่อใหม่ของ ${p.name}`}
+                            value={draftName}
+                            onChange={(e) => setDraftName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') void saveEdit(p)
+                              if (e.key === 'Escape' && !saving) closeEdit()
+                            }}
+                            autoFocus
+                          />
+                        ) : (
+                          <>
+                            {p.name}
+                            {p.autoEnrolled && <span className="people-tag">อัตโนมัติ</span>}
+                          </>
+                        )}
+                      </td>
+                      <td>{formatDateTime(p.enrolledAt)}</td>
+                      <td className={editing ? undefined : p.consentGivenAt ? 'people-good' : 'people-warn'}>
+                        {editing ? (
+                          <label className="people-consent-check">
+                            <input type="checkbox" checked={draftConsent} onChange={(e) => setDraftConsent(e.target.checked)} />
+                            <span>ขอความยินยอมแล้ว</span>
+                          </label>
+                        ) : p.consentGivenAt ? (
+                          `✓ ${formatDateTime(p.consentGivenAt)}`
+                        ) : (
+                          'ไม่มีบันทึก'
+                        )}
+                      </td>
+                      <td>
+                        <AlertCountCell summary={alertSummary.get(p.id)} employeeId={p.id} />
+                      </td>
+                      <td className="metrics-cell" title={p.id}>
+                        {p.id.slice(0, 8)}
+                      </td>
+                      <td className="people-actions">
+                        {editing ? (
+                          <>
+                            <button
+                              type="button"
+                              className="link-button people-link-primary"
+                              onClick={() => void saveEdit(p)}
+                              disabled={saving || !draftName.trim()}
+                            >
+                              {saving ? 'กำลังบันทึก...' : 'บันทึก'}
+                            </button>
+                            <button type="button" className="link-button link-button-muted" onClick={closeEdit} disabled={saving}>
+                              ยกเลิก
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              className="link-button people-link-primary"
+                              data-rename-id={p.id}
+                              onClick={() => startEdit(p)}
+                            >
+                              เปลี่ยนชื่อ
+                            </button>
+                            <button
+                              type="button"
+                              className="link-button"
+                              onClick={() => void handleRemove(p)}
+                              disabled={removingId === p.id}
+                            >
+                              {removingId === p.id ? 'กำลังลบ...' : 'ลบ'}
+                            </button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -195,6 +317,7 @@ export default function PeoplePage() {
         ข้อมูลใบหน้าของคนนั้นทั้งหมดถาวร
       </p>
       </div>
+      {confirmDialog}
     </>
   )
 }

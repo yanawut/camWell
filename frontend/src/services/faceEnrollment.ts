@@ -26,8 +26,11 @@ export async function removePerson(id: string): Promise<void> {
   await apiFetch<void>(`/api/employees/${encodeURIComponent(id)}`, { method: 'DELETE' })
 }
 
-/** เปลี่ยนชื่อ (เช่น "คนที่ 3" -> ชื่อจริง) — consentGiven: true บันทึกว่าขอความยินยอมแล้ว (ใช้กับคนที่ลงทะเบียนอัตโนมัติ) */
-export async function renamePerson(id: string, name: string, consentGiven: boolean): Promise<EnrolledPerson> {
+/**
+ * เปลี่ยนชื่อ (เช่น "คนที่ 3" -> ชื่อจริง) และ/หรือบันทึกความยินยอม
+ * consentGiven: true = บันทึกว่าขอความยินยอมแล้ว, false = ล้างบันทึก (กรณีติ๊กผิด), undefined = ไม่เปลี่ยน
+ */
+export async function renamePerson(id: string, name: string, consentGiven?: boolean): Promise<EnrolledPerson> {
   return apiFetch<EnrolledPerson>(`/api/employees/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     body: JSON.stringify({ name: name.trim(), consentGiven }),

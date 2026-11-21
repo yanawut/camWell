@@ -5,6 +5,7 @@ import ThresholdsTab from './ThresholdsTab'
 import EventsTab from './EventsTab'
 import PeopleTab from './PeopleTab'
 import EngineSwitch from './EngineSwitch'
+import { useConfirm } from '../components/ConfirmDialog'
 import { useBackendHealth } from './useBackendHealth'
 import { datasetRecorder, type DatasetLabel } from '../services/datasetRecorder'
 import { usePersistentState } from '../hooks/usePersistentState'
@@ -131,6 +132,7 @@ export default function DevConsole(props: DevConsoleProps) {
     datasetPoseModel: datasetRecorder.poseModel(),
   })
   const health = useBackendHealth()
+  const [confirm, confirmDialog] = useConfirm()
 
   const handleStats = useCallback((slotId: string, stats: CameraStats) => {
     setStatsBySlot((prev) => ({ ...prev, [slotId]: stats }))
@@ -190,9 +192,19 @@ export default function DevConsole(props: DevConsoleProps) {
   const healthOk = health === 200
 
   // dataset เก็บในหน่วยความจำของแท็บ — เปลี่ยนหน้าแล้วหาย
-  const confirmLeave = () =>
+  const confirmLeave = async () =>
     recorder.sampleCount === 0 ||
-    window.confirm(`มี dataset ${recorder.sampleCount} sample ที่ยังไม่ได้ Export — สลับไป YOLO แล้วจะหาย ต้องการสลับต่อไหม?`)
+    confirm({
+      title: 'dataset ยังไม่ได้ Export',
+      message: (
+        <p>
+          มี dataset <strong>{recorder.sampleCount} sample</strong> ที่ยังไม่ได้ Export ถ้าสลับไป YOLO ตอนนี้ dataset นี้จะหายทั้งหมด
+        </p>
+      ),
+      confirmLabel: 'สลับและทิ้ง dataset',
+      cancelLabel: 'อยู่ต่อ',
+      danger: true,
+    })
 
   return (
     <div className="dc-root">
@@ -430,6 +442,7 @@ export default function DevConsole(props: DevConsoleProps) {
         )}
         </div>
       </div>
+      {confirmDialog}
     </div>
   )
 }

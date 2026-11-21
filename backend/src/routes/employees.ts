@@ -99,13 +99,19 @@ employeesRouter.delete('/:id', (req: Request, res: Response) => {
 })
 
 // PATCH /api/employees/:id — เปลี่ยนชื่อพนักงาน (เช่น จาก "คนที่ 3" ที่ระบบตั้งให้อัตโนมัติ เป็นชื่อจริง)
-// ส่ง consentGiven: true มาด้วยได้ เพื่อบันทึกว่าขอความยินยอมจากคนนี้แล้วหลังจากถูกลงทะเบียนอัตโนมัติ
+// consentGiven: true  = บันทึกว่าขอความยินยอมแล้ว (คงเวลาเดิมถ้าเคยบันทึกไว้)
+// consentGiven: false = ล้างบันทึกความยินยอม — สำหรับกรณีติ๊กผิด (ถ้าพนักงานขอถอนความยินยอมเอง ควรลบข้อมูลใบหน้าทิ้ง)
+// ไม่ส่ง consentGiven = ไม่เปลี่ยนบันทึกความยินยอม
 employeesRouter.patch('/:id', (req: Request, res: Response) => {
   const id = String(req.params.id)
   const body = req.body as { name?: unknown; consentGiven?: unknown }
   const name = typeof body.name === 'string' ? body.name.trim() : ''
   if (!name) {
     res.status(400).json({ error: 'ต้องระบุชื่อพนักงาน' })
+    return
+  }
+  if (body.consentGiven !== undefined && typeof body.consentGiven !== 'boolean') {
+    res.status(400).json({ error: 'consentGiven ต้องเป็น true หรือ false' })
     return
   }
 
@@ -115,7 +121,9 @@ employeesRouter.patch('/:id', (req: Request, res: Response) => {
       ? db
           .prepare('UPDATE employees SET name = ?, consent_given_at = COALESCE(consent_given_at, ?) WHERE id = ?')
           .run(name, Date.now(), id)
-      : db.prepare('UPDATE employees SET name = ? WHERE id = ?').run(name, id)
+      : body.consentGiven === false
+        ? db.prepare('UPDATE employees SET name = ?, consent_given_at = NULL WHERE id = ?').run(name, id)
+        : db.prepare('UPDATE employees SET name = ? WHERE id = ?').run(name, id)
   if (result.changes === 0) {
     res.status(404).json({ error: 'ไม่พบพนักงานรายนี้' })
     return

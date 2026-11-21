@@ -1,0 +1,66 @@
+/* กล่องยืนยัน = แผ่นฉลากกรอบหมึก หัวเป็นแถบหมึกแบบหัวซองยา (ใช้ token --rx-* จึงกลับสีเองในธีมมืด) */
+.rx-dialog {
+  width: min(440px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  padding: 0;
+  border: 2px solid var(--rx-ink);
+  border-radius: 0;
+  background: var(--rx-fiber), var(--rx-paper);
+  color: var(--rx-ink);
+}
+
+.rx-dialog::backdrop {
+  background: rgb(4 30 20 / 0.55);
+}
+
+.rx-dialog-title {
+  margin: 0;
+  padding: 14px 20px;
+  background: var(--rx-band);
+  color: var(--rx-band-fg);
+  font: 700 19px/1.35 var(--rx-display);
+}
+
+.rx-dialog-message {
+  padding: 18px 20px 0;
+  font: 400 16px/1.65 var(--rx-form);
+}
+
+.rx-dialog-message p {
+  margin: 0 0 8px;
+}
+
+.rx-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 18px 20px 20px;
+}
+
+/* ปุ่มยืนยัน: หมึกทึบ / แดงตรายางเมื่อย้อนกลับไม่ได้ — ชี้แล้วขึ้นเส้นพิมพ์ซ้อนด้านใน */
+.rx-dialog-confirm {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 2px solid var(--rx-ink);
+  border-radius: 0;
+  background: var(--rx-ink);
+  color: var(--rx-paper);
+  cursor: pointer;
+  font: 600 15px/1 var(--rx-display);
+}
+
+.rx-dialog-confirm.is-danger {
+  border-color: var(--rx-stamp);
+  background: var(--rx-stamp);
+}
+
+.rx-dialog-confirm:hover {
+  box-shadow: inset 0 0 0 2px var(--rx-paper);
+}
+
+@media (max-width: 420px) {
+  .rx-dialog-actions > button {
+    flex: 1 1 auto;
+  }
+}
