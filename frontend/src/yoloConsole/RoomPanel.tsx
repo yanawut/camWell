@@ -212,7 +212,7 @@ function Metrics({ w, s, sitting }: { w: NonNullable<LivePerson['wellness']>; s:
       closed !== undefined && m.eye < closed,
     )
   }
-  if (m.mouth !== undefined) add('อ้าปาก', m.mouth.toFixed(2), `หาวเมื่อ > ${n('yawn_ratio')}`, m.mouth >= n('yawn_ratio'))
+  if (m.mouth !== undefined) add('อ้าปาก', m.mouth.toFixed(2), `หาวเมื่อ > ${n('yawn_open')}`, m.mouth >= n('yawn_open'))
   if (w.sitMinutes !== null) add('นั่งต่อเนื่อง', `${w.sitMinutes.toFixed(1)} นาที`, `เตือนที่ ${n('sit_minutes')} นาที`, w.sitMinutes >= n('sit_minutes'))
   return (
     <div className="yc-metrics" data-testid="room-metrics">

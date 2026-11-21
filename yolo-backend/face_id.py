@@ -400,7 +400,8 @@ class FaceSettings:
     min_face_px: int = 24            # narrower faces (in frame pixels) embed too poorly to use
     min_det_score: float = 0.60
     second_face_share: float = 0.6   # a second face this wide (vs the largest) in one box makes it ambiguous
-    max_yaw: float = 0.50            # nose offset from the eyes' midpoint, in eye distances: 0 = frontal
+    max_yaw: float = 1.2             # nose offset from the eyes' midpoint, in eye distances: 0 = frontal, 1.2 about 65 deg;
+                                     # ArcFace still matches turned faces (0.5+ against frontal enrolment, strangers < 0.35)
     min_samples: int = 3             # good faces before the first decision
     keep_samples: int = 10           # recent faces whose mean embedding is matched
     threshold: float | None = None   # cosine similarity to count as a match; None = the engine's

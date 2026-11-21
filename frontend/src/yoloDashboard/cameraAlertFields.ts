@@ -46,7 +46,7 @@ export const ALERT_GROUPS: { category: WellCategory; hint: string; fields: Alert
     fields: [
       { key: 'eye_closed_seconds', label: 'หลับตาต่อเนื่อง', unit: 'วินาที', step: 0.5, min: 0.5 },
       { key: 'eye_ratio', label: 'ลืมตาน้อยกว่าปกติ (นับว่าหลับ)', unit: 'เท่า', step: 0.05, min: 0.1 },
-      { key: 'yawn_ratio', label: 'อ้าปากกว้างกว่า (นับว่าหาว)', unit: 'สูง/กว้าง', step: 0.05, min: 0.3 },
+      { key: 'yawn_open', label: 'ริมฝีปากห่างกว่า (นับว่าหาว)', unit: 'เท่าของความกว้างปาก', step: 0.05, min: 0.1 },
       { key: 'yawn_count', label: 'หาวถึง', unit: 'ครั้ง', step: 1, min: 1 },
       { key: 'yawn_window_minutes', label: 'ภายใน', unit: 'นาที', step: 1, min: 1 },
     ],
@@ -55,7 +55,7 @@ export const ALERT_GROUPS: { category: WellCategory; hint: string; fields: Alert
     category: 'fall',
     hint: 'แจ้งทันที ไม่รอสะสมเวลา',
     fields: [
-      { key: 'fall_drop', label: 'ตัวร่วงลงอย่างน้อย', unit: 'เท่าของความสูงตัว', step: 0.05, min: 0.1 },
+      { key: 'fall_head_drop', label: 'ศีรษะร่วงลงหาเท้าอย่างน้อย', unit: 'เท่าของความสูงตัว', step: 0.05, min: 0.2 },
       { key: 'fall_angle', label: 'ลำตัวเอียงจากแนวตั้งเกิน', unit: 'องศา', step: 5, min: 20 },
     ],
   },

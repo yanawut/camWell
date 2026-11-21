@@ -19,6 +19,7 @@ import time
 import uuid
 from collections import deque
 from dataclasses import asdict, dataclass, field, fields
+from typing import NamedTuple
 
 import numpy as np
 
@@ -45,8 +46,12 @@ MOMENTS = {"fall", "fall_vanish", "yawn"}  # no duration: they end as they start
 
 # COCO keypoints from the YOLO pose model
 NOSE, L_EAR, R_EAR, L_SHO, R_SHO, L_HIP, R_HIP = 0, 3, 4, 5, 6, 11, 12
-# insightface 2d106: the two eye outlines and the mouth
-EYE_A, EYE_B, MOUTH = list(range(33, 43)), list(range(87, 97)), list(range(52, 72))
+# insightface 2d106: the two eye outlines, the corners of the mouth and the middle of the inner lips
+EYE_A, EYE_B = list(range(33, 43)), list(range(87, 97))
+MOUTH_CORNERS, INNER_LIPS = (52, 61), (62, 60)
+MOUTH_MAX_YAW = 1.0  # turned further, the mouth looks narrow and so reads open
+FALL_LYING_SIGHTINGS = 3  # lying in this many sightings of the last half second: one jumbled frame is not a fall
+VANISH_CONFIRM_S = 0.3  # unseen this long, so one missed detection is not vanishing
 
 
 @dataclass
@@ -73,15 +78,15 @@ class WellnessSettings:
     # fatigue: from face landmarks
     eye_ratio: float = 0.6            # eyes open less than this share of the person's usual = closed
     eye_closed_seconds: float = 2.0
-    yawn_ratio: float = 0.7           # mouth height / width
-    yawn_seconds: float = 1.5
+    yawn_open: float = 0.30           # gap between the lips / mouth width: talking shuts the mouth between syllables
+    yawn_seconds: float = 1.5         # ...open at least this wide for this long without closing
     yawn_count: int = 3
     yawn_window_minutes: float = 10.0
     # falls
-    fall_drop: float = 0.30           # body centre falls this share of the body height...
-    fall_window: float = 1.0          # ...within this many seconds
+    fall_head_drop: float = 0.5       # the head comes down this share of the body height, toward the feet...
+    fall_window: float = 1.0          # ...within this many seconds of being upright
     fall_angle: float = 60.0          # and the torso ends this far from upright (or the box is wider than tall)
-    vanish_drop: float = 0.35         # a drop this big in 0.6 s, then gone from view within 1.5 s
+    vanish_drop: float = 0.35         # a drop this big in 0.6 s, then gone from view inside the picture within 1.5 s
     # face measurements
     min_face_px: int = 60             # narrower faces are too small to read eyes, mouth or size from
     measure_hz: float = 8.0
@@ -170,6 +175,49 @@ def _pt(kpts, i, min_conf=0.3):
     return kpts[i, :2].astype(np.float64)
 
 
+def head_y(kpts, min_conf=0.3):
+    """Mean height of the visible nose, eyes and ears, or None."""
+    if kpts is None:
+        return None
+    ys = [kpts[i, 1] for i in range(5) if kpts[i, 2] >= min_conf]
+    return float(np.mean(ys)) if ys else None
+
+
+class Seen(NamedTuple):
+    """One sighting, for falls: box top, head height (None without head keypoints), box height in pixels, and the
+    sides of the picture the box runs into."""
+    t: float
+    top: float
+    head: float | None
+    h: float
+    aspect: float
+    torso: float | None
+    cut: frozenset
+
+    def upright(self, fall_angle) -> bool:
+        return self.aspect < 1.0 and (self.torso is None or self.torso < fall_angle)
+
+    def lying(self, fall_angle) -> bool:
+        """Torso far from upright, or a box wider than tall that no picture edge cuts short."""
+        return (self.torso is not None and self.torso >= fall_angle) or (self.aspect >= 1.2 and not self.cut)
+
+    def drop_since(self, then: "Seen") -> float | None:
+        """How far the head came down since `then`, in body heights, or None when it cannot be told. A fall brings
+        the head down in the picture and toward the feet: walking toward a high camera does only the first, legs
+        going behind a desk only the second. Head keypoints when both sightings have them (raised or lowered arms
+        move the box top), else the box top unless the picture edge cuts it."""
+        if self.head is not None and then.head is not None:
+            now_y, then_y = self.head, then.head
+        elif "top" in self.cut or "top" in then.cut:
+            return None
+        else:
+            now_y, then_y = self.top, then.top
+        drop = (now_y - then_y) / then.h
+        if "bottom" not in self.cut and "bottom" not in then.cut:
+            drop = min(drop, ((then.top + then.h - then_y) - (self.top + self.h - now_y)) / then.h)
+        return drop
+
+
 def _from_vertical(v) -> float:
     """Degrees between vector v (image coordinates, y down) and straight up."""
     return math.degrees(math.atan2(abs(v[0]), max(-v[1], 1e-6)))
@@ -181,16 +229,19 @@ def posture_metrics(kpts, box) -> dict:
     ls, rs = _pt(kpts, L_SHO), _pt(kpts, R_SHO)
     if ls is None and rs is None:
         return {}
-    bw = float(box[2] - box[0]) or 1.0
     sh = np.mean([p for p in (ls, rs) if p is not None], axis=0)
     sw = abs(ls[0] - rs[0]) if ls is not None and rs is not None else 0.0
-    frontal = sw >= 0.35 * bw
-    m = dict(frontal=frontal)
     hips = [p for p in (_pt(kpts, L_HIP), _pt(kpts, R_HIP)) if p is not None]
+    if hips:  # shoulders wide for the torso: the box also widens with a reaching arm and narrows at the picture edge
+        frontal = sw >= 0.6 * float(np.linalg.norm(sh - np.mean(hips, axis=0)))
+    else:
+        frontal = sw >= 0.35 * (float(box[2] - box[0]) or 1.0)
+    m = dict(frontal=frontal)
     if hips:
         m["torso"] = float(_from_vertical(sh - np.mean(hips, axis=0)))
     if frontal:
-        m["tilt"] = math.degrees(math.atan2(abs(ls[1] - rs[1]), abs(ls[0] - rs[0])))
+        if hips:  # a side view's shoulder line also slopes: only a confirmed front view shows a sideways lean
+            m["tilt"] = math.degrees(math.atan2(abs(ls[1] - rs[1]), abs(ls[0] - rs[0])))
         nose = _pt(kpts, NOSE)
         if nose is not None:
             m["head_drop"] = float((sh[1] - nose[1]) / sw)
@@ -234,18 +285,20 @@ def _openness(points):
 
 
 def face_metrics(face: face_id.Face) -> dict:
-    """eye_dist (px, between the eyes), yaw, and from 106 landmarks: eye openness and mouth openness."""
+    """eye_dist (px, between the eyes), yaw, and from 106 landmarks: eye openness and mouth opening (the gap
+    between the inner lips over the mouth's width; the outer lips are thick and look open on a turned face)."""
     yaw, _ = face_id.face_pose(face.kps)
     m = dict(eye_dist=float(np.linalg.norm(face.kps[0] - face.kps[1])), yaw=yaw,
              width=float(face.box[2] - face.box[0]))
-    if face.landmarks is not None and len(face.landmarks) >= 106:
-        eyes = [_openness(face.landmarks[idx]) for idx in (EYE_A, EYE_B)]
+    lm = face.landmarks
+    if lm is not None and len(lm) >= 106:
+        eyes = [_openness(lm[idx]) for idx in (EYE_A, EYE_B)]
         eyes = [e for e in eyes if e is not None]
         if eyes:
             m["eye"] = float(np.mean(eyes))
-        mouth = _openness(face.landmarks[MOUTH])
-        if mouth is not None:
-            m["mouth"] = mouth
+        width = float(np.linalg.norm(lm[MOUTH_CORNERS[0]] - lm[MOUTH_CORNERS[1]]))
+        if abs(yaw) <= MOUTH_MAX_YAW and width > 1e-6:
+            m["mouth"] = float(np.linalg.norm(lm[INNER_LIPS[0]] - lm[INNER_LIPS[1]])) / width
     return m
 
 
@@ -273,14 +326,17 @@ class PersonWell:
     closed: Sustained = field(default_factory=lambda: Sustained(on_frac=0.85, off_seconds=1.0, off_frac=0.5))
     eye_hist: deque = field(default_factory=deque)  # (t, openness) for the usual openness
     mouth_open_since: float | None = None
+    mouth_seen: float = -1e9     # last mouth reading
     yawns: deque = field(default_factory=deque)
     last_yawn_alert: float = -1e9
     face_t: float = -1e9         # last measurement attempt
     face_seen: float = -1e9      # last time a usable face was measured
     face_reason: str = "ยังไม่ได้วัดหน้า"  # why the last measurement found no usable face
     metrics: dict = field(default_factory=dict)
-    hist: deque = field(default_factory=lambda: deque(maxlen=90))  # (t, centre y, height, aspect, torso)
+    hist: deque = field(default_factory=lambda: deque(maxlen=90))  # Seen
     drop_t: float | None = None
+    lying_since: float | None = None
+    held_since: float | None = None
     last_fall: float = -1e9
     held: bool = False
     box_x: tuple = (0.0, 0.0)
@@ -337,6 +393,7 @@ class WellnessMonitor:
                 p.sitting_s += dt
             if det.held and not p.held:
                 self._went(p, t)
+                p.held_since = t
             p.held = det.held
             if not det.held:
                 self._fall(p, det, t)
@@ -345,7 +402,7 @@ class WellnessMonitor:
                         and t - p.face_t >= 1.0 / self.s.measure_hz:
                     measured += 1
                     self._face(p, det, frame, t)
-            elif p.drop_t is not None and t - p.drop_t <= 1.5:
+            elif p.drop_t is not None and p.held_since - p.drop_t <= 1.5 and t - p.held_since >= VANISH_CONFIRM_S:
                 self._moment(p, "fall_vanish", t, dict(drop=p.metrics.get("drop", 0.0)))
                 p.drop_t = None
             self._sitting(p, t)
@@ -495,12 +552,14 @@ class WellnessMonitor:
                     self._start(p, "eyes_closed", t - self.s.eye_closed_seconds, t,
                                 dict(eye=m["eye"], usual=usual, seconds=self.s.eye_closed_seconds))
         if "mouth" in m:
-            if m["mouth"] >= self.s.yawn_ratio:
-                p.mouth_open_since = p.mouth_open_since if p.mouth_open_since is not None else t
+            if m["mouth"] >= self.s.yawn_open:
+                if p.mouth_open_since is None or t - p.mouth_seen > 1.0:  # unseen a while: no telling it stayed open
+                    p.mouth_open_since = t
             elif p.mouth_open_since is not None:
-                if t - p.mouth_open_since >= self.s.yawn_seconds:
+                if p.mouth_seen - p.mouth_open_since >= self.s.yawn_seconds:
                     p.yawns.append(t)
                 p.mouth_open_since = None
+            p.mouth_seen = t
             window = self.s.yawn_window_minutes * 60
             while p.yawns and t - p.yawns[0] > window:
                 p.yawns.popleft()
@@ -510,19 +569,25 @@ class WellnessMonitor:
                              text=f"หาว {len(p.yawns)} ครั้งใน {int(self.s.yawn_window_minutes)} นาที")
 
     def _fall(self, p, det, t):
+        """A fall brings the head down toward the feet (Seen.drop_since), then the body lies for a few sightings.
+        A box the picture edge cuts is someone partly out of view: its shape says nothing about lying, and their
+        going is walking out of view, not vanishing."""
         x1, y1, x2, y2 = (float(v) for v in det.box)
         h, w = max(y2 - y1, 1.0), x2 - x1
         torso = posture_metrics(det.kpts, det.box).get("torso") if det.kpts is not None else None
-        cy = (y1 + y2) / 2
-        p.hist.append((t, cy, h, w / h, torso))
+        seen = Seen(t, y1, head_y(det.kpts), h, w / h, torso, frozenset(det.cut))
+        p.hist.append(seen)
         p.box_x = (x1, x2)
-        self.gone = [g for g in self.gone if t - g[0] <= 2.0]
-        lying = (torso is not None and torso >= self.s.fall_angle) or w / h >= 1.2
+        self.gone = [g for g in self.gone if t - g[0].t <= 2.0]
+        lying = seen.lying(self.s.fall_angle)
         p.lying = lying
         if lying:
             p.upright_since = None
-        elif p.upright_since is None:
-            p.upright_since = t
+            p.lying_since = t if p.lying_since is None else p.lying_since
+        else:
+            p.lying_since = None
+            if p.upright_since is None:
+                p.upright_since = t
         for kind in ("fall", "fall_vanish"):
             a = p.alerts.get(kind)
             if a is not None and p.upright_since is not None and p.upright_since > a.start_t \
@@ -530,32 +595,37 @@ class WellnessMonitor:
                 del p.alerts[kind]  # up again: off the live panel, still in the history
         if not self.s.fall_on or t - p.last_fall < 30:
             return
-        if lying and t - p.first_t <= 1.0:
-            # the tracker often gives a fallen body a new id: the box changed shape too much to match
-            for g in self.gone:
-                gt, gcy, gh, (gx1, gx2), gname = g
-                overlap = min(x2, gx2) - max(x1, gx1)
-                drop = (cy - gcy) / gh
-                if overlap >= 0.3 * min(w, gx2 - gx1) and drop >= 0.5 * self.s.fall_drop:
-                    if gname and not p.name:
-                        p.name = gname
-                    self._moment(p, "fall", t, dict(drop=drop, torso=torso if torso is not None else -1.0,
-                                                    aspect=w / h, new_track=1.0))
-                    self.gone.remove(g)
+        confirmed = sum(1 for x in p.hist if t - x.t <= 0.5 and x.lying(self.s.fall_angle)) >= FALL_LYING_SIGHTINGS
+        if lying and confirmed:
+            worst = dict(torso=torso if torso is not None else -1.0, aspect=w / h)
+            for s0 in p.hist:  # upright shortly before they went down
+                d = seen.drop_since(s0)
+                if 0 <= p.lying_since - s0.t <= self.s.fall_window and s0.t < t and s0.upright(self.s.fall_angle) \
+                        and d is not None and d >= self.s.fall_head_drop:
+                    self._moment(p, "fall", t, dict(worst, drop=d))
+                    p.drop_t = None
                     return
-        for ts, cy0, h0, aspect0, torso0 in p.hist:
-            if t - ts > self.s.fall_window:
-                continue
-            drop = (cy - cy0) / h0
-            upright_before = aspect0 < 1.0 and (torso0 is None or torso0 < self.s.fall_angle)
-            if drop >= self.s.fall_drop and lying and upright_before:
-                self._moment(p, "fall", t, dict(drop=drop, torso=torso if torso is not None else -1.0,
-                                                aspect=w / h))
-                p.last_fall, p.drop_t = t, None
-                return
-            if drop >= self.s.vanish_drop and t - ts <= 0.6 and upright_before:
+            if p.lying_since - p.first_t <= 1.0:
+                # the tracker often gives a fallen body a new id: the box changed shape too much to match
+                for g in self.gone:
+                    g_seen, (gx1, gx2), gname = g
+                    overlap = min(x2, gx2) - max(x1, gx1)
+                    d = seen.drop_since(g_seen)
+                    if overlap >= 0.3 * min(w, gx2 - gx1) and d is not None and d >= 0.5 * self.s.fall_head_drop:
+                        if gname and not p.name:
+                            p.name = gname
+                        self._moment(p, "fall", t, dict(worst, drop=d, new_track=1.0))
+                        self.gone.remove(g)
+                        return
+        if seen.cut:  # running into the picture edge: walking out of view, not vanishing
+            p.drop_t = None
+            return
+        for s0 in p.hist:
+            d = seen.drop_since(s0)
+            if t - s0.t <= 0.6 and not s0.cut and s0.upright(self.s.fall_angle) and d is not None \
+                    and d >= self.s.vanish_drop:
                 p.drop_t = t
-                p.metrics["drop"] = round(drop, 3)
+                p.metrics["drop"] = round(d, 3)
 
     # ------------------------------------------------------------ episodes
     def _start(self, p, kind, start_t, t, worst, text=None):
@@ -608,9 +678,9 @@ class WellnessMonitor:
     def _went(self, p, t):
         """An upright person just stopped being seen: someone lying there next may be them, fallen."""
         if p.hist:
-            ts, cy, h, aspect, torso = p.hist[-1]
-            if aspect < 1.0 and (torso is None or torso < self.s.fall_angle):
-                self.gone.append((t, cy, h, p.box_x, p.name))
+            last = p.hist[-1]
+            if last.upright(self.s.fall_angle) and not last.cut:
+                self.gone.append((last._replace(t=t), p.box_x, p.name))
 
     def _leave(self, p, t, now):
         if not p.held:
@@ -618,7 +688,7 @@ class WellnessMonitor:
         for a in list(p.alerts.values()):
             if a.type not in MOMENTS:
                 self._end(p, a, t)
-        if p.drop_t is not None and t - p.drop_t <= 1.5:
+        if p.drop_t is not None and (p.held_since if p.held else t) - p.drop_t <= 1.5:
             self._moment(p, "fall_vanish", t, dict(drop=p.metrics.get("drop", 0.0)))
         if p.name and p.sit_start is not None:
             self.carry[p.name] = (p.sit_start, t)

@@ -40,8 +40,9 @@ SIDE_HUNCHED = {**SIDE_GOOD, wl.L_SHO: (180, 200), wl.R_SHO: (185, 202), wl.L_EA
 BOX = np.array([80, 120, 200, 420], np.float32)
 
 
-def person(pid=1, box=BOX, points=FRONT_GOOD, held=False):
-    return SimpleNamespace(id=pid, box=np.asarray(box, np.float32), kpts=kpts(points) if points else None, held=held)
+def person(pid=1, box=BOX, points=FRONT_GOOD, held=False, cut=frozenset()):
+    return SimpleNamespace(id=pid, box=np.asarray(box, np.float32), kpts=kpts(points) if points else None, held=held,
+                           cut=cut)
 
 
 class Clock:
@@ -118,12 +119,13 @@ def test_the_sitting_clock_follows_a_named_person_to_a_new_track_id():
 
 # ---------------------------------------------------------------- falls
 STANDING = [100, 100, 200, 400]
+DROPPED = [100, 240, 200, 400]  # the head came down toward the feet: gone behind something
 
 
 def test_a_fast_drop_to_lying_is_a_fall_at_once():
     mon, clock, sink = monitor()
     run(mon, clock, 2, lambda t: [person(box=STANDING, points=None)], state="standing")
-    run(mon, clock, 0.4, lambda t: [person(box=[50, 330, 350, 430], points=None)], state="standing")
+    run(mon, clock, 0.6, lambda t: [person(box=[50, 330, 350, 430], points=None)], state="standing")
     (a,) = mon.active()
     assert a["type"] == "fall" and a["moment"]
     (rec,) = sink.alerts()
@@ -142,9 +144,96 @@ def test_sitting_down_is_not_a_fall():
 def test_a_fast_drop_then_gone_is_a_suspected_fall():
     mon, clock, sink = monitor()
     run(mon, clock, 2, lambda t: [person(box=STANDING, points=None)], state="standing")
-    run(mon, clock, 0.4, lambda t: [person(box=[100, 220, 200, 520], points=None)], state="standing")
-    run(mon, clock, 0.4, lambda t: [person(box=[100, 220, 200, 520], points=None, held=True)], state="standing")
+    run(mon, clock, 0.4, lambda t: [person(box=DROPPED, points=None)], state="standing")
+    run(mon, clock, 0.6, lambda t: [person(box=DROPPED, points=None, held=True)], state="standing")
     assert [a["type"] for a in sink.alerts()] == ["fall_vanish"]
+
+
+def test_walking_out_of_the_bottom_of_the_picture_is_not_a_fall():
+    """example clip 4 at 0:57: the box runs into the bottom edge, its top slides down as they pass, then gone."""
+    mon, clock, sink = monitor()
+    run(mon, clock, 2, lambda t: [person(box=[750, 334, 933, 643], points=None)], state="walking", fps=12.5)
+    leaving = iter([[702, 390, 884, 713], [681, 412, 857, 718], [662, 433, 834, 719], [649, 448, 816, 718],
+                    [637, 461, 801, 718], [622, 478, 781, 719], [609, 501, 758, 720], [590, 531, 725, 720],
+                    [562, 560, 682, 719], [521, 587, 639, 719], [476, 613, 576, 720]])
+    run(mon, clock, 11 / 12.5, lambda t: [person(box=next(leaving), points=None, cut={"bottom"})], state="walking",
+        fps=12.5)
+    run(mon, clock, 1, lambda t: [person(box=[451, 629, 537, 720], points=None, held=True, cut={"bottom"})],
+        state="walking", fps=12.5)
+    run(mon, clock, 1, lambda t: [], fps=12.5)
+    assert sink.alerts() == []
+
+
+def test_legs_going_behind_a_desk_and_back_is_not_a_fall():
+    """example clip.mp4 at 0:47: the head stays put while the box bottom jumps, then one frame is missed."""
+    mon, clock, sink = monitor()
+    seated = [1063, 326, 1132, 587]
+    run(mon, clock, 2, lambda t: [person(box=seated, points=None)])
+    run(mon, clock, 0.4, lambda t: [person(box=[1066, 326, 1132, 420], points=None)])
+    run(mon, clock, 0.4, lambda t: [person(box=seated, points=None)])
+    run(mon, clock, 0.2, lambda t: [person(box=seated, points=None, held=True)])
+    run(mon, clock, 2, lambda t: [person(box=seated, points=None)])
+    assert sink.alerts() == []
+
+
+# example clip 4, 0:33.5 to 0:35: box top, box height, head height (None: no head keypoints), torso angle
+APPROACH_THEN_SIT = [
+    (262, 156, 306, 6), (264, 154, 309, 6), (266, 152, 310, 6), (267, 152, 312, 9), (269, 153, 314, 11),
+    (271, 154, 316, 13), (273, 155, 316, 15), (276, 156, 319, 17), (279, 155, 325, 18), (283, 153, 329, 20),
+    (287, 152, 336, 19), (291, 149, 340, 18), (295, 146, 346, 15), (298, 143, 349, 17), (301, 141, 354, 9),
+    (302, 140, 359, 13), (303, 140, 364, 12), (304, 139, 368, 29), (305, 138, 371, 42), (306, 138, 371, 18),
+    (307, 136, 371, 24), (309, 135, 371, 51), (310, 134, None, None), (311, 133, 373, 28), (312, 133, 376, 47),
+    (313, 133, None, None), (313, 132, 379, 39), (312, 133, 379, 69), (312, 133, 381, 62), (309, 136, 382, 90),
+    (306, 139, 384, 90), (303, 143, None, 90), (298, 148, None, 90), (298, 150, None, 90), (304, 145, None, 83)]
+
+
+def sighting(top, h, head, torso, held=False):
+    """A person box with keypoints putting the head and the torso angle where they were seen."""
+    points = {}
+    if torso is not None:
+        hip = np.array([580.0, top + 0.8 * h])
+        a = np.radians(torso)
+        shoulder = hip + 0.35 * h * np.array([np.sin(a), -np.cos(a)])
+        points.update({wl.L_HIP: hip - (10, 0), wl.R_HIP: hip + (10, 0),
+                       wl.L_SHO: shoulder - (20, 0), wl.R_SHO: shoulder + (20, 0)})
+    if head is not None:
+        points.update({wl.NOSE: (580, head), 1: (575, head), 2: (585, head)})
+    return person(22, box=[529, top, 634, top + h], points=points, held=held)
+
+
+def test_walking_toward_a_high_camera_then_sitting_down_is_not_a_fall():
+    """The head goes down the picture as he comes closer, but not toward his feet; then he leans over to sit and the
+    tracker loses him for a moment."""
+    mon, clock, sink = monitor()
+    seen = iter(APPROACH_THEN_SIT)
+    run(mon, clock, len(APPROACH_THEN_SIT) / 25, lambda t: [sighting(*next(seen))], state="walking", fps=25)
+    run(mon, clock, 0.6, lambda t: [sighting(304, 145, None, 83, held=True)], fps=25)
+    run(mon, clock, 1, lambda t: [], fps=25)
+    assert sink.alerts() == []
+
+
+def test_lowering_stretched_arms_then_a_missed_frame_is_not_a_fall():
+    """example clip.mp4 at 1:09: arms above the head lift the box top, the head stays where it is."""
+    mon, clock, sink = monitor()
+    head = {wl.NOSE: (730, 332), 1: (726, 328), 2: (734, 328), wl.L_SHO: (718, 350), wl.R_SHO: (742, 350)}
+    run(mon, clock, 2, lambda t: [person(box=[712, 286, 741, 351], points=head)], fps=15)
+    run(mon, clock, 1, lambda t: [person(box=[709, 321, 755, 393], points=head)], fps=15)
+    run(mon, clock, 1 / 15, lambda t: [person(box=[709, 321, 755, 393], points=head, held=True)], fps=15)
+    run(mon, clock, 1, lambda t: [person(box=[709, 321, 755, 393], points=head)], fps=15)
+    assert sink.alerts() == []
+
+
+def test_one_frame_of_jumbled_keypoints_is_not_a_fall():
+    """example clip.mp4 at 0:30: a seated man taking off a jacket, his torso read as flat for one frame."""
+    mon, clock, sink = monitor()
+    seated = [742, 340, 877, 488]
+    upright = {wl.L_SHO: (790, 380), wl.R_SHO: (830, 380), wl.L_HIP: (795, 450), wl.R_HIP: (825, 450)}
+    flat = {wl.L_SHO: (860, 420), wl.R_SHO: (860, 440), wl.L_HIP: (760, 450), wl.R_HIP: (760, 470)}
+    run(mon, clock, 2, lambda t: [person(1, box=seated, points=upright)], fps=15)
+    run(mon, clock, 0.3, lambda t: [person(1, box=seated, points=upright, held=True)], fps=15)
+    run(mon, clock, 1 / 15, lambda t: [person(2, box=[723, 363, 877, 555], points=flat)], fps=15)
+    run(mon, clock, 1, lambda t: [person(2, box=[730, 360, 866, 536], points=upright)], fps=15)
+    assert sink.alerts() == []
 
 
 # ---------------------------------------------------------------- face: distance and fatigue
@@ -154,21 +243,24 @@ def ellipse(cx, cy, half_w, openness, n):
 
 
 class FaceEngine(fi.FaceEngine):
-    """One frontal face in the crop with eyes `eye_dist` apart; eye and mouth openness as set."""
+    """One frontal face in the crop with eyes `eye_dist` apart; eye openness and the gap between the lips (over
+    the mouth's width) as set."""
     name = "fake"
 
     def __init__(self):
-        self.eye_dist, self.eye, self.mouth = 40.0, 0.4, 0.3
+        self.eye_dist, self.eye, self.mouth, self.yaw = 40.0, 0.4, 0.05, 0.0
 
     def _measure(self, image):
         d, x, y = self.eye_dist, 100.0, 100.0
         le, re = (x + d, y + d), (x + 2 * d, y + d)
-        kps = np.array([le, re, (x + 1.5 * d, y + 1.6 * d), (x + 1.1 * d, y + 2.1 * d), (x + 1.9 * d, y + 2.1 * d)],
+        kps = np.array([le, re, (x + (1.5 + self.yaw) * d, y + 1.6 * d), (x + 1.1 * d, y + 2.1 * d), (x + 1.9 * d, y + 2.1 * d)],
                        np.float32)
         lm = np.zeros((106, 2), np.float32)
         lm[wl.EYE_A] = ellipse(*le, 0.3 * d, self.eye, 10)
         lm[wl.EYE_B] = ellipse(*re, 0.3 * d, self.eye, 10)
-        lm[wl.MOUTH] = ellipse(x + 1.5 * d, y + 2.1 * d, 0.5 * d, self.mouth, 20)
+        mx, my, half = x + 1.5 * d, y + 2.1 * d, 0.5 * d
+        lm[list(wl.MOUTH_CORNERS)] = [(mx - half, my), (mx + half, my)]
+        lm[list(wl.INNER_LIPS)] = [(mx, my - self.mouth * half), (mx, my + self.mouth * half)]
         return [fi.Face(np.array([x, y, x + 3 * d, y + 3 * d], np.float32), kps, 0.9, None, lm)]
 
 
@@ -220,14 +312,34 @@ def test_eyes_closed_for_two_seconds_but_not_a_blink():
 def test_three_yawns_in_ten_minutes():
     mon, clock, sink = face_monitor()
     for _ in range(3):
-        mon.engine.mouth = 0.3
+        mon.engine.mouth = 0.05
         run(mon, clock, 60, lambda t: [person(box=BIG)], frame=FRAME, fps=4)
-        mon.engine.mouth = 0.9
+        mon.engine.mouth = 0.5
         run(mon, clock, 2.5, lambda t: [person(box=BIG)], frame=FRAME, fps=4)
-    mon.engine.mouth = 0.3
+    mon.engine.mouth = 0.05
     run(mon, clock, 1, lambda t: [person(box=BIG)], frame=FRAME, fps=4)
     assert [a["type"] for a in sink.alerts()] == ["yawn"]
     assert sink.alerts()[0]["worst"]["yawns"] == 3
+
+
+def test_talking_is_not_yawning():
+    mon, clock, sink = face_monitor(yawn_count=1)
+    for _ in range(120):
+        mon.engine.mouth = 0.5
+        run(mon, clock, 0.25, lambda t: [person(box=BIG)], frame=FRAME, fps=8)
+        mon.engine.mouth = 0.05
+        run(mon, clock, 0.25, lambda t: [person(box=BIG)], frame=FRAME, fps=8)
+    assert sink.alerts() == []
+
+
+def test_a_mouth_turned_far_from_the_camera_is_not_read():
+    """A face in profile has a narrow mouth, so closed lips look wide open."""
+    mon, clock, sink = face_monitor(yawn_count=1)
+    mon.engine.yaw, mon.engine.mouth = 2.0, 0.5
+    run(mon, clock, 5, lambda t: [person(box=BIG)], frame=FRAME, fps=8)
+    mon.engine.yaw, mon.engine.mouth = 0.0, 0.05
+    run(mon, clock, 1, lambda t: [person(box=BIG)], frame=FRAME, fps=8)
+    assert sink.alerts() == [] and "mouth" in mon.people[1].metrics
 
 
 def test_small_faces_are_not_measured():
@@ -264,7 +376,7 @@ def test_presence_is_written_when_a_person_leaves():
 def test_a_fall_that_the_tracker_gives_a_new_id():
     mon, clock, sink = monitor()
     run(mon, clock, 2, lambda t: [person(1, box=STANDING, points=None)], state="standing", names={1: "Dan"})
-    run(mon, clock, 0.4, lambda t: [person(1, box=STANDING, points=None, held=True),
+    run(mon, clock, 0.6, lambda t: [person(1, box=STANDING, points=None, held=True),
                                     person(2, box=[50, 330, 350, 430], points=None)], state="standing")
     (rec,) = sink.alerts()
     assert rec["type"] == "fall" and rec["person"] == 2 and rec["name"] == "Dan"
@@ -308,7 +420,7 @@ def test_the_reason_a_face_is_not_measured():
 def test_a_fall_stays_on_the_panel_after_the_person_leaves_the_view():
     mon, clock, sink = monitor()
     run(mon, clock, 2, lambda t: [person(box=STANDING, points=None)], state="standing")
-    run(mon, clock, 0.4, lambda t: [person(box=[100, 220, 200, 520], points=None)], state="standing")
+    run(mon, clock, 0.4, lambda t: [person(box=DROPPED, points=None)], state="standing")
     run(mon, clock, 0.4, lambda t: [], state="standing")
     assert [a["type"] for a in mon.active()] == ["fall_vanish"]
     run(mon, clock, 60, lambda t: [], state="standing", fps=1)
