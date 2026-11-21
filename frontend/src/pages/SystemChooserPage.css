@@ -59,7 +59,7 @@
   font: 600 17px/1.2 var(--rx-display);
 }
 
-/* ช่อง "เลือกฝั่งนี้": ฝั่งที่ใช้งานอยู่ติ๊กไว้ก่อน ชี้หรือโฟกัสอีกฝั่ง ปากกาย้ายติ๊กไปฝั่งนั้น
+/* ช่อง "เลือกฝั่งนี้": ฝั่งที่แนะนำ (YOLOv8) ติ๊กไว้ก่อน ชี้หรือโฟกัสอีกฝั่ง ปากกาย้ายติ๊กไปฝั่งนั้น
    เส้นที่ยังไม่วาดต้องซ่อนทั้งเส้น ไม่งั้นปลายมนของเส้นค้างเป็นจุดน้ำเงิน */
 .sys-pick .rx-box path {
   opacity: 0;
@@ -67,7 +67,7 @@
   transition: stroke-dashoffset 0.38s cubic-bezier(0.65, 0, 0.35, 1), opacity 0s linear 0.38s;
 }
 
-.sys-half.is-in-use .sys-pick .rx-box path,
+.sys-half.is-recommended .sys-pick .rx-box path,
 .sys-half:hover .sys-pick .rx-box path,
 .sys-half:focus-within .sys-pick .rx-box path {
   opacity: 1;
@@ -75,8 +75,8 @@
   transition: stroke-dashoffset 0.38s cubic-bezier(0.65, 0, 0.35, 1), opacity 0s;
 }
 
-.sys-split:has(.sys-half:not(.is-in-use):hover) .sys-half.is-in-use .sys-pick .rx-box path,
-.sys-split:has(.sys-half:not(.is-in-use):focus-within) .sys-half.is-in-use .sys-pick .rx-box path {
+.sys-split:has(.sys-half:not(.is-recommended):hover) .sys-half.is-recommended .sys-pick .rx-box path,
+.sys-split:has(.sys-half:not(.is-recommended):focus-within) .sys-half.is-recommended .sys-pick .rx-box path {
   opacity: 0;
   stroke-dashoffset: 1;
   transition: stroke-dashoffset 0.38s cubic-bezier(0.65, 0, 0.35, 1), opacity 0s linear 0.38s;
@@ -155,11 +155,6 @@
   overflow-wrap: anywhere;
 }
 
-.sys-hand {
-  font-size: 21px;
-  line-height: 1.2;
-}
-
 .sys-checks {
   display: flex;
   flex-wrap: wrap;
@@ -227,11 +222,6 @@
 .sys-half:hover .rx-glyph,
 .sys-go:focus-visible .rx-glyph {
   transform: translateX(3px);
-}
-
-.sys-note {
-  font-size: 22px;
-  line-height: 1.3;
 }
 
 /* ---------- จอเตี้ย (แล็ปท็อป 1366x768, 1280x720): ย่อระยะให้ปุ่มของทั้งสองฝั่งอยู่ในจอแรก ---------- */

@@ -5,66 +5,58 @@ import '../envelope/envelope.css'
 import './LandingPage.css'
 import './SystemChooserPage.css'
 
-// หน้าเลือกระบบ (/?systems) — หน้าที่ปุ่ม "เข้าสู่ระบบ" บนหน้าแรกพามา
-// ฉลากแผ่นเดียวแบ่งสองฝั่งด้วยรอยปรุ: ซ้าย MediaPipe (ใช้งานอยู่) ขวา YOLOv8 (กำลังพัฒนา)
-// ชื่อโมเดลตรงกับโค้ดจริง: hooks/usePoseLandmarker.ts, hooks/useFaceApiModels.ts, yolo-backend/app/config.py
+// หน้าเลือกระบบ (/?systems) — ทุกทางเข้าแอปจากหน้าแรกพามาที่นี่
+// ฉลากแผ่นเดียวแบ่งสองฝั่งด้วยรอยปรุ: ซ้าย YOLOv8 (แนะนำ) ขวา MediaPipe พร้อมใช้ทั้งคู่
+// ฝั่งที่แนะนำมาก่อน (บนมือถือจึงอยู่จอแรก) ติ๊ก "เลือกฝั่งนี้" ไว้ และได้ตรายางอันเดียวของหน้า อีกฝั่งเป็นปุ่มกรอบหมึก
+// ชื่อโมเดลตรงกับโค้ดจริง: hooks/usePoseLandmarker.ts, hooks/useFaceApiModels.ts,
+// yolo-backend/app/config.py (DET_MODEL, POSE_MODEL) และ yolo-backend/face_id.py (create_engine: InsightFace buffalo_l ถ้าติดตั้งไว้ ไม่งั้น YuNet + SFace)
+// แถวในตารางส่วนประกอบเรียงลำดับเดียวกันทั้งสองฝั่ง อ่านเทียบกันข้ามรอยปรุได้ทีละบรรทัด
 // หน้านี้ไม่โหลดกล้องหรือโมเดล AI
-
-export const SYSTEMS_HREF = '?systems'
 
 const CHECKS = ['ท่านั่ง', 'ระยะจอ', 'เวลาพัก', 'ความล้า', 'การล้ม', 'จำหน้า']
 
 interface Formula {
   id: string
   name: string
-  status: string
-  inUse: boolean
   where: string
   parts: { part: string; value: ReactNode }[]
-  ready: boolean
   href: string
   action: string
-  note?: string
+  recommended?: boolean
 }
 
 const FORMULAS: Formula[] = [
   {
+    id: 'yolo',
+    name: 'YOLOv8',
+    where: 'ประมวลผลที่ yolo-backend · อ่านสตรีมกล้อง go2rtc เอง',
+    parts: [
+      { part: 'ท่าทาง', value: <><code>yolov8m-pose.pt</code> · 17 จุด</> },
+      { part: 'ใบหน้า', value: <>InsightFace <code>buffalo_l</code> · สำรอง YuNet + SFace</> },
+      { part: 'ตรวจคน', value: <><code>yolov8m.pt</code> · COCO 80 คลาส · ติดตามด้วย ByteTrack</> },
+    ],
+    href: '?yolo-dashboard',
+    action: 'เปิดภาพรวม YOLOv8',
+    recommended: true,
+  },
+  {
     id: 'mediapipe',
     name: 'MediaPipe',
-    status: 'ใช้งานอยู่',
-    inUse: true,
     where: 'ประมวลผลในเบราว์เซอร์ของเครื่องนี้ · เฝ้าได้เมื่อเปิดหน้าค้างไว้',
     parts: [
       { part: 'ท่าทาง', value: <><code>pose_landmarker_lite.task</code> · 33 จุด</> },
       { part: 'ใบหน้า', value: 'face-api · TinyFaceDetector · Landmark68 · Recognition' },
       { part: 'ตรวจคน', value: 'ใช้ Pose Landmarker ตัวเดียวกัน' },
     ],
-    ready: true,
     href: '?dashboard',
     action: 'เปิดภาพรวม MediaPipe',
-  },
-  {
-    id: 'yolo',
-    name: 'YOLOv8',
-    status: 'กำลังพัฒนา',
-    inUse: false,
-    where: 'ประมวลผลที่ yolo-backend · อ่านสตรีมกล้อง go2rtc เอง',
-    parts: [
-      { part: 'ท่าทาง', value: <><code>yolov8m-pose.pt</code> · 17 จุด</> },
-      { part: 'ตรวจคน', value: <><code>yolov8m.pt</code> · COCO 80 คลาส · ติดตามด้วย ByteTrack</> },
-      { part: 'ใบหน้า', value: <span className="rx-hand sys-hand">ยังไม่เลือกโมเดล</span> },
-    ],
-    ready: false,
-    href: '?yolo-dashboard',
-    action: 'เปิดภาพรวม YOLOv8',
-    note: 'ยังไม่เปิดใช้ ทยอยเพิ่มทีละเรื่อง',
   },
 ]
 
 const TODAY = new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date())
 
-/** แถบหัวซองของหน้าเลือกระบบ ใช้ร่วมกับหน้ารอของ YOLOv8 */
-export function SystemsBand({ tag, back }: { tag: string; back: { href: string; label: string } }) {
+/** แถบหัวซองของหน้าเลือกระบบ */
+function SystemsBand({ tag, back }: { tag: string; back: { href: string; label: string } }) {
   const { theme, toggleTheme } = useTheme()
   const themeLabel = `เปลี่ยนเป็นโหมด${theme === 'dark' ? 'สว่าง' : 'มืด'}`
   return (
@@ -88,8 +80,8 @@ export function SystemsBand({ tag, back }: { tag: string; back: { href: string; 
   )
 }
 
-/** ช่องกรอกหัวฉลาก "ถึง" และ "วันที่" ใช้ร่วมกับหน้ารอของ YOLOv8 */
-export function SheetFields() {
+/** ช่องกรอกหัวฉลาก "ถึง" และ "วันที่" */
+function SheetFields() {
   return (
     <div className="rx-fields sys-fields">
       <p className="rx-field"><span>ถึง</span><span className="rx-hand">หัวหน้าทีม / HR</span></p>
@@ -109,10 +101,10 @@ export default function SystemChooserPage() {
 
         <div className="sys-split">
           {FORMULAS.map((f) => (
-            <section key={f.id} className={`sys-half${f.inUse ? ' is-in-use' : ''}`} aria-labelledby={`sys-${f.id}`}>
+            <section key={f.id} className={`sys-half${f.recommended ? ' is-recommended' : ''}`} aria-labelledby={`sys-${f.id}`}>
               <div className="sys-top">
                 <span className="sys-pick" aria-hidden="true"><Mark state="tick" label="" />เลือกฝั่งนี้</span>
-                <span className={`sys-tag${f.inUse ? ' is-solid' : ''}`}>{f.status}</span>
+                {f.recommended && <span className="sys-tag is-solid">แนะนำ</span>}
               </div>
               <h2 id={`sys-${f.id}`} className="sys-name">{f.name}</h2>
               <p className="sys-where"><Phrases text={f.where} /></p>
@@ -132,12 +124,7 @@ export default function SystemChooserPage() {
               <ul className="sys-checks" aria-label={`เรื่องที่ ${f.name} ตรวจได้`}>
                 {CHECKS.map((name, j) => (
                   <li key={name}>
-                    <Mark
-                      state={f.ready ? 'tick' : 'empty'}
-                      order={f.ready ? j : undefined}
-                      small
-                      label={f.ready ? 'พร้อมใช้' : 'ยังไม่เปิด'}
-                    />
+                    <Mark state="tick" order={j} small label="พร้อมใช้" />
                     {name}
                   </li>
                 ))}
@@ -146,13 +133,12 @@ export default function SystemChooserPage() {
               {/* ลิงก์ของแต่ละฝั่งขยายพื้นที่กดเต็มครึ่งหน้า (::after) — ชี้ตรงไหนของฝั่งนั้นก็เข้าได้ */}
               <div className="sys-actions">
                 <a className="sys-go" href={f.href}>
-                  {f.inUse ? (
+                  {f.recommended ? (
                     <span className="rx-stamp sys-stamp"><span className="rx-stamp-face">{f.action} <Arrow size={24} /></span></span>
                   ) : (
                     <span className="rx-secondary sys-secondary">{f.action} <Arrow /></span>
                   )}
                 </a>
-                {f.note && <span className="rx-hand sys-note">{f.note}</span>}
               </div>
             </section>
           ))}
