@@ -1,5 +1,5 @@
 // รัน Frontend (Vite), Backend (camwell-backend) และ yolo-backend (ถ้ามี .venv) พร้อมกันใน Terminal เดียว
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 
@@ -22,9 +22,10 @@ function shutdown(exitCode = 0) {
   if (shuttingDown) return
   shuttingDown = true
   for (const child of processes) {
-    if (!child.killed) {
-      child.kill('SIGTERM')
-    }
+    if (child.exitCode !== null) continue
+    // shell: true ทำให้ child เป็น cmd.exe ถ้า kill แค่ตัวนั้น server ตัวจริงข้างใต้จะยังรันต่อ จึงต้องปิดทั้ง tree
+    if (process.platform === 'win32') spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' })
+    else child.kill('SIGTERM')
   }
   process.exit(exitCode)
 }
