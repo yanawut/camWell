@@ -6,6 +6,37 @@ export type Box = [number, number, number, number]
 export type PersonState = 'sitting' | 'standing' | 'walking'
 export type ObjectClass = 'chair' | 'table' | 'monitor' | 'laptop'
 
+export interface LiveFace {
+  status: 'pending' | 'known' | 'unknown'
+  name: string | null
+  score: number
+}
+
+export type WellCategory = 'posture' | 'distance' | 'break' | 'fatigue' | 'fall'
+export type WellCheck = 'ok' | 'alert' | 'na' | 'off'
+
+export interface LiveAlert {
+  id: string
+  category: WellCategory
+  type: string
+  text: string
+  person: number
+  name: string | null
+  startedAt: number
+  seconds: number
+  moment: boolean
+}
+
+export interface LiveWellness {
+  checks: Record<WellCategory, WellCheck>
+  notes: Partial<Record<WellCategory, string>>
+  alerts: LiveAlert[]
+  sitMinutes: number | null
+  metrics: Record<string, number>
+  badFor?: Record<string, number>
+  faceAge?: number | null
+}
+
 export interface LivePerson {
   id: number
   state: PersonState
@@ -19,6 +50,8 @@ export interface LivePerson {
   zone: string | null
   /** keypoint 17 จุดแบบ COCO [x, y, conf] จาก yolov8-pose — null เมื่อเฟรมนี้ตรวจไม่เจอแต่ยังจำกรอบไว้ */
   kpts?: [number, number, number][] | null
+  face?: LiveFace | null
+  wellness?: LiveWellness | null
 }
 
 export interface LiveObject {
@@ -78,6 +111,7 @@ export interface Snapshot {
   heat?: Heat
   /** เฉพาะแหล่งที่มีเส้นเวลา (ไฟล์วิดีโอ): ตำแหน่งของเฟรมนี้ในคลิปและความยาวคลิป เป็นวินาที */
   clip?: { pos: number; duration: number }
+  alerts?: LiveAlert[]
 }
 
 export type SessionState = 'idle' | 'starting' | 'running' | 'paused' | 'holding' | 'ended' | 'error'
@@ -157,3 +191,108 @@ export interface Upload {
   kind: 'video' | 'image'
   name: string
 }
+
+export interface FacePerson {
+  name: string
+  photos: string[]
+  consentAt: string | null
+}
+
+export interface FaceList {
+  engine: string | null
+  consent: { version: string; text: string }
+  people: FacePerson[]
+  threshold: number | null
+  defaultThreshold: number | null
+}
+
+export interface FacePair {
+  a: string
+  b: string
+  score: number
+}
+
+export interface FaceCheck {
+  engine: string | null
+  pairs: FacePair[]
+  closest: Record<string, { name: string; score: number }>
+  photos: Record<string, Record<string, number | null>>
+}
+
+export interface FaceAdded {
+  name: string
+  added: number
+  problems: string[]
+}
+
+export type FacePose = 'center' | 'left' | 'right' | 'up' | 'down'
+
+export interface FaceCaptureResult {
+  total: number
+  usable: number
+  rejected: Record<'no_face' | 'many_faces' | 'small' | 'too_turned' | 'blurry' | 'other_person', number>
+  coverage: Record<FacePose, boolean>
+  selected: { index: number; box: Box; pose: FacePose; yaw: number; sharpness: number }[]
+}
+
+export interface AlertRecord {
+  kind: 'alert'
+  id: string
+  session: string
+  camera: string
+  person: number
+  name: string | null
+  category: WellCategory
+  type: string
+  text: string
+  started_at: number
+  ended_at: number | null
+  seconds: number | null
+  worst: Record<string, number>
+}
+
+export interface AlertList {
+  start: string
+  end: string
+  alerts: AlertRecord[]
+  categories: Record<WellCategory, string>
+  types: Record<string, string>
+}
+
+export type RiskLevel = 'high' | 'medium' | 'low'
+
+export interface DailyPerson {
+  key: string
+  label: string
+  named: boolean
+  cameras: string[]
+  segments: number
+  first_at: number | null
+  last_at: number | null
+  present_seconds: number
+  sitting_seconds: number
+  alert_count: number
+  types: { type: string; text: string; category: WellCategory; count: number }[]
+  by_category: Record<WellCategory, number>
+  longest_sit_minutes: number | null
+  fell: boolean
+  risk: { score: number; level: RiskLevel; enough: boolean; parts: { posture: number; sitting: number; eyes: number } }
+  regions: string[]
+  symptoms: string[]
+  advice: string[]
+  week: { days_seen: number; days_alerted: number } | null
+}
+
+export interface DailyReport {
+  date: string
+  totals: { people: number; segments: number; present_seconds: number; alerts: number } & Record<WellCategory, number>
+  risk_counts: Record<RiskLevel, number>
+  hourly: ({ hour: number } & Record<WellCategory, number>)[]
+  types: { type: string; text: string; category: WellCategory; count: number; percent: number }[]
+  people: DailyPerson[]
+  cameras: ({ camera: string; segments: number; alerts: number } & Record<WellCategory, number>)[]
+  disclaimer: string
+  formula: string
+}
+
+export type WellnessSettings = Record<string, number | boolean>

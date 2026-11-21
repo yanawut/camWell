@@ -3,6 +3,7 @@ import { usePersistentState } from '../hooks/usePersistentState'
 import { DEFAULT_LAYERS, drawLiveFrame, LAYERS, type LayerKey, type Layers } from './drawLive'
 import { FloorPlanCard, HeatmapCard, LegendCard, StatsPanel } from './LivePanels'
 import PlayerBar from './PlayerBar'
+import { RoomPanel } from './RoomPanel'
 import { useFrameAspect, useLiveDraw, useYoloLive } from './useYoloLive'
 import { yoloService } from './yoloService'
 import type { SessionState } from './types'
@@ -196,7 +197,7 @@ function LiveStage({ layers }: { layers: Layers }) {
 
 export default function LiveTab() {
   const [layers, setLayers] = usePersistentState<Layers>('camwell:yolo-console:layers:v1', DEFAULT_LAYERS)
-  const sideOpen = layers.stats || layers.heatmap || layers.minimap || layers.legend
+  const sideOpen = layers.room || layers.stats || layers.heatmap || layers.minimap || layers.legend
 
   return (
     <div className={`yc-live ${sideOpen ? 'with-side' : ''}`}>
@@ -223,6 +224,7 @@ export default function LiveTab() {
       </div>
       {sideOpen && (
         <aside className="yc-live-side">
+          {layers.room && <RoomPanel />}
           {layers.stats && <StatsPanel />}
           {layers.heatmap && <HeatmapCard />}
           {layers.minimap && <FloorPlanCard />}

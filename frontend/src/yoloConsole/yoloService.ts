@@ -1,7 +1,23 @@
 // ตัวเชื่อม yolo-backend: REST สำหรับควบคุม/ตั้งค่า/รายงาน + /ws/live สำหรับสถานะและเฟรมสด
 // พอร์ตจากต้นแบบ Cam-Well-YoLo-ByteTrack/frontend/src/lib/{api,live,camera}.ts
 // ทุกคำขอไปที่ /yolo/... ซึ่ง Vite proxy ต่อไปยัง yolo-backend (ดู vite.config.ts) — แยก prefix จาก /api ของ camwell-backend
-import type { FloorSettings, Heat, Report, ReportRow, SessionStatus, Snapshot, SourceSpec, Upload } from './types'
+import type {
+  AlertList,
+  DailyReport,
+  FaceAdded,
+  FaceCaptureResult,
+  FaceCheck,
+  FaceList,
+  FloorSettings,
+  Heat,
+  Report,
+  ReportRow,
+  SessionStatus,
+  Snapshot,
+  SourceSpec,
+  Upload,
+  WellnessSettings,
+} from './types'
 
 const BASE = '/yolo'
 const RECONNECT_MS = 1000
@@ -263,4 +279,33 @@ export const yoloService = {
   listReports: () => request<ReportRow[]>('/api/reports'),
   getReport: (id: string) => request<Report>(`/api/reports/${encodeURIComponent(id)}`),
   csvUrl: (id: string) => `${BASE}/api/reports/${encodeURIComponent(id)}/tracks.csv`,
+
+  getWellness: () => request<WellnessSettings>('/api/wellness/settings'),
+  getWellnessDefaults: () => request<WellnessSettings>('/api/wellness/defaults'),
+  putWellness: (settings: WellnessSettings) => sendJson<WellnessSettings>('/api/wellness/settings', settings, 'PUT'),
+  getDaily: (date: string) => request<DailyReport>(`/api/daily?date=${encodeURIComponent(date)}`),
+  listAlerts: (start: string, end: string) =>
+    request<AlertList>(`/api/alerts?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`),
+
+  listFaces: () => request<FaceList>('/api/faces'),
+  checkFaces: () => request<FaceCheck>('/api/faces/check'),
+  captureFaces(frames: Blob[]) {
+    const body = new FormData()
+    frames.forEach((frame, i) => body.append('frames', frame, `frame-${i}.jpg`))
+    return request<FaceCaptureResult>('/api/faces/capture', { method: 'POST', body })
+  },
+  putFaceThreshold: (threshold: number | null) =>
+    sendJson<{ threshold: number; defaultThreshold: number }>('/api/faces/threshold', { threshold }, 'PUT'),
+  addFaces(name: string, files: File[], consent: boolean) {
+    const body = new FormData()
+    body.append('name', name)
+    body.append('consent', String(consent))
+    for (const file of files) body.append('files', file)
+    return request<FaceAdded>('/api/faces', { method: 'POST', body })
+  },
+  deleteFace: (name: string) => request<unknown>(`/api/faces/${encodeURIComponent(name)}`, { method: 'DELETE' }),
+  deleteFacePhoto: (name: string, photo: string) =>
+    request<unknown>(`/api/faces/${encodeURIComponent(name)}/photos/${encodeURIComponent(photo)}`, { method: 'DELETE' }),
+  facePhotoUrl: (name: string, photo: string) =>
+    `${BASE}/api/faces/${encodeURIComponent(name)}/photos/${encodeURIComponent(photo)}`,
 }
