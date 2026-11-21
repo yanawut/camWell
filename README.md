@@ -66,21 +66,40 @@ npm run dev        # เปิด dev server (http://localhost:5173)
 สลับจาก Dev Console ได้ที่ปุ่ม **Engine: MediaPipe / YOLO** ใน sidebar — สลับแล้วเปลี่ยนทั้งหน้า กล้องและโมเดลของหน้าเดิมถูกปิด
 กดกลับมา MediaPipe แล้ว console เดิมโหลดค่าเดิมจาก localStorage และ session ของ YOLO ถูกสั่งหยุด
 
-ต้องเปิด `yolo-backend` ไว้ด้วย (ครั้งแรกให้สร้าง `.venv` ก่อน):
+ต้องเปิด `yolo-backend` ไว้ด้วย ครั้งแรกให้สร้าง `.venv` และลง torch เอง (torch ไม่อยู่ใน `requirements.txt`
+เพราะต้องโหลดจาก index ของ PyTorch รุ่น CUDA 12.8):
 
 ```bat
 py -3.12 -m venv yolo-backend\.venv
-yolo-backend\.venv\Scripts\python.exe -m pip install -r yolo-backend\requirements.txt
-npm run dev:yolo
+yolo-backend\.venv\Scripts\python.exe -m pip install torch==2.11.0+cu128 torchvision==0.26.0+cu128 --index-url https://download.pytorch.org/whl/cu128
+scripts\dev.bat
 ```
 
-`npm run dev:all` เปิดให้ด้วยถ้ามี `yolo-backend\.venv` แล้ว — frontend เรียก `/yolo/...` และ Vite ส่งต่อไปที่ `127.0.0.1:8000`
+`scripts\dev.bat` ลงแพ็กเกจที่เหลือให้เองทุกครั้งที่เปิด ทั้ง `yolo-backend\requirements.txt` และชุดจดจำใบหน้า
+(`requirements-face.txt` แล้วเปลี่ยน onnxruntime เป็นรุ่น GPU `>=1.22,<1.27` ที่เข้ากับ torch cu128)
+ถ้าชุดจดจำใบหน้าลงไม่สำเร็จ yolo-backend ยังเปิดได้ แต่จะไม่ขึ้นชื่อคน และวัดระยะจอ/ความล้าไม่ได้
+ไฟล์โมเดลใบหน้า `buffalo_l` ดาวน์โหลดเองตอนใช้ครั้งแรกไปที่ `%USERPROFILE%\.insightface` (ต้องมีอินเทอร์เน็ต)
+
+ไม่ใช้ `dev.bat` ก็ได้: `pip install -r yolo-backend\requirements.txt` แล้วทำตามคอมเมนต์ใน `yolo-backend\requirements-face.txt`
+จากนั้น `npm run dev:yolo` — frontend เรียก `/yolo/...` และ Vite ส่งต่อไปที่ `127.0.0.1:8000`
 (`frontend/vite.config.ts`) backend รับเฉพาะหน้าเว็บที่เปิดจาก `localhost:5173` จึงต้องเปิด dev server ที่พอร์ตนี้
 
-- **Live** — แหล่งภาพ: ไฟล์วิดีโอ, ไฟล์รูปภาพ, กล้อง browser, go2rtc, Simulator · ภาพสดพร้อมกรอบคน/สิ่งของ/เส้นทางเดิน,
-  แผงสถิติ, heatmap, ผังพื้น · หยุดชั่วคราว/จบ/เริ่มใหม่
-- **Floor & Zones** — calibrate พื้น (ลาก 4 มุม คลิกบนเส้นกรอบเพื่อเพิ่มจุด) และแบ่งโซน บันทึกลง `yolo-backend/data/settings.json`
-- **Reports** — รายงานของทุก session ที่จบแล้ว + ดาวน์โหลด `tracks.csv`
+**เคยมีโปรเจกต์รุ่นเก่า (มีโฟลเดอร์ `vision_service\`)** — โค้ดย้ายมาเป็น `yolo-backend\` แล้ว หลัง `git pull`
+โฟลเดอร์ `vision_service\` ยังค้างอยู่เพราะมี `.venv` ที่ git ไม่ได้เก็บ ลบทิ้งได้ (รวมถึง `node_modules\` ที่ root ของรุ่นที่ frontend
+ยังอยู่ที่ root) อย่าย้าย `vision_service\.venv` มาใช้ เพราะ venv บน Windows ผูกกับ path เดิม ให้สร้าง `yolo-backend\.venv` ใหม่ตามขั้นตอนด้านบน
+
+เมนูด้านซ้าย (ตามต้นแบบ Cam-Well-YoLo-ByteTrack ที่วางเมนูไว้ด้านบน):
+
+- **หน้าหลัก** — แหล่งภาพ: ไฟล์วิดีโอ, ไฟล์รูปภาพ, กล้อง browser, go2rtc, Simulator · ภาพสดพร้อมกรอบคน (ชื่อจากใบหน้า, ⚠ เมื่อมีการเตือน)/
+  สิ่งของ/เส้นทางเดิน · แผง "คนในห้องนี้" (ท่านั่ง ระยะจอ เวลานั่ง ความล้า การล้ม พร้อมเสียงเตือน และปุ่มรับทราบเมื่อมีคนล้ม) ·
+  แผงสถิติ, heatmap, ผังพื้น · หยุดชั่วคราว/เลื่อนคลิป/จบ/เริ่มใหม่
+- **ตั้งค่า** — calibrate พื้น (ลาก 4 มุม คลิกบนเส้นกรอบเพื่อเพิ่มจุด) และแบ่งโซน บันทึกลง `yolo-backend/data/settings.json` ·
+  เกณฑ์การแจ้งเตือนแต่ละหมวด + โหมดทดสอบ (ย่นเวลา) บันทึกลง `yolo-backend/data/wellness_settings.json`
+- **ใบหน้า** — ลงทะเบียนคนจากไฟล์รูปหรือถ่ายจากกล้อง browser (พร้อมความยินยอมตาม PDPA) · ปรับ threshold และดูคู่ที่หน้าคล้ายกัน
+  รูปเก็บที่ `yolo-backend/data/faces/<ชื่อ>/`
+- **ประวัติการแจ้งเตือน** — กรองตามวัน บุคคล หมวด · ส่งออก CSV
+- **รายงานประจำวัน** — ความเสี่ยง Office Syndrome รายคน กราฟรายชั่วโมง การ์ดรายคน (บันทึก PNG/คัดลอก) · ส่งออก CSV/JSON · พิมพ์
+- **รายงาน** — รายงานของทุก session ที่จบแล้ว + ดาวน์โหลด `tracks.csv`
 
 ## Dev Console (`/?console`)
 

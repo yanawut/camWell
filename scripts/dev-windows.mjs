@@ -145,8 +145,18 @@ function inspectVenv() {
     { label: 'face packages', ok: false, optional: true, detail: `ตรวจไม่ได้ เพราะ${reason}` },
   ]
   if (!existsSync(yoloPython)) {
+    // โปรเจกต์รุ่นเก่ามี vision_service\ (ย้ายมาเป็น yolo-backend\ แล้ว) git pull ลบไฟล์โค้ดแต่ทิ้ง .venv ไว้ในโฟลเดอร์เดิม
+    const leftover = existsSync(join(root, 'vision_service'))
+      ? ' / เจอโฟลเดอร์ vision_service\\ ของรุ่นเก่า ไม่ได้ใช้แล้ว ลบทิ้งได้ และอย่าย้าย .venv ในนั้นมาใช้ (venv ผูกกับ path เดิม)'
+      : ''
     return [
-      { label: '.venv', ok: false, detail: 'ยังไม่มี วิธีสร้างอยู่ในหัวข้อ YOLO Console ของ README.md' },
+      {
+        label: '.venv',
+        ok: false,
+        detail:
+          'ยังไม่มี สร้างครั้งเดียว: py -3.12 -m venv yolo-backend\\.venv แล้วลง torch ตามบรรทัดแรกของ yolo-backend\\requirements.txt ' +
+          `แล้วรัน dev.bat อีกครั้ง สคริปต์จะลงที่เหลือให้ (ดูหัวข้อ YOLO Console ใน README.md)${leftover}`,
+      },
       ...uncheckable('ยังไม่มี .venv'),
     ]
   }
