@@ -12,6 +12,8 @@ import './LandingPage.css'
 
 const DASHBOARD_HREF = '?dashboard'
 const CAMERA_HREF = '?camera'
+// ปุ่ม "เข้าสู่ระบบ" พาไปหน้าเลือกระบบ (SystemChooserPage: MediaPipe หรือ YOLOv8) ก่อนเข้า Dashboard
+const LOGIN_HREF = '?systems'
 
 // "วิธีใช้": สิ่งที่กล้องดู และนานแค่ไหนถึงเตือน (ค่าเริ่มต้น)
 const DOSAGE: { mark: MarkState; name: string; what: string; dose: string }[] = [
@@ -86,7 +88,7 @@ export default function LandingPage() {
             <button className="rx-nav-icon" type="button" onClick={toggleTheme} aria-label={themeLabel} title={themeLabel}>
               <ThemeGlyph dark={theme === 'dark'} />
             </button>
-            <a className="rx-nav-login" href={DASHBOARD_HREF}>เข้าสู่ระบบ</a>
+            <a className="rx-nav-login" href={LOGIN_HREF}>เข้าสู่ระบบ</a>
           </nav>
         </div>
       </header>
@@ -104,7 +106,7 @@ export default function LandingPage() {
               <Phrases text="Camwell เตือนเมื่อท่านั่งผิดค้าง นานพอจะเป็นปัญหา แจ้งทันทีเมื่อมีคนล้ม และประมวลผลทุกอย่าง บนเครื่องในออฟฟิศ" />
             </p>
             <div className="rx-actions">
-              <a className="rx-stamp" href={DASHBOARD_HREF}>
+              <a className="rx-stamp" href={LOGIN_HREF}>
                 <span className="rx-stamp-face">เข้าสู่ระบบ <Arrow size={24} /></span>
               </a>
               <a className="rx-secondary" href={CAMERA_HREF}>ตั้งค่ากล้อง</a>
@@ -216,7 +218,7 @@ export default function LandingPage() {
           </div>
           <p className="rx-field rx-foot-sign"><span>ผู้ดูแล</span><span className="rx-hand">หัวหน้าทีม / HR</span></p>
           <div className="rx-foot-end">
-            <a className="rx-secondary" href={DASHBOARD_HREF}>เข้าสู่ระบบ <Arrow /></a>
+            <a className="rx-secondary" href={LOGIN_HREF}>เข้าสู่ระบบ <Arrow /></a>
             <span className="rx-foot-copy">© {new Date().getFullYear()} Camwell</span>
           </div>
         </div>
