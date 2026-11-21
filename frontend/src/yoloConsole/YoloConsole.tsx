@@ -186,7 +186,9 @@ export default function YoloConsole() {
             <span>yolo-backend</span>
             <span className="dc-mono dc-text">/yolo → 127.0.0.1:8000</span>
           </div>
-          <a href="?dashboard" className="dc-back-link">← Back to Dashboard</a>
+          {/* YOLO Console เป็นของระบบ YOLOv8 จึงกลับไปภาพรวมของ YOLOv8 (Dev Console ของ MediaPipe กลับไป ?dashboard)
+              ไม่หยุด session ก่อนออก เพราะหน้าภาพรวม YOLOv8 ใช้ session เดียวกันของ yolo-backend */}
+          <a href="?yolo-dashboard" className="dc-back-link">← Back to Dashboard</a>
         </div>
       </aside>
 
