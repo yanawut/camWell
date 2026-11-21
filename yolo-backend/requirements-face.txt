@@ -1,0 +1,8 @@
+# Optional: face recognition (face_id.py). Install after requirements.txt, from backend\:
+#   .venv\Scripts\python.exe -m pip install -r requirements-face.txt
+# insightface pulls in the CPU onnxruntime. For the GPU, swap it for the CUDA build that matches torch cu128:
+#   .venv\Scripts\python.exe -m pip uninstall -y onnxruntime onnxruntime-gpu
+#   .venv\Scripts\python.exe -m pip install "onnxruntime-gpu>=1.22,<1.27"
+# onnxruntime-gpu 1.27+ is built for CUDA 13 and fails with "cublasLt64_13.dll ... missing" next to torch cu128.
+# The log line "[faces] insightface buffalo_l on CUDAExecutionProvider" confirms the GPU is in use.
+insightface==2.1
